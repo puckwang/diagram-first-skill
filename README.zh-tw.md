@@ -77,6 +77,8 @@ skills/diagram-first/
     `-- doc-section.md        文件嵌入樣板
 ```
 
+repo 根目錄另有 `.claude-plugin/plugin.json`，是透過 marketplace 安裝時使用的 plugin manifest，其中的 `version` 與 release tag 一致。
+
 這個 Skill 不包含任何 script。Agent 唯一會執行的指令，是開啟瀏覽器顯示 HTML。
 
 ## 已知限制
