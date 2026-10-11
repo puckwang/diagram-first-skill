@@ -16,8 +16,7 @@
 
   不要修改 <script type="module"> 內的程式、版本號與 CSP。
   CSP 只允許兩種 script：下方 <script type="module"> 的內容（以 sha256 比對，改動任何字元就無法執行），
-  以及 jsDelivr 上的 mermaid@12.1.0。驗證 hash：
-    { echo; sed -n '/^<script type="module">$/,/^<\/script>$/p' diagram.html | sed '1d;$d'; } | openssl dgst -sha256 -binary | openssl base64
+  以及 jsDelivr 上的 mermaid@12.1.0。
 
   Mermaid 12.1.0 的完整版內建 ELK，並以 ELK 作為適用圖種的預設排版。
   不在 initialize 中全域設定 layout：mindmap 等圖種使用自己的排版引擎，全域指定 ELK 會讓它們 render 失敗。
