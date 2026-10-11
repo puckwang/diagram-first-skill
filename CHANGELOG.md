@@ -1,8 +1,10 @@
 # Changelog
 
-本檔案記錄 diagram-first 各版本的重要變更。格式參考 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
+English | [台灣中文](CHANGELOG.zh-tw.md)
 
-發版方式：升 `.claude-plugin/plugin.json` 的 `version` 並在此新增對應段落，merge 到 `master` 後，使用者執行 `/plugin update` 即可取得新版本。
+Notable changes to diagram-first are recorded in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
+
+How to release: bump `version` in `.claude-plugin/plugin.json` and add a matching section here. Once merged into `master`, users get the new version by running `/plugin update`.
 
 ## [Unreleased]
 
@@ -10,26 +12,26 @@
 
 ### Added
 
-- HTML 樣板新增模式切換（自動／淺色／深色），位於標題與描述下方；「自動」跟隨系統設定。
-- HTML 樣板新增 Mermaid Theme 選單，可選 `redux-color`、`redux-dark-color`、`redux`、`redux-dark`、`default`、`dark`、`neo`、`neo-dark`、`forest`、`neutral`。
-- 模式與 Theme 的選擇存於 `localStorage`，下次開啟沿用。
+- Mode switch in the HTML template (Auto / Light / Dark), placed below the title and summary. Auto follows the system setting.
+- Mermaid theme menu in the HTML template: `redux-color`, `redux-dark-color`, `redux`, `redux-dark`, `default`, `dark`, `neo`, `neo-dark`, `forest`, `neutral`.
+- The chosen mode and theme are saved in `localStorage` and reused next time.
 
 ### Changed
 
-- 圖的預設配色由自訂紫色改為 Mermaid 內建 Theme：淺色模式 `redux-color`、深色模式 `redux-dark-color`；手動選擇 Theme 後不再跟隨模式。
-- 頁面改為中性灰配色；畫布背景依 Theme 深淺調整。
-- `mermaid-guide.md`：front matter 不可指定 `theme`／`themeVariables`；`classDef` 範例色改為 `#E5484D`，淺色與深色背景皆清楚。
+- Diagrams now use built-in Mermaid themes instead of a custom purple palette: `redux-color` in light mode and `redux-dark-color` in dark mode. Once a theme is picked manually, it no longer follows the mode.
+- The page uses a neutral gray palette; the canvas background follows the theme's lightness.
+- `mermaid-guide.md`: front matter must not set `theme` or `themeVariables`; the `classDef` example color is now `#E5484D`, readable on both light and dark backgrounds.
 
 ### Removed
 
-- HTML 頁面上方的 render 成功訊息。錯誤與 ELK 未生效警告保留。
+- The render success message at the top of the HTML page. Error messages and the ELK warning remain.
 
 ## [1.0.0] - 2026-10-11
 
 ### Added
 
-- diagram-first Skill 首次發佈：依內容複雜度以 ASCII 或 Mermaid（ELK 排版）HTML 附圖，並支援嵌入 README、ADR 等文件。
-- `.claude-plugin/plugin.json`，支援以 Claude Code plugin 安裝，並修正 claude.ai 同步失敗。
+- First release of the diagram-first skill: attaches ASCII or Mermaid (ELK layout) HTML diagrams depending on complexity, and supports embedding into documents such as READMEs and ADRs.
+- `.claude-plugin/plugin.json` for installing as a Claude Code plugin; fixes the claude.ai sync failure.
 
 [Unreleased]: https://github.com/puckwang/diagram-first-skill/compare/1.1.0...HEAD
 [1.1.0]: https://github.com/puckwang/diagram-first-skill/compare/1.0.0...1.1.0

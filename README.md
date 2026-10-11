@@ -49,6 +49,8 @@ No diagram is added when the answer is a sentence or two, when a diagram carries
 /plugin install diagram-first@puck-agent-skills
 ```
 
+To update, run `/plugin update diagram-first@puck-agent-skills`. See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+
 ### claude.ai
 
 1. Download the source from [Releases](https://github.com/puckwang/diagram-first-skill/releases), or clone this repo.
@@ -79,7 +81,7 @@ skills/diagram-first/
     `-- doc-section.md        Document embedding template
 ```
 
-The repository root also holds `.claude-plugin/plugin.json`, the plugin manifest used for marketplace installs. Its `version` matches the release tag.
+The repository root also holds `.claude-plugin/plugin.json`, the plugin manifest used for marketplace installs. Its `version` matches the release tag and the latest entry in [CHANGELOG.md](CHANGELOG.md).
 
 The skill contains no scripts. The only command the agent runs is opening the browser to show the HTML.
 
