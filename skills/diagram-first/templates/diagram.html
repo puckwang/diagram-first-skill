@@ -18,7 +18,7 @@
   CSP 只允許兩種 script：下方 <script type="module"> 的內容（以 sha256 比對，改動任何字元就無法執行），
   以及 jsDelivr 上的 mermaid@12.1.0。
 
-  頁首右上角的模式（自動／淺色／深色）與 Theme 選單由程式產生，使用者的選擇存在 localStorage。
+  標題與描述下方的模式（自動／淺色／深色）與 Theme 選單由程式產生，使用者的選擇存在 localStorage。
   Theme 預設為「自動」：淺色模式用 redux-color，深色模式用 redux-dark-color。
   Mermaid 原始碼的 front matter 不可指定 theme，否則會蓋過使用者的選擇。
 
@@ -29,7 +29,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/NPb1H7IBdNBmSkEcSnBC4LaSWS8LUeBqtT15sNI3Ck=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-H5L4TZiRLm9ubfwwpAyzSq4sS9vQv6MuZrYILL/FbAI=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
@@ -60,11 +60,10 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 var(--font); }
   .page { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
-  header { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; margin: 0 0 24px; }
+  header { margin: 0 0 24px; }
   header h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
   header .summary { color: var(--muted); margin: 0; }
-  .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
-  .controls label { display: flex; gap: 6px; align-items: center; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 0; }
   .segmented { display: inline-flex; background: var(--control); border-radius: 6px; padding: 2px; }
   .segmented button { font: 13px var(--font); color: var(--control-text); background: transparent; border: 0; border-radius: 4px; padding: 3px 10px; cursor: pointer; }
   .segmented button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--border); }
@@ -95,10 +94,8 @@
 <body>
 <div class="page">
   <header>
-    <div>
-      <h1>{{TITLE}}</h1>
-      <p class="summary">{{SUMMARY}}</p>
-    </div>
+    <h1>{{TITLE}}</h1>
+    <p class="summary">{{SUMMARY}}</p>
     <div class="controls" id="controls"></div>
   </header>
   <div id="status" role="status"></div>
@@ -311,8 +308,7 @@ const modeButtons = ['auto', 'light', 'dark'].map((m) => {
   return b;
 });
 modeGroup.append(...modeButtons);
-const themeLabel = el('label', {}, T.theme);
-const themeSelect = el('select');
+const themeSelect = el('select', { 'aria-label': T.theme });
 themeSelect.append(el('option', { value: 'auto' }, `${T.auto} (${AUTO_THEME.light} / ${AUTO_THEME.dark})`));
 THEMES.forEach((t) => themeSelect.append(el('option', { value: t }, t)));
 themeSelect.value = theme;
@@ -321,10 +317,7 @@ themeSelect.addEventListener('change', async () => {
   save(STORE.theme, theme);
   await renderAll();
 });
-themeLabel.append(themeSelect);
-const modeLabel = el('label', {}, T.mode);
-modeLabel.append(modeGroup);
-controls.append(modeLabel, themeLabel);
+controls.append(modeGroup, themeSelect);
 
 systemDark.addEventListener('change', async () => {
   if (mode === 'auto' && theme === 'auto') await renderAll();
