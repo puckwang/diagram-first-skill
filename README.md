@@ -79,6 +79,8 @@ skills/diagram-first/
     `-- doc-section.md        Document embedding template
 ```
 
+The repository root also holds `.claude-plugin/plugin.json`, the plugin manifest used for marketplace installs. Its `version` matches the release tag.
+
 The skill contains no scripts. The only command the agent runs is opening the browser to show the HTML.
 
 ## Known limitations
