@@ -16,6 +16,16 @@
 
   不要修改 <script type="module"> 內的程式與版本號，也不要修改 Content-Security-Policy。
   CSP 以 hash 只允許這段程式執行，內容改動一個字元，整頁就無法運作。
+
+  CSP 的 script-src 只允許兩樣東西：
+    1. 'sha256-…'：本檔最下方 <script type="module"> 與 </script> 之間的完整內容（不含標籤本身），
+       也就是載入 Mermaid、render 每張圖、產生工具列按鈕、顯示狀態列的程式。
+       不用 nonce：靜態檔案無法每次產生新的隨機值，寫死的 nonce 公開在 repo 中，注入的 script 可以照抄。
+       在本檔所在目錄執行以下指令，輸出應與 CSP 中 sha256- 後的值相同：
+         { echo; sed -n '/^<script type="module">$/,/^<\/script>$/p' diagram.html | sed '1d;$d'; } | openssl dgst -sha256 -binary | openssl base64
+    2. https://cdn.jsdelivr.net/npm/mermaid@12.1.0/：Mermaid 12.1.0 本身，以及它從同一目錄載入的 chunk。
+  其他指令：style-src 允許 inline style（樣板與 Mermaid 產生的 SVG 都需要）；img-src 只允許 data: 與 blob:；
+  其餘一律禁止，因此頁面無法連線到 Mermaid 以外的任何地方。
   Mermaid 12.1.0 的完整版內建 ELK，並以 ELK 作為適用圖種的預設排版。
   不在 initialize 中全域設定 layout：mindmap 等圖種使用自己的排版引擎，全域指定 ELK 會讓它們 render 失敗。
   需要指定排版時，寫在各圖原始碼開頭的 front matter。
