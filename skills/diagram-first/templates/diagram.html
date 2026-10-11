@@ -18,6 +18,10 @@
   CSP 只允許兩種 script：下方 <script type="module"> 的內容（以 sha256 比對，改動任何字元就無法執行），
   以及 jsDelivr 上的 mermaid@12.1.0。
 
+  頁首右上角的模式（自動／淺色／深色）與 Theme 選單由程式產生，使用者的選擇存在 localStorage。
+  Theme 預設為「自動」：淺色模式用 redux-color，深色模式用 redux-dark-color。
+  Mermaid 原始碼的 front matter 不可指定 theme，否則會蓋過使用者的選擇。
+
   Mermaid 12.1.0 的完整版內建 ELK，並以 ELK 作為適用圖種的預設排版。
   不在 initialize 中全域設定 layout：mindmap 等圖種使用自己的排版引擎，全域指定 ELK 會讓它們 render 失敗。
   需要指定排版時，寫在各圖原始碼開頭的 front matter。
@@ -25,45 +29,58 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WhQGVrbKq+lhyzjp1C3KKQhgpo8wMiabB/oTi2PCXek=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/NPb1H7IBdNBmSkEcSnBC4LaSWS8LUeBqtT15sNI3Ck=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
 <style>
   :root {
-    --bg: #FAF9F5; --surface: #FFFFFF; --text: #2C2C2A; --muted: #5F5E5A;
-    --border: #D3D1C7; --accent: #534AB7; --accent-bg: #EEEDFE;
+    --bg: #F7F7F8; --surface: #FFFFFF; --text: #1F2328; --muted: #59636E;
+    --border: #D1D9E0; --control: #EFF2F5; --control-text: #1F2328; --control-active: #FFFFFF;
     --danger: #A32D2D; --danger-bg: #FCEBEB; --warn: #854F0B; --warn-bg: #FAEEDA;
-    --ok: #3B6D11; --ok-bg: #EAF3DE;
+    --canvas-light: #FFFFFF; --canvas-dark: #1B1B1F;
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Hiragino Sans", "Noto Sans TC", "Noto Sans JP", "Microsoft JhengHei", sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    color-scheme: light dark;
+    color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1F1F1D; --surface: #2C2C2A; --text: #F1EFE8; --muted: #B4B2A9;
-      --border: #444441; --accent: #AFA9EC; --accent-bg: #3C3489;
+    :root:not([data-theme="light"]) {
+      --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
+      --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
       --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402;
-      --ok: #C0DD97; --ok-bg: #173404;
+      color-scheme: dark;
     }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
+    --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
+    --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 var(--font); }
   .page { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; gap: 16px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; margin: 0 0 24px; }
   header h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
-  header .summary { color: var(--muted); margin: 0 0 24px; }
+  header .summary { color: var(--muted); margin: 0; }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
+  .controls label { display: flex; gap: 6px; align-items: center; }
+  .segmented { display: inline-flex; background: var(--control); border-radius: 6px; padding: 2px; }
+  .segmented button { font: 13px var(--font); color: var(--control-text); background: transparent; border: 0; border-radius: 4px; padding: 3px 10px; cursor: pointer; }
+  .segmented button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--border); }
+  .controls select { font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 4px 8px; }
   #status { margin: 0 0 24px; padding: 10px 14px; border-radius: 8px; font-size: 14px; display: none; }
   #status.show { display: block; }
-  #status.ok { background: var(--ok-bg); color: var(--ok); }
   #status.warn { background: var(--warn-bg); color: var(--warn); }
   #status.error { background: var(--danger-bg); color: var(--danger); }
   .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 0 0 24px; }
   .diagram h2 { font-size: 18px; font-weight: 600; margin: 0 0 2px; }
   .diagram .caption { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
-  .toolbar button { font: 13px var(--font); color: var(--accent); background: var(--accent-bg); border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  .toolbar button { font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
   .toolbar button:hover { opacity: .85; }
-  .canvas { overflow: auto; border-radius: 8px; }
+  .canvas { overflow: auto; border-radius: 8px; padding: 12px; background: var(--canvas-light); }
+  .canvas.dark { background: var(--canvas-dark); }
   .canvas svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
   .canvas.natural svg { max-width: none !important; }
   .legend { margin: 12px 0 0; padding: 12px 14px; border-top: 1px solid var(--border); font-size: 14px; color: var(--muted); }
@@ -78,8 +95,11 @@
 <body>
 <div class="page">
   <header>
-    <h1>{{TITLE}}</h1>
-    <p class="summary">{{SUMMARY}}</p>
+    <div>
+      <h1>{{TITLE}}</h1>
+      <p class="summary">{{SUMMARY}}</p>
+    </div>
+    <div class="controls" id="controls"></div>
   </header>
   <div id="status" role="status"></div>
   <main>
@@ -98,22 +118,25 @@
 
 <script type="module">
 const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.esm.min.mjs';
+const THEMES = ['redux-color', 'redux-dark-color', 'redux', 'redux-dark', 'default', 'dark', 'neo', 'neo-dark', 'forest', 'neutral'];
+const AUTO_THEME = { light: 'redux-color', dark: 'redux-dark-color' };
+const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme' };
 
 const I18N = {
   zh: { copy: '複製原始碼', copied: '已複製', svg: '下載 SVG', fit: '符合寬度', natural: '原始大小', source: 'Mermaid 原始碼',
+        mode: '模式', theme: 'Theme', auto: '自動', light: '淺色', dark: '深色',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
-        renderFail: 'Render 失敗：', ok: (n) => `已 render ${n} 張圖，使用 ELK 排版。`,
-        some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。請把錯誤訊息回報給 Agent。`,
+        renderFail: 'Render 失敗：', some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。請把錯誤訊息回報給 Agent。`,
         noElk: 'ELK 排版未生效，圖形以預設的 dagre 排版顯示。請回報給 Agent。' },
   en: { copy: 'Copy source', copied: 'Copied', svg: 'Download SVG', fit: 'Fit width', natural: 'Natural size', source: 'Mermaid source',
+        mode: 'Mode', theme: 'Theme', auto: 'Auto', light: 'Light', dark: 'Dark',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
-        renderFail: 'Render failed:', ok: (n) => `Rendered ${n} diagram(s) with ELK layout.`,
-        some: (ok, bad) => `${ok} succeeded, ${bad} failed. Please report the error to the agent.`,
+        renderFail: 'Render failed:', some: (ok, bad) => `${ok} succeeded, ${bad} failed. Please report the error to the agent.`,
         noElk: 'ELK layout is not active; diagrams fell back to dagre. Please report this to the agent.' },
   ja: { copy: 'ソースをコピー', copied: 'コピーしました', svg: 'SVG をダウンロード', fit: '幅に合わせる', natural: '原寸', source: 'Mermaid ソース',
+        mode: 'モード', theme: 'テーマ', auto: '自動', light: 'ライト', dark: 'ダーク',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
-        renderFail: '描画に失敗しました：', ok: (n) => `${n} 枚の図を ELK レイアウトで描画しました。`,
-        some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。エラーをエージェントに報告してください。`,
+        renderFail: '描画に失敗しました：', some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。エラーをエージェントに報告してください。`,
         noElk: 'ELK レイアウトが有効になっていません（dagre で表示）。エージェントに報告してください。' },
 };
 const lang = (document.documentElement.lang || 'zh').toLowerCase();
@@ -124,6 +147,32 @@ function setStatus(kind, text) {
   statusEl.className = 'show ' + kind;
   statusEl.textContent = text;
 }
+
+function load(key, allowed, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return allowed.includes(v) ? v : fallback;
+  } catch { return fallback; }
+}
+function save(key, value) {
+  try { localStorage.setItem(key, value); } catch {}
+}
+
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+let mode = load(STORE.mode, ['auto', 'light', 'dark'], 'auto');
+let theme = load(STORE.theme, ['auto', ...THEMES], 'auto');
+
+function isDark() {
+  return mode === 'dark' || (mode === 'auto' && systemDark.matches);
+}
+function applyMode() {
+  if (mode === 'auto') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = mode;
+}
+function currentTheme() {
+  return theme === 'auto' ? AUTO_THEME[isDark() ? 'dark' : 'light'] : theme;
+}
+applyMode();
 
 function dedent(text) {
   const lines = text.replace(/\t/g, '    ').split('\n');
@@ -161,41 +210,22 @@ try {
   throw e;
 }
 
-const dark = matchMedia('(prefers-color-scheme: dark)').matches;
 const font = getComputedStyle(document.documentElement).getPropertyValue('--font').trim();
 await document.fonts.ready;
-mermaid.initialize({
-  startOnLoad: false,
-  securityLevel: 'strict',
-  theme: 'base',
-  fontFamily: font,
-  themeVariables: {
-    darkMode: dark,
+function initMermaid() {
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme: currentTheme(),
     fontFamily: font,
-    fontSize: '14px',
-    background: dark ? '#2C2C2A' : '#FFFFFF',
-    primaryColor: dark ? '#3C3489' : '#EEEDFE',
-    primaryBorderColor: dark ? '#AFA9EC' : '#534AB7',
-    primaryTextColor: dark ? '#EEEDFE' : '#26215C',
-    secondaryColor: dark ? '#085041' : '#E1F5EE',
-    secondaryBorderColor: dark ? '#5DCAA5' : '#0F6E56',
-    secondaryTextColor: dark ? '#E1F5EE' : '#04342C',
-    tertiaryColor: dark ? '#444441' : '#F1EFE8',
-    tertiaryBorderColor: dark ? '#888780' : '#B4B2A9',
-    tertiaryTextColor: dark ? '#F1EFE8' : '#2C2C2A',
-    lineColor: dark ? '#9C9A92' : '#73726C',
-    textColor: dark ? '#E7E5DD' : '#2C2C2A',
-    noteBkgColor: dark ? '#412402' : '#FAEEDA',
-    noteTextColor: dark ? '#FAEEDA' : '#412402',
-    noteBorderColor: dark ? '#BA7517' : '#BA7517',
-  },
-});
+    themeVariables: { fontFamily: font },
+  });
+}
 
-const sections = [...document.querySelectorAll('section.diagram')];
-let okCount = 0;
+const diagrams = [];
 let badCount = 0;
 
-for (const [i, section] of sections.entries()) {
+for (const [i, section] of [...document.querySelectorAll('section.diagram')].entries()) {
   const srcNode = section.querySelector('script.mermaid-src');
   if (!srcNode) continue;
   const source = dedent(srcNode.textContent);
@@ -229,39 +259,84 @@ for (const [i, section] of sections.entries()) {
     continue;
   }
 
-  try {
-    const { svg } = await mermaid.render(`diagram-${i}`, source);
-    canvas.innerHTML = svg;
-    okCount++;
+  const svgBtn = el('button', { type: 'button' }, T.svg);
+  svgBtn.addEventListener('click', () => {
+    const blob = new Blob([canvas.innerHTML], { type: 'image/svg+xml' });
+    const a = el('a', { href: URL.createObjectURL(blob), download: `diagram-${i + 1}.svg` });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  const sizeBtn = el('button', { type: 'button' }, T.natural);
+  sizeBtn.addEventListener('click', () => {
+    const natural = canvas.classList.toggle('natural');
+    sizeBtn.textContent = natural ? T.fit : T.natural;
+  });
+  diagrams.push({ i, source, canvas, details, buttons: [svgBtn, sizeBtn], toolbar, ok: false });
+}
 
-    const svgBtn = el('button', { type: 'button' }, T.svg);
-    svgBtn.addEventListener('click', () => {
-      const blob = new Blob([canvas.innerHTML], { type: 'image/svg+xml' });
-      const a = el('a', { href: URL.createObjectURL(blob), download: `diagram-${i + 1}.svg` });
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    });
-    const sizeBtn = el('button', { type: 'button' }, T.natural);
-    sizeBtn.addEventListener('click', () => {
-      const natural = canvas.classList.toggle('natural');
-      sizeBtn.textContent = natural ? T.fit : T.natural;
-    });
-    toolbar.append(svgBtn, sizeBtn);
-  } catch (e) {
-    badCount++;
-    const box = el('div', { class: 'err' }, T.renderFail);
-    box.append(el('pre', {}, String(e.message || e)));
-    canvas.append(box);
-    details.open = true;
+let renderCount = 0;
+async function renderAll() {
+  const name = currentTheme();
+  initMermaid();
+  renderCount++;
+  for (const d of diagrams) {
+    d.canvas.classList.toggle('dark', name.includes('dark'));
+    try {
+      const { svg } = await mermaid.render(`diagram-${d.i}-${renderCount}`, d.source);
+      d.canvas.innerHTML = svg;
+      if (!d.ok) d.toolbar.append(...d.buttons);
+      d.ok = true;
+    } catch (e) {
+      const box = el('div', { class: 'err' }, T.renderFail);
+      box.append(el('pre', {}, String(e.message || e)));
+      d.canvas.replaceChildren(box);
+      d.buttons.forEach((b) => b.remove());
+      d.ok = false;
+      d.details.open = true;
+    }
   }
 }
 
+const controls = document.getElementById('controls');
+const modeGroup = el('div', { class: 'segmented', role: 'group', 'aria-label': T.mode });
+const modeButtons = ['auto', 'light', 'dark'].map((m) => {
+  const b = el('button', { type: 'button', 'aria-pressed': String(m === mode) }, T[m]);
+  b.addEventListener('click', async () => {
+    mode = m;
+    save(STORE.mode, m);
+    modeButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(['auto', 'light', 'dark'][k] === m)));
+    applyMode();
+    if (theme === 'auto') await renderAll();
+  });
+  return b;
+});
+modeGroup.append(...modeButtons);
+const themeLabel = el('label', {}, T.theme);
+const themeSelect = el('select');
+themeSelect.append(el('option', { value: 'auto' }, `${T.auto} (${AUTO_THEME.light} / ${AUTO_THEME.dark})`));
+THEMES.forEach((t) => themeSelect.append(el('option', { value: t }, t)));
+themeSelect.value = theme;
+themeSelect.addEventListener('change', async () => {
+  theme = themeSelect.value;
+  save(STORE.theme, theme);
+  await renderAll();
+});
+themeLabel.append(themeSelect);
+const modeLabel = el('label', {}, T.mode);
+modeLabel.append(modeGroup);
+controls.append(modeLabel, themeLabel);
+
+systemDark.addEventListener('change', async () => {
+  if (mode === 'auto' && theme === 'auto') await renderAll();
+});
+
+await renderAll();
+badCount += diagrams.filter((d) => !d.ok).length;
+
 if (badCount) {
-  setStatus('error', T.some(okCount, badCount));
+  setStatus('error', T.some(diagrams.filter((d) => d.ok).length, badCount));
 } else if (!(await elkIsActive(mermaid))) {
   setStatus('warn', T.noElk);
-} else {
-  setStatus('ok', T.ok(okCount));
 }
 </script>
 </body>
