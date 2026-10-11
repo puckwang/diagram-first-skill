@@ -56,6 +56,8 @@ flowchart TD
 
 Mermaid 12 的完整版已內建 ELK 並預設使用，寫出來仍有兩個好處：圖被貼到使用較舊 renderer 的平台時，仍會嘗試使用 ELK；讀者也能一眼看出這張圖的排版方式。不適用 ELK 的圖種不加。
 
+front matter 的 `config` 只寫排版設定，**不可**寫 `theme` 或 `themeVariables`：HTML 樣板讓使用者自行切換淺深色模式與 Theme，寫在原始碼裡的 theme 會蓋過使用者的選擇。
+
 需要微調時可以加入 ELK 選項：
 
 ```
@@ -90,13 +92,15 @@ config:
 
 ### 2.4 樣式
 
-- 預設不加樣式，交給 HTML 樣板的主題配色。
-- 需要強調語意時（例如標示錯誤路徑），用 `classDef` 定義一次再套用，不要逐一寫 `style`：
+- 預設不加樣式，交給 HTML 樣板的 Theme。樣板預設依淺深色模式使用 `redux-color` 或 `redux-dark-color`，使用者也可以自行切換成其他 Theme。
+- Theme 的配色依出現順序分配，不帶語意。需要強調語意時（例如標示錯誤路徑），用 `classDef` 定義一次再套用，不要逐一寫 `style`：
 
 ```
-classDef danger stroke:#A32D2D,stroke-width:2px
+classDef danger stroke:#E5484D,stroke-width:2px
 fail["失敗"]:::danger
 ```
+
+- `classDef` 只改框線顏色與粗細，不改底色與文字色，並選擇淺色、深色背景上都看得清楚的中間色階，例如上例的紅色；否則切換 Theme 後可能看不清楚。
 
 - 不使用 `click` 互動語法：HTML 樣板以 `securityLevel: 'strict'` 執行，`click` 會被忽略。
 
@@ -598,7 +602,7 @@ HTML 樣板會在頁面上顯示錯誤訊息，使用者回報後依序檢查：
 | `end` 附近報錯 | 用了保留字當 ID | 改成 `done`、`finish` 等 |
 | front matter 報錯 | `---` 前有空行或縮排 | `---` 必須在第一行且不縮排 |
 | 中文標籤被截斷或重疊 | 字型尚未載入就 render | 樣板已等待字型載入；仍發生時縮短標籤 |
-| 頁面只有標題與圖說，沒有狀態列、按鈕和圖，也沒有錯誤訊息 | 樣板的 `<script type="module">` 或 CSP 被改動，程式被 CSP 擋下 | 重新複製 `templates/diagram.html`，只替換佔位符 |
+| 頁面只有標題與圖說，沒有模式與 Theme 切換、按鈕和圖，也沒有錯誤訊息 | 樣板的 `<script type="module">` 或 CSP 被改動，程式被 CSP 擋下 | 重新複製 `templates/diagram.html`，只替換佔位符 |
 | 頁面顯示 ELK 未生效 | 樣板的 Mermaid 版本被改動 | 確認版本為 12.1.0 的完整版，不可使用 tiny 版 |
 | `Cannot read properties of null` 之類的 render 錯誤 | 對不適用 ELK 的圖種（例如 mindmap）指定了 `layout: elk` | 只在第 1 節 ELK 欄標示「適用」的圖種加 ELK 設定 |
 | sankey 在中文名稱處報錯 | sankey 只接受 ASCII 節點名稱，加引號也無效 | 節點改用英文並以圖例說明，或改用 `flowchart LR`（見 3.25） |

@@ -33,7 +33,7 @@
 | 路徑 | 何時使用 | 產出 |
 |---|---|---|
 | **ASCII** | 對話中的簡單圖：節點 ≤ 5、每個分支出口 ≤ 3、沒有交叉線和回流、單一方向 | 直接放在對話中的 `text` code block，附圖例 |
-| **HTML** | 對話中超過 ASCII 上限的複雜圖 | 以 Mermaid 12.1.0(ELK 排版)產生本機 HTML 檔並開啟瀏覽器；沒有本機檔案系統時，改用 Artifact、傳送檔案，或提供 Mermaid code block |
+| **HTML** | 對話中超過 ASCII 上限的複雜圖 | 以 Mermaid 12.1.0(ELK 排版)產生本機 HTML 檔並開啟瀏覽器，讀者可切換淺深色模式與 Mermaid Theme(預設 `redux-color`／`redux-dark-color`)；沒有本機檔案系統時，改用 Artifact、傳送檔案，或提供 Mermaid code block |
 | **Doc** | 要寫入或更新文件時 | 嵌入 Mermaid code block，只用穩定圖種；依目標平台決定是否附 ASCII 備案 |
 
 不會附圖的情況：只有一兩句話的回答、圖的資訊不比文字多、同一段對話已經畫過相同的圖，或你表示不需要圖。
