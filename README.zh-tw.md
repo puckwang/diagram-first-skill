@@ -47,6 +47,8 @@
 /plugin install diagram-first@puck-agent-skills
 ```
 
+更新時執行 `/plugin update diagram-first@puck-agent-skills`。各版本的變更見 [CHANGELOG.zh-tw.md](CHANGELOG.zh-tw.md)。
+
 ### claude.ai
 
 1. 到 [Releases](https://github.com/puckwang/diagram-first-skill/releases) 下載原始碼，或 clone 這個 repo。
@@ -77,7 +79,7 @@ skills/diagram-first/
     `-- doc-section.md        文件嵌入樣板
 ```
 
-repo 根目錄另有 `.claude-plugin/plugin.json`，是透過 marketplace 安裝時使用的 plugin manifest，其中的 `version` 與 release tag 一致。
+repo 根目錄另有 `.claude-plugin/plugin.json`，是透過 marketplace 安裝時使用的 plugin manifest，其中的 `version` 與 release tag、[CHANGELOG.zh-tw.md](CHANGELOG.zh-tw.md) 最新版本一致。
 
 這個 Skill 不包含任何 script。Agent 唯一會執行的指令，是開啟瀏覽器顯示 HTML。
 
