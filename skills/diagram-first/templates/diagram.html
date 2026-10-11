@@ -13,7 +13,8 @@
   4. 刪除所有尚未替換的 {{…}} 佔位符與本段註解。
   5. Mermaid 原始碼中不可出現字串 </script，必要時改寫標籤。
 
-  不要修改 <script type="module"> 內的程式與版本號。
+  不要修改 <script type="module"> 內的程式與版本號，也不要修改 Content-Security-Policy。
+  CSP 以 hash 只允許這段程式執行，內容改動一個字元，整頁就無法運作。
   Mermaid 12.1.0 的完整版內建 ELK，並以 ELK 作為適用圖種的預設排版。
   不在 initialize 中全域設定 layout：mindmap 等圖種使用自己的排版引擎，全域指定 ELK 會讓它們 render 失敗。
   需要指定排版時，寫在各圖原始碼開頭的 front matter。
@@ -21,6 +22,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WhQGVrbKq+lhyzjp1C3KKQhgpo8wMiabB/oTi2PCXek=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
 <style>

@@ -598,6 +598,7 @@ HTML 樣板會在頁面上顯示錯誤訊息，使用者回報後依序檢查：
 | `end` 附近報錯 | 用了保留字當 ID | 改成 `done`、`finish` 等 |
 | front matter 報錯 | `---` 前有空行或縮排 | `---` 必須在第一行且不縮排 |
 | 中文標籤被截斷或重疊 | 字型尚未載入就 render | 樣板已等待字型載入；仍發生時縮短標籤 |
+| 頁面只有標題與圖說，沒有狀態列、按鈕和圖，也沒有錯誤訊息 | 樣板的 `<script type="module">` 或 CSP 被改動，程式被 CSP 擋下 | 重新複製 `templates/diagram.html`，只替換佔位符 |
 | 頁面顯示 ELK 未生效 | 樣板的 Mermaid 版本被改動 | 確認版本為 12.1.0 的完整版，不可使用 tiny 版 |
 | `Cannot read properties of null` 之類的 render 錯誤 | 對不適用 ELK 的圖種（例如 mindmap）指定了 `layout: elk` | 只在第 1 節 ELK 欄標示「適用」的圖種加 ELK 設定 |
 | sankey 在中文名稱處報錯 | sankey 只接受 ASCII 節點名稱，加引號也無效 | 節點改用英文並以圖例說明，或改用 `flowchart LR`（見 3.25） |
