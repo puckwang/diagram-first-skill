@@ -1,6 +1,6 @@
 {
   "name": "diagram-first",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "文不如圖：說明流程、架構時主動附上 ASCII 或 Mermaid（ELK）圖",
   "author": { "name": "Puck Wang" },
   "homepage": "https://github.com/puckwang/diagram-first-skill",
