@@ -30,7 +30,7 @@ description: 文不如圖——任何時候，只要 Agent 的說明涉及步驟
 
 ## 原則
 
-- **圖是輔助**：每張圖前後都要有文字說明，圖不取代解釋。
+- **圖是輔助**：圖不取代解釋，但解釋寫在對話中。HTML 頁面以看圖為主，每張圖只附一句話圖說，圖例非必要不寫（見 `references/mermaid-guide.md` 2.6）。
 - **不打斷主要任務**：圖服務於回應的內容，畫圖本身不能成為回應的重點，除非使用者要求的就是圖。
 - **不使用程式**：不執行任何 script。唯一允許的指令是開啟瀏覽器。
 - **不手寫 SVG 座標**：排版交給 ASCII 樣板或 Mermaid 的 ELK 引擎。
@@ -57,7 +57,7 @@ description: 文不如圖——任何時候，只要 Agent 的說明涉及步驟
 - 沒有回流（回到前面步驟的邊）
 - 單一主軸方向
 
-ASCII 只畫流程、分層架構、樹狀結構與簡單 sequence，各自的上限見 `references/routing.md` 第 3 節。其他情況一律使用 **HTML**。
+ASCII 只畫流程、分層架構、樹狀結構、決策樹與簡單 sequence，各自的上限見 `references/routing.md` 第 3 節。決策樹（巢狀條件、每條路徑各自走到結果、無合流）不受上面「節點 ≤ 5」的限制，改用它自己的上限。其他情況一律使用 **HTML**。
 
 **拆圖規則**：節點 > 15，或包含多個獨立子流程時，先拆成「總覽圖＋子圖」，每張圖再各自回到 Step 2 判斷。
 
@@ -91,7 +91,7 @@ ASCII 只畫流程、分層架構、樹狀結構與簡單 sequence，各自的�
 
 **HTML**
 1. 讀取 `references/mermaid-guide.md`，寫出 Mermaid 原始碼；適用 ELK 的圖種加上 `layout: elk` 的 front matter。
-2. 讀取 `templates/diagram.html`，依檔內說明替換佔位符；多張圖放在同一份 HTML。
+2. 讀取 `templates/diagram.html`，依檔內說明替換佔位符；多張圖放在同一份 HTML。圖說一句話寫結論，圖例依 `mermaid-guide.md` 2.6 判斷是否需要。
 3. 寫入檔案：使用者指定的路徑優先；否則寫到目前工作目錄的 `diagrams/<主題>.html`。
 4. 開啟瀏覽器：macOS 用 `open`，Linux 用 `xdg-open`，Windows 用 `start ""`。開啟失敗時不重試，直接告知路徑。
 5. 沒有本機檔案系統時，依 `references/routing.md` 第 2 節改用 Artifact、傳送檔案，或提供 Mermaid code block。
@@ -111,7 +111,7 @@ ASCII 只畫流程、分層架構、樹狀結構與簡單 sequence，各自的�
 ## 禁止事項
 
 - ASCII 框內不放非 ASCII 字元（中文、日文、全形符號）；這類標籤放在框外右側或圖例。
-- 不省略圖例。
+- ASCII 圖有編號或縮寫時，不省略圖例。
 - 不為了塞進一張圖而超過複雜度上限。
 - 不修改 HTML 樣板中的 Mermaid 版本與程式；不使用未固定版本的 CDN 網址，也不使用不含 ELK 的 tiny 版。
 - 不編造數據。

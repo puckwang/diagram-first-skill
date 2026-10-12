@@ -10,6 +10,40 @@ English | [台灣中文](README.zh-tw.md)
 
 The skill's instructions are written in Traditional Chinese (Taiwan). Diagram labels follow the language you are using.
 
+## Examples
+
+### ASCII in the chat
+
+> **You:** How does checkout pick a payment method?
+>
+> **Agent:** The saved default wins while it is still enabled; otherwise the first enabled method is used.
+>
+> ```text
+> Saved default payment method?
+> |
+> +- Yes -> Still enabled?
+> |     +- Yes -> Use
+> |     `- No -> Use first enabled method (shows a notice)
+> |
+> `- No -> Any enabled method?
+>       +- Yes -> Use first enabled method
+>       `- No -> Reject NO_PAYMENT_METHOD
+>
+> Last: amount > card limit -> Reject LIMIT_EXCEEDED
+> ```
+
+### HTML for larger diagrams
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/html-example-dark.png">
+  <img alt="HTML output: a checkout flowchart and a payment sequence diagram, with a table of contents and view controls" src="docs/images/html-example-light.png">
+</picture>
+
+- Light / dark mode and Mermaid themes
+- Horizontal layout on landscape screens, zoom and pan
+- Download as SVG / PNG / JPEG / WebP, or copy as an image
+- A table of contents when a page has two or more diagrams
+
 ## Three output paths
 
 ```text
@@ -35,7 +69,7 @@ Legend: [1] decide whether a diagram helps; [2] explaining in the chat, ASCII or
 | Path | When | Output |
 |---|---|---|
 | **ASCII** | Simple diagrams in the chat: at most 5 nodes, at most 3 exits per branch, no crossing lines, no loops back, one direction | A `text` code block in the chat, with a legend |
-| **HTML** | Diagrams in the chat that exceed the ASCII limits | A local HTML file rendered with Mermaid 12.1.0 (ELK layout), opened in the browser. Readers can switch between light and dark mode and choose a Mermaid theme (default: `redux-color` / `redux-dark-color`). Without a local file system it falls back to an Artifact, a sent file, or a Mermaid code block |
+| **HTML** | Diagrams in the chat that exceed the ASCII limits | A local HTML file rendered with Mermaid 12.1.0 (ELK layout), opened in the browser (see [Examples](#examples)). Without a local file system it falls back to an Artifact, a sent file, or a Mermaid code block |
 | **Doc** | Writing or updating a document | An embedded Mermaid code block using stable diagram types only, plus an ASCII fallback when the target platform needs one |
 
 No diagram is added when the answer is a sentence or two, when a diagram carries no more information than the text, when the same diagram was already drawn in the conversation, or when you say you do not want diagrams.
@@ -81,7 +115,7 @@ skills/diagram-first/
     `-- doc-section.md        Document embedding template
 ```
 
-The repository root also holds `.claude-plugin/plugin.json`, the plugin manifest used for marketplace installs. Its `version` matches the release tag and the latest entry in [CHANGELOG.md](CHANGELOG.md).
+The repository root also holds `.claude-plugin/plugin.json`, the plugin manifest used for marketplace installs. Its `version` matches the release tag and the latest entry in [CHANGELOG.md](CHANGELOG.md). `docs/images/` holds the screenshots used in this README.
 
 The skill contains no scripts. The only command the agent runs is opening the browser to show the HTML.
 

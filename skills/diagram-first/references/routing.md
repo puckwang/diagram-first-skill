@@ -46,6 +46,7 @@
 | 流程 | 節點 ≤ 5、出口 ≤ 3、無交叉、無回流 | Mermaid `flowchart` |
 | 分層架構 | 層數 ≤ 4、每層方框 ≤ 3、只有向下的連線 | Mermaid `flowchart` + `subgraph` |
 | 樹狀結構 | 深度 ≤ 4、項目 ≤ 15 | Mermaid `treeView-beta` 或 `mindmap` |
+| 決策樹 | 深度 ≤ 5、終點 ≤ 15、每個條件 ≤ 4 個選項、無合流與回流 | Mermaid `flowchart` |
 | sequence | 參與者 ≤ 3、訊息 ≤ 6、無 `alt`／`loop` | Mermaid `sequenceDiagram` |
 | 其他圖種 | 不適用 ASCII | 直接用 Mermaid |
 
@@ -59,6 +60,7 @@
 | 「6 個微服務之間互相呼叫」 | 節點 > 5、多半有交叉 → HTML |
 | 「Client、API、DB 之間的 4 次往返」 | sequence 在上限內 → ASCII |
 | 「訂單從建立到完成的 6 種狀態」 | 狀態圖不適用 ASCII → HTML |
+| 「沒指定模型就用預設，有指定就查設定，查不到再試舊名稱」 | 巢狀條件、每條路徑各有結果、無合流 → ASCII 決策樹 |
 
 ## 4. 拆圖
 

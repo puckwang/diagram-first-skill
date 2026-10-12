@@ -8,9 +8,10 @@
   2. 替換 {{TITLE}} 與 {{SUMMARY}}：頁面標題與一句話摘要，使用使用者的語言。
   3. 每張圖複製一個 <section class="diagram">…</section>，填入：
      - {{DIAGRAM_TITLE}}：這張圖的標題
-     - {{DIAGRAM_CAPTION}}：一句話說明這張圖在講什麼
+     - {{DIAGRAM_CAPTION}}：一句話結論（約 30 字以內），例如「付款失敗一律釋放庫存」
      - {{MERMAID_SOURCE}}：Mermaid 原始碼，貼在 <script type="text/plain"> 內，縮排不影響結果
-     - {{LEGEND}}：圖例（選用）；不需要時刪除整個 <div class="legend">
+     - {{LEGEND}}：圖例，預設不寫，刪除整個 <div class="legend">；只在有縮寫、代號或非補充不可的節點時加，
+       最多 5 條、每條一行（見 references/mermaid-guide.md 2.6）。頁面上預設收合。
   4. 刪除所有尚未替換的 {{…}} 佔位符與本段註解。
   5. Mermaid 原始碼中不可出現字串 </script，必要時改寫標籤。
 
@@ -18,7 +19,11 @@
   CSP 只允許兩種 script：下方 <script type="module"> 的內容（以 sha256 比對，改動任何字元就無法執行），
   以及 jsDelivr 上的 mermaid@12.1.0。
 
-  標題與描述下方的模式（自動／淺色／深色）與 Theme 選單由程式產生，使用者的選擇存在 localStorage。
+  標題與描述下方的模式（自動／淺色／深色）、方向（自動／垂直／水平）與 Theme 選單由程式產生，使用者的選擇存在 localStorage。
+  方向只影響 flowchart、state、class、ER、requirement；「自動」在橫向視窗把垂直的圖改為水平，作者寫明 LR／RL 的圖不改。
+  每張圖的工具列有縮放按鈕；畫布內可用 Ctrl／⌘＋滾輪或觸控板捏合縮放、拖曳平移。
+  頁首另有寬度切換（寬版／標準，預設寬版）；工具列可下載 SVG／PNG／JPEG／WebP 或複製圖片。
+  兩張圖以上時，程式依各圖的 <h2> 自動產生目錄，Agent 不需另寫。
   Theme 預設為「自動」：淺色模式用 redux-color，深色模式用 redux-dark-color。
   Mermaid 原始碼的 front matter 不可指定 theme，否則會蓋過使用者的選擇。
 
@@ -29,7 +34,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-H5L4TZiRLm9ubfwwpAyzSq4sS9vQv6MuZrYILL/FbAI=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-VFr1YTH7QPs4a428eXCrUwbzpEQ+vEina/dqzu5x9h8=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
@@ -60,6 +65,22 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 var(--font); }
   .page { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
+  :root[data-width="wide"] .page { max-width: none; padding-left: 24px; padding-right: 24px; }
+  header .summary, .diagram .caption, .legend { max-width: 80ch; }
+  .page.has-toc { display: grid; grid-template-columns: 220px minmax(0, 1fr); column-gap: 24px; align-items: start; }
+  .page.has-toc > header, .page.has-toc > #status { grid-column: 1 / -1; }
+  .toc { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; font-size: 14px; }
+  .toc summary { cursor: pointer; color: var(--muted); margin: 0 0 8px; }
+  .toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--border); }
+  .toc a { display: block; padding: 4px 10px; margin-left: -1px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
+  .toc a:hover { color: var(--text); }
+  .toc a[aria-current="true"] { color: var(--text); border-left-color: var(--text); font-weight: 600; }
+  @media (min-width: 1200px) { .toc summary { display: none; } }
+  @media (max-width: 1199px) {
+    .page.has-toc { display: block; }
+    .toc { position: static; max-height: none; margin: 0 0 24px; }
+  }
+  section.diagram { scroll-margin-top: 16px; }
   header { margin: 0 0 24px; }
   header h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
   header .summary { color: var(--muted); margin: 0; }
@@ -78,12 +99,17 @@
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
   .toolbar button { font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
   .toolbar button:hover { opacity: .85; }
-  .canvas { overflow: auto; border-radius: 8px; padding: 12px; background: var(--canvas-light); }
+  .toolbar .zoom { display: inline-flex; gap: 2px; }
+  .toolbar select { font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+  .toolbar .zoom .level { min-width: 56px; font-variant-numeric: tabular-nums; }
+  .canvas { overflow: auto; border-radius: 8px; padding: 12px; background: var(--canvas-light); touch-action: pan-x pan-y; }
   .canvas.dark { background: var(--canvas-dark); }
+  .canvas.zoomed { max-height: 80vh; cursor: grab; }
+  .canvas.dragging { cursor: grabbing; user-select: none; }
   .canvas svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
-  .canvas.natural svg { max-width: none !important; }
   .legend { margin: 12px 0 0; padding: 12px 14px; border-top: 1px solid var(--border); font-size: 14px; color: var(--muted); }
   .legend ul { margin: 0; padding-left: 20px; }
+  details.legend-box .legend { margin: 8px 0 0; padding: 0; border-top: 0; }
   .err { background: var(--danger-bg); color: var(--danger); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
   .err pre, details pre { font: 13px/1.5 var(--mono); white-space: pre-wrap; margin: 8px 0 0; }
   details { margin: 12px 0 0; font-size: 14px; }
@@ -117,21 +143,34 @@
 const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.esm.min.mjs';
 const THEMES = ['redux-color', 'redux-dark-color', 'redux', 'redux-dark', 'default', 'dark', 'neo', 'neo-dark', 'forest', 'neutral'];
 const AUTO_THEME = { light: 'redux-color', dark: 'redux-dark-color' };
-const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme' };
+const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction', width: 'diagram-first:width' };
+const ZOOM = { min: 0.25, max: 4, step: 1.25 };
 
 const I18N = {
-  zh: { copy: '複製原始碼', copied: '已複製', svg: '下載 SVG', fit: '符合寬度', natural: '原始大小', source: 'Mermaid 原始碼',
+  zh: { copy: '複製原始碼', copied: '已複製', svg: '下載 SVG', source: 'Mermaid 原始碼',
         mode: '模式', theme: 'Theme', auto: '自動', light: '淺色', dark: '深色',
+        direction: '方向', vertical: '垂直', horizontal: '水平',
+        zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '重設',
+        width: '寬度', wide: '寬版', standard: '標準', toc: '目錄', legend: '圖例',
+        download: '下載…', transparent: 'PNG（透明背景）', copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
         renderFail: 'Render 失敗：', some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。請把錯誤訊息回報給 Agent。`,
         noElk: 'ELK 排版未生效，圖形以預設的 dagre 排版顯示。請回報給 Agent。' },
-  en: { copy: 'Copy source', copied: 'Copied', svg: 'Download SVG', fit: 'Fit width', natural: 'Natural size', source: 'Mermaid source',
+  en: { copy: 'Copy source', copied: 'Copied', svg: 'Download SVG', source: 'Mermaid source',
         mode: 'Mode', theme: 'Theme', auto: 'Auto', light: 'Light', dark: 'Dark',
+        direction: 'Direction', vertical: 'Vertical', horizontal: 'Horizontal',
+        zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Reset',
+        width: 'Width', wide: 'Wide', standard: 'Standard', toc: 'Contents', legend: 'Legend',
+        download: 'Download…', transparent: 'PNG (transparent)', copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
         renderFail: 'Render failed:', some: (ok, bad) => `${ok} succeeded, ${bad} failed. Please report the error to the agent.`,
         noElk: 'ELK layout is not active; diagrams fell back to dagre. Please report this to the agent.' },
-  ja: { copy: 'ソースをコピー', copied: 'コピーしました', svg: 'SVG をダウンロード', fit: '幅に合わせる', natural: '原寸', source: 'Mermaid ソース',
+  ja: { copy: 'ソースをコピー', copied: 'コピーしました', svg: 'SVG をダウンロード', source: 'Mermaid ソース',
         mode: 'モード', theme: 'テーマ', auto: '自動', light: 'ライト', dark: 'ダーク',
+        direction: '方向', vertical: '縦', horizontal: '横',
+        zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: 'リセット',
+        width: '幅', wide: 'ワイド', standard: '標準', toc: '目次', legend: '凡例',
+        download: 'ダウンロード…', transparent: 'PNG（透過）', copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
         renderFail: '描画に失敗しました：', some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。エラーをエージェントに報告してください。`,
         noElk: 'ELK レイアウトが有効になっていません（dagre で表示）。エージェントに報告してください。' },
@@ -158,6 +197,11 @@ function save(key, value) {
 const systemDark = matchMedia('(prefers-color-scheme: dark)');
 let mode = load(STORE.mode, ['auto', 'light', 'dark'], 'auto');
 let theme = load(STORE.theme, ['auto', ...THEMES], 'auto');
+const landscape = matchMedia('(orientation: landscape)');
+let direction = load(STORE.direction, ['auto', 'vertical', 'horizontal'], 'auto');
+let width = load(STORE.width, ['wide', 'standard'], 'wide');
+function applyWidth() { document.documentElement.dataset.width = width; }
+applyWidth();
 
 function isDark() {
   return mode === 'dark' || (mode === 'auto' && systemDark.matches);
@@ -178,6 +222,55 @@ function dedent(text) {
   const indents = lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length);
   const min = indents.length ? Math.min(...indents) : 0;
   return lines.map((l) => l.slice(min)).join('\n');
+}
+
+const DIRECTED = /^(flowchart(-elk)?|graph|stateDiagram(-v2)?|classDiagram(-v2)?|erDiagram|requirementDiagram)(?=[\s;]|$)/;
+const DIR = '(TB|TD|BT|LR|RL)';
+
+// 依方向設定改寫整張圖的方向；只處理有方向設定的圖種，subgraph 等區塊內的 direction 不動。
+function withDirection(source) {
+  if (direction === 'auto' && !landscape.matches) return source;
+  const lines = source.split('\n');
+  let k = 0;
+  if (lines[0].trim() === '---') {
+    const end = lines.findIndex((l, n) => n > 0 && l.trim() === '---');
+    if (end < 0) return source;
+    k = end + 1;
+  }
+  while (k < lines.length && (!lines[k].trim() || lines[k].trim().startsWith('%%'))) k++;
+  const header = (lines[k] || '').trim();
+  const type = header.match(DIRECTED);
+  if (!type) return source;
+
+  const flow = /^(flowchart|graph)/.test(type[1]);
+  let author = 'TB';
+  let at = -1;
+  if (flow) {
+    const m = header.match(new RegExp('^\\S+\\s+' + DIR + '(?=[\\s;]|$)'));
+    if (m) author = m[1];
+  } else {
+    let depth = 0;
+    for (let n = k + 1; n < lines.length; n++) {
+      const m = depth === 0 && lines[n].match(new RegExp('^\\s*direction\\s+' + DIR + '\\s*$'));
+      if (m) { author = m[1]; at = n; break; }
+      depth += (lines[n].match(/\{/g) || []).length - (lines[n].match(/\}/g) || []).length;
+    }
+  }
+
+  const horizontal = author === 'LR' || author === 'RL';
+  if (direction === 'auto' && horizontal) return source;
+  if (direction === 'vertical' && !horizontal) return source;
+  if (direction === 'horizontal' && horizontal) return source;
+  const target = direction === 'vertical' ? 'TB' : 'LR';
+
+  if (flow) {
+    lines[k] = lines[k].replace(new RegExp('^(\\s*\\S+)(\\s+' + DIR + ')?(?=[\\s;]|$)'), `$1 ${target}`);
+  } else if (at >= 0) {
+    lines[at] = lines[at].replace(new RegExp(DIR), target);
+  } else {
+    lines.splice(k + 1, 0, `  direction ${target}`);
+  }
+  return lines.join('\n');
 }
 
 function el(tag, attrs = {}, text) {
@@ -219,6 +312,127 @@ function initMermaid() {
   });
 }
 
+function viewWidth(d) {
+  const svg = d.canvas.querySelector('svg');
+  const vb = svg && svg.viewBox && svg.viewBox.baseVal;
+  return vb && vb.width ? vb.width : 0;
+}
+function currentScale(d) {
+  const svg = d.canvas.querySelector('svg');
+  const w = viewWidth(d);
+  return svg && w ? svg.getBoundingClientRect().width / w : 1;
+}
+function showLevel(d) {
+  if (d.ok) d.level.textContent = `${Math.round(currentScale(d) * 100)}%`;
+}
+
+// scale 為 null 時符合寬度；anchor 為縮放時保持不動的螢幕座標。
+function setZoom(d, scale, anchor) {
+  const svg = d.canvas.querySelector('svg');
+  const w = viewWidth(d);
+  if (!svg || !w) return;
+  const before = svg.getBoundingClientRect();
+  if (scale === null) {
+    if (d.baseStyle === null) svg.removeAttribute('style');
+    else svg.setAttribute('style', d.baseStyle);
+    d.canvas.classList.remove('zoomed');
+  } else {
+    scale = Math.min(ZOOM.max, Math.max(ZOOM.min, scale));
+    svg.style.maxWidth = 'none';
+    svg.style.width = `${w * scale}px`;
+    d.canvas.classList.add('zoomed');
+  }
+  d.scale = scale;
+  if (anchor) {
+    const rx = (anchor.x - before.left) / before.width;
+    const ry = (anchor.y - before.top) / before.height;
+    const after = svg.getBoundingClientRect();
+    d.canvas.scrollLeft += after.left + rx * after.width - anchor.x;
+    d.canvas.scrollTop += after.top + ry * after.height - anchor.y;
+  }
+  showLevel(d);
+}
+
+function bindGestures(d) {
+  const c = d.canvas;
+  c.addEventListener('wheel', (e) => {
+    if (!d.ok || !(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    // 觸控板捏合送出小幅、連續的 deltaY；滑鼠滾輪每格以固定倍率縮放。
+    const pinch = e.deltaMode === 0 && Math.abs(e.deltaY) < 50;
+    const factor = pinch ? Math.exp(-e.deltaY * 0.01) : e.deltaY < 0 ? ZOOM.step : 1 / ZOOM.step;
+    setZoom(d, currentScale(d) * factor, { x: e.clientX, y: e.clientY });
+  }, { passive: false });
+  let gestureBase = 1;
+  c.addEventListener('gesturestart', (e) => { e.preventDefault(); gestureBase = currentScale(d); });
+  c.addEventListener('gesturechange', (e) => {
+    if (!d.ok) return;
+    e.preventDefault();
+    setZoom(d, gestureBase * e.scale, { x: e.clientX, y: e.clientY });
+  });
+  let drag = null;
+  c.addEventListener('pointerdown', (e) => {
+    if (d.scale === null || e.pointerType !== 'mouse' || e.button !== 0) return;
+    drag = { x: e.clientX, y: e.clientY, left: c.scrollLeft, top: c.scrollTop };
+    c.setPointerCapture(e.pointerId);
+    c.classList.add('dragging');
+  });
+  c.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    c.scrollLeft = drag.left - (e.clientX - drag.x);
+    c.scrollTop = drag.top - (e.clientY - drag.y);
+  });
+  const end = () => { drag = null; c.classList.remove('dragging'); };
+  c.addEventListener('pointerup', end);
+  c.addEventListener('pointercancel', end);
+}
+
+// 把 SVG 轉成點陣圖。含 foreignObject 的 SVG 在部分瀏覽器會污染 canvas，此時改用純 SVG 文字標籤重新 render。
+async function rasterize(svgText, type, background) {
+  const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+  const root = doc.documentElement;
+  const vb = (root.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+  if (vb.length !== 4 || !vb[2]) throw new Error('no viewBox');
+  root.setAttribute('width', vb[2]);
+  root.setAttribute('height', vb[3]);
+  root.removeAttribute('style');
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(root));
+  await img.decode();
+  const ratio = 2;
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(vb[2] * ratio);
+  c.height = Math.ceil(vb[3] * ratio);
+  const g = c.getContext('2d');
+  if (background) { g.fillStyle = background; g.fillRect(0, 0, c.width, c.height); }
+  g.drawImage(img, 0, 0, c.width, c.height);
+  return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), type, 0.92));
+}
+async function exportImage(d, type, transparent) {
+  const background = transparent ? null : getComputedStyle(d.canvas).backgroundColor;
+  try {
+    return await rasterize(d.svg, type, background);
+  } catch (e) {
+    if (e.name !== 'SecurityError') throw e;
+    mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: currentTheme(), fontFamily: font,
+      themeVariables: { fontFamily: font }, htmlLabels: false, flowchart: { htmlLabels: false } });
+    try {
+      const { svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, withDirection(d.source));
+      return await rasterize(svg, type, background);
+    } finally {
+      initMermaid();
+    }
+  }
+}
+function saveBlob(blob, name) {
+  const a = el('a', { href: URL.createObjectURL(blob), download: name });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const probe = document.createElement('canvas');
+const FORMATS = [['svg', 'SVG'], ['png', 'PNG'], ['png-transparent', null], ['jpeg', 'JPEG']];
+if (probe.toDataURL('image/webp').startsWith('data:image/webp')) FORMATS.push(['webp', 'WebP']);
+
 const diagrams = [];
 let badCount = 0;
 
@@ -233,7 +447,16 @@ for (const [i, section] of [...document.querySelectorAll('section.diagram')].ent
   details.append(el('summary', {}, T.source), el('pre', {}, source));
   srcNode.after(toolbar, canvas);
   const legend = section.querySelector('.legend');
-  (legend || canvas).after(details);
+  if (legend) {
+    const items = legend.querySelectorAll('li').length;
+    const box = el('details', { class: 'legend-box' });
+    box.append(el('summary', {}, items ? `${T.legend} (${items})` : T.legend));
+    legend.replaceWith(box);
+    box.append(legend);
+    box.after(details);
+  } else {
+    canvas.after(details);
+  }
 
   const copyBtn = el('button', { type: 'button' }, T.copy);
   copyBtn.addEventListener('click', async () => {
@@ -256,19 +479,50 @@ for (const [i, section] of [...document.querySelectorAll('section.diagram')].ent
     continue;
   }
 
-  const svgBtn = el('button', { type: 'button' }, T.svg);
-  svgBtn.addEventListener('click', () => {
-    const blob = new Blob([canvas.innerHTML], { type: 'image/svg+xml' });
-    const a = el('a', { href: URL.createObjectURL(blob), download: `diagram-${i + 1}.svg` });
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const d = { i, section, source, canvas, details, toolbar, ok: false, svg: '', scale: null, baseStyle: null };
+  const downloadSelect = el('select', { 'aria-label': T.download });
+  downloadSelect.append(el('option', { value: '' }, T.download));
+  FORMATS.forEach(([v, label]) => downloadSelect.append(el('option', { value: v }, label || T.transparent)));
+  downloadSelect.addEventListener('change', async () => {
+    const v = downloadSelect.value;
+    downloadSelect.value = '';
+    if (!v) return;
+    const name = `diagram-${i + 1}`;
+    try {
+      if (v === 'svg') saveBlob(new Blob([d.svg], { type: 'image/svg+xml' }), `${name}.svg`);
+      else {
+        const type = v === 'png-transparent' ? 'image/png' : `image/${v}`;
+        const ext = v === 'jpeg' ? 'jpg' : v === 'png-transparent' ? 'png' : v;
+        saveBlob(await exportImage(d, type, v === 'png-transparent'), `${name}.${ext}`);
+      }
+    } catch (e) {
+      downloadSelect.options[0].textContent = T.exportFail;
+      setTimeout(() => { downloadSelect.options[0].textContent = T.download; }, 2000);
+    }
   });
-  const sizeBtn = el('button', { type: 'button' }, T.natural);
-  sizeBtn.addEventListener('click', () => {
-    const natural = canvas.classList.toggle('natural');
-    sizeBtn.textContent = natural ? T.fit : T.natural;
+  const copyImgBtn = el('button', { type: 'button' }, T.copyImage);
+  copyImgBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': exportImage(d, 'image/png', false) })]);
+      copyImgBtn.textContent = T.copied;
+    } catch {
+      copyImgBtn.textContent = T.copyFail;
+    }
+    setTimeout(() => { copyImgBtn.textContent = T.copyImage; }, 1500);
   });
-  diagrams.push({ i, source, canvas, details, buttons: [svgBtn, sizeBtn], toolbar, ok: false });
+  const zoom = el('div', { class: 'zoom', role: 'group' });
+  const outBtn = el('button', { type: 'button', 'aria-label': T.zoomOut, title: T.zoomOut }, '−');
+  d.level = el('button', { type: 'button', class: 'level', title: T.zoomActual }, '');
+  const inBtn = el('button', { type: 'button', 'aria-label': T.zoomIn, title: T.zoomIn }, '+');
+  const resetBtn = el('button', { type: 'button' }, T.reset);
+  outBtn.addEventListener('click', () => setZoom(d, currentScale(d) / ZOOM.step));
+  inBtn.addEventListener('click', () => setZoom(d, currentScale(d) * ZOOM.step));
+  d.level.addEventListener('click', () => setZoom(d, 1));
+  resetBtn.addEventListener('click', () => setZoom(d, null));
+  zoom.append(outBtn, d.level, inBtn);
+  d.buttons = [downloadSelect, copyImgBtn, zoom, resetBtn];
+  bindGestures(d);
+  diagrams.push(d);
 }
 
 let renderCount = 0;
@@ -279,10 +533,21 @@ async function renderAll() {
   for (const d of diagrams) {
     d.canvas.classList.toggle('dark', name.includes('dark'));
     try {
-      const { svg } = await mermaid.render(`diagram-${d.i}-${renderCount}`, d.source);
+      const source = withDirection(d.source);
+      let svg;
+      try {
+        ({ svg } = await mermaid.render(`diagram-${d.i}-${renderCount}`, source));
+      } catch (e) {
+        if (source === d.source) throw e;
+        ({ svg } = await mermaid.render(`diagram-${d.i}-${renderCount}-src`, d.source));
+      }
+      d.svg = svg;
       d.canvas.innerHTML = svg;
+      d.baseStyle = d.canvas.querySelector('svg')?.getAttribute('style') ?? null;
       if (!d.ok) d.toolbar.append(...d.buttons);
       d.ok = true;
+      if (d.scale === null) showLevel(d);
+      else setZoom(d, d.scale);
     } catch (e) {
       const box = el('div', { class: 'err' }, T.renderFail);
       box.append(el('pre', {}, String(e.message || e)));
@@ -317,11 +582,75 @@ themeSelect.addEventListener('change', async () => {
   save(STORE.theme, theme);
   await renderAll();
 });
-controls.append(modeGroup, themeSelect);
+const DIRECTIONS = ['auto', 'vertical', 'horizontal'];
+const directionGroup = el('div', { class: 'segmented', role: 'group', 'aria-label': T.direction });
+const directionButtons = DIRECTIONS.map((v) => {
+  const b = el('button', { type: 'button', 'aria-pressed': String(v === direction) }, T[v]);
+  b.addEventListener('click', async () => {
+    direction = v;
+    save(STORE.direction, v);
+    directionButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(DIRECTIONS[k] === v)));
+    await renderAll();
+  });
+  return b;
+});
+directionGroup.append(...directionButtons);
+const WIDTHS = ['wide', 'standard'];
+const widthGroup = el('div', { class: 'segmented', role: 'group', 'aria-label': T.width });
+const widthButtons = WIDTHS.map((v) => {
+  const b = el('button', { type: 'button', 'aria-pressed': String(v === width) }, T[v]);
+  b.addEventListener('click', () => {
+    width = v;
+    save(STORE.width, v);
+    widthButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(WIDTHS[k] === v)));
+    applyWidth();
+    diagrams.forEach((d) => { if (d.scale === null) showLevel(d); });
+  });
+  return b;
+});
+widthGroup.append(...widthButtons);
+controls.append(modeGroup, directionGroup, widthGroup, themeSelect);
+
+const sections = [...document.querySelectorAll('section.diagram')];
+if (sections.length >= 2) {
+  const nav = el('nav', { class: 'toc', 'aria-label': T.toc });
+  const box = el('details');
+  const list = el('ol');
+  const links = new Map();
+  sections.forEach((section, k) => {
+    if (!section.id) section.id = `diagram-${k + 1}`;
+    const title = section.querySelector('h2')?.textContent.trim() || `#${k + 1}`;
+    const a = el('a', { href: `#${section.id}` }, title);
+    links.set(section, a);
+    const li = el('li');
+    li.append(a);
+    list.append(li);
+  });
+  box.append(el('summary', {}, T.toc), list);
+  nav.append(box);
+  const page = document.querySelector('.page');
+  page.classList.add('has-toc');
+  document.querySelector('main').before(nav);
+  const wideToc = matchMedia('(min-width: 1200px)');
+  const syncToc = () => { if (wideToc.matches) box.open = true; };
+  syncToc();
+  wideToc.addEventListener('change', syncToc);
+  const visible = new Set();
+  const spy = new IntersectionObserver((entries) => {
+    entries.forEach((e) => (e.isIntersecting ? visible.add(e.target) : visible.delete(e.target)));
+    const current = sections.find((x) => visible.has(x));
+    links.forEach((a, x) => a.setAttribute('aria-current', String(x === current)));
+  }, { rootMargin: '0px 0px -60% 0px' });
+  sections.forEach((x) => spy.observe(x));
+}
 
 systemDark.addEventListener('change', async () => {
   if (mode === 'auto' && theme === 'auto') await renderAll();
 });
+landscape.addEventListener('change', async () => {
+  if (direction === 'auto') await renderAll();
+});
+addEventListener('resize', () => diagrams.forEach((d) => { if (d.scale === null) showLevel(d); }));
 
 await renderAll();
 badCount += diagrams.filter((d) => !d.ok).length;
