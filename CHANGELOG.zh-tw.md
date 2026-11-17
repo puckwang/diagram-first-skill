@@ -8,6 +8,8 @@
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
 ## [Unreleased]
+
+## [1.3.0] - 2026-11-18
 ### Added
 - 新增整頁全螢幕
 - 新增每張圖的個別方向選單（跟隨頁面／垂直／水平）
@@ -57,7 +59,8 @@
 ### Fixed
 - 修正 claude.ai 同步失敗 (PR #2)
 
-[Unreleased]: https://github.com/puckwang/diagram-first-skill/compare/1.2.0...HEAD
+[Unreleased]: https://github.com/puckwang/diagram-first-skill/compare/1.3.0...HEAD
+[1.3.0]: https://github.com/puckwang/diagram-first-skill/compare/1.2.0...1.3.0
 [1.2.0]: https://github.com/puckwang/diagram-first-skill/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/puckwang/diagram-first-skill/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/puckwang/diagram-first-skill/releases/tag/1.0.0
