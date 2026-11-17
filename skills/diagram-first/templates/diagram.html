@@ -38,9 +38,9 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-LoeGF3vNrdnSjoSopsNuKxQrobXpyjtqW3rH7D2Qjmg=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+Mn/7qtidVMkAOdqiNkIF4LDsOtl14f1lC/tgwYm66M=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>{{TITLE}}</title>
 <style>
@@ -89,7 +89,7 @@
   .segmented { display: inline-flex; background: var(--control); border-radius: 6px; padding: 2px; }
   .segmented button { background: transparent; border-radius: 4px; padding: 3px 10px; }
   .segmented button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--border); }
-  .canvas { overflow: auto; border-radius: 8px; padding: 12px; background: var(--canvas-light); touch-action: pan-x pan-y; }
+  .canvas { overflow: auto; border-radius: 8px; padding: 12px; background: var(--canvas-light); touch-action: pan-x pan-y pinch-zoom; }
   .canvas.dark { background: var(--canvas-dark); }
   .canvas.zoomed { cursor: grab; }
   .canvas.dragging { cursor: grabbing; user-select: none; }
@@ -103,7 +103,7 @@
   details summary { cursor: pointer; color: var(--muted); }
   details pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text); max-height: 40vh; overflow: auto; }
   .float, .pop { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
-  .pop[hidden], #info[hidden] { display: none; }
+  .pop[hidden] { display: none; }
   :where(.toolbar, .float, .controls) :where(button, select) { min-block-size: 24px; min-inline-size: 24px; }
   @media (pointer: coarse) { :where(.toolbar, .float, .controls) :where(button, select) { min-block-size: 44px; min-inline-size: 44px; } }
   :where(.toolbar, .float, .controls, #info) :where(button, select, summary):focus-visible, .canvas:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
@@ -115,18 +115,21 @@
     html.app main { position: fixed; inset: 0; }
     html.app section.diagram { display: none; position: absolute; inset: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
     html.app section.diagram.active { display: block; }
-    html.app section.diagram > h2, html.app section.diagram > .notes { display: none; }
+    #info[hidden] { display: none; }
+    html.app section.diagram > .notes { display: none; }
+    /* 標題只在視覺上隱藏（目錄按鈕已顯示），螢幕閱讀器仍可讀到。 */
+    html.app section.diagram > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     html.app .canvas { position: absolute; inset: 0; border-radius: 0; display: flex;
-                       padding: max(60px, env(safe-area-inset-top)) 16px max(76px, env(safe-area-inset-bottom)); }
+                       padding: calc(var(--top-h, 48px) + 12px) 16px calc(var(--bottom-h, 52px) + 12px); }
     html.app .canvas svg { flex: none; margin: auto; }
     html.app .canvas > .err { margin: auto; max-width: min(720px, 100%); }
     html.app .toolbar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
                         margin: 0; padding: 6px; width: max-content; max-width: calc(100vw - 24px); justify-content: center;
                         background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
-    html.app #status { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 40; margin: 0; width: max-content; max-width: calc(100vw - 24px); }
+    html.app #status { position: fixed; top: calc(var(--top-h, 48px) + 12px); left: 50%; transform: translateX(-50%); z-index: 40; margin: 0; width: max-content; max-width: calc(100vw - 24px); }
     #nav, #actions { position: fixed; top: max(12px, env(safe-area-inset-top)); z-index: 30; display: flex; gap: 4px; align-items: center; padding: 4px; }
-    #nav { left: 12px; max-width: calc(100vw - 150px); }
-    #actions { right: 12px; }
+    #nav { left: max(12px, env(safe-area-inset-left)); max-width: calc(100vw - var(--actions-w, 150px) - 36px); }
+    #actions { right: max(12px, env(safe-area-inset-right)); }
     #nav .toc-btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
     #nav > div, #actions > div { position: relative; min-width: 0; display: flex; }
     /* 彈出面板用 Popover API（頂層、點外面或 Esc 關閉）；位置由程式依觸發按鈕設定，不支援 Popover API 時同樣適用。 */
@@ -139,7 +142,8 @@
     .toc a:hover { color: var(--text); background: var(--control); }
     .toc a[aria-current="true"] { color: var(--text); border-left-color: var(--text); font-weight: 600; }
     .controls { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-    #info { position: fixed; top: 60px; left: 12px; z-index: 25; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 150px); overflow: auto; padding: 12px 16px;
+    #info { position: fixed; top: calc(var(--top-h, 48px) + 12px); left: max(12px, env(safe-area-inset-left)); z-index: 25; width: min(380px, calc(100vw - 24px));
+            max-height: calc(100dvh - var(--top-h, 48px) - var(--bottom-h, 52px) - 36px); overflow: auto; padding: 12px 16px;
             background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
     #info header h1 { font-size: 16px; margin: 0 28px 2px 0; line-height: 1.4; }
     #info header .summary { font-size: 14px; }
@@ -153,6 +157,7 @@
   }
   @media print {
     #info .notes, .notes h3 { display: none; }
+    #info[hidden] { display: block !important; }
     .toolbar, .float, .pop, .close { display: none !important; }
     .canvas svg { max-width: 100% !important; width: auto !important; height: auto !important; }
     section.diagram { break-inside: avoid; }
@@ -768,9 +773,9 @@ function showInfo(v, remember = true) {
   diagrams.forEach((d) => { if (d.ok && d.fit) requestAnimationFrame(() => fitScreen(d)); });
 }
 infoBtn.addEventListener('click', () => showInfo(info.hidden));
-closeInfo.addEventListener('click', () => showInfo(false));
-// 預設：寬螢幕打開，窄螢幕收合，避免遮住圖。
-showInfo(load(STORE.info, ['open', 'closed'], matchMedia('(min-width: 600px)').matches ? 'open' : 'closed') === 'open', false);
+closeInfo.addEventListener('click', () => { showInfo(false); infoBtn.focus(); });
+// 預設：寬螢幕（圖會避開說明視窗）打開，較窄時收合，避免遮住圖。
+showInfo(load(STORE.info, ['open', 'closed'], matchMedia('(min-width: 900px)').matches ? 'open' : 'closed') === 'open', false);
 const settingsWrap = el('div');
 const settingsBtn = el('button', { type: 'button', 'aria-label': T.settings, title: T.settings, 'aria-controls': 'settings' }, '⚙');
 const settings = el('div', { class: 'pop', id: 'settings', role: 'group', 'aria-label': T.settings });
@@ -822,6 +827,7 @@ const directionButtons = DIRECTIONS.map((v) => {
     direction = v;
     save(STORE.direction, v);
     directionButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(DIRECTIONS[k] === v)));
+    diagrams.forEach((d) => { if (followsPage(d)) d.fit = true; });
     await renderAll(followsPage);
   });
   return b;
@@ -853,7 +859,13 @@ if (multi) {
   panel.append(list);
   tocWrap.append(panel);
   const toc = popover(tocBtn, panel);
-  list.addEventListener('click', (e) => { if (e.target.closest('a')) toc.set(false); });
+  list.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (!a) return;
+    e.preventDefault();
+    toc.set(false);
+    show(sections.findIndex((x) => `#${x.id}` === a.getAttribute('href')));
+  });
   prevBtn.addEventListener('click', () => show(current - 1));
   nextBtn.addEventListener('click', () => show(current + 1));
   nav.append(prevBtn, nextBtn);
@@ -874,29 +886,50 @@ function show(k, updateHash = true) {
   links.forEach((a, x) => a.setAttribute('aria-current', String(x === section)));
   if (updateHash && location.hash !== `#${section.id}`) history.replaceState(null, '', `#${section.id}`);
   const d = diagrams.find((x) => x.section === section);
-  if (d && d.ok && d.fit) requestAnimationFrame(() => fitScreen(d));
+  if (d && d.ok) requestAnimationFrame(() => (d.fit ? fitScreen(d) : showLevel(d)));
 }
-const fromHash = () => Math.max(0, sections.findIndex((x) => `#${x.id}` === decodeURIComponent(location.hash)));
+const fromHash = () => {
+  let hash = location.hash;
+  try { hash = decodeURIComponent(hash); } catch {}
+  return Math.max(0, sections.findIndex((x) => `#${x.id}` === hash));
+};
 addEventListener('hashchange', () => show(fromHash(), false));
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !nativePopover) {
     popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
     return;
   }
-  if (!multi || e.altKey || e.ctrlKey || e.metaKey || e.target.closest('input, select, textarea, [contenteditable], [role="toolbar"]')) return;
+  if (!multi || e.altKey || e.ctrlKey || e.metaKey) return;
+  // 只在焦點不在可捲動或可操作的元素上時切換，避免搶走畫布、原始碼與工具列的方向鍵。
+  const t = e.target;
+  const fitted = t.classList?.contains('canvas') && diagrams.some((d) => d.canvas === t && d.fit);
+  if (!(t === document.body || t === document.documentElement || fitted || t.closest('#nav'))) return;
   if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(current - 1); }
   if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(current + 1); }
 });
 // 列印時把各圖的說明放回原位，逐張印出。
 addEventListener('beforeprint', () => notes.forEach((n, section) => section.append(n)));
 addEventListener('afterprint', () => show(current, false));
+// 依浮動列的實際高度與寬度保留畫布空間（手機上工具列可能換行）。
+const root = document.documentElement;
+const measure = () => {
+  const toolbars = diagrams.map((d) => d.toolbar).concat([...document.querySelectorAll('section.active .toolbar')]);
+  root.style.setProperty('--top-h', `${Math.ceil(Math.max(nav.offsetHeight, actions.offsetHeight))}px`);
+  root.style.setProperty('--actions-w', `${Math.ceil(actions.offsetWidth)}px`);
+  root.style.setProperty('--bottom-h', `${Math.ceil(Math.max(0, ...toolbars.map((x) => x.offsetHeight)))}px`);
+  diagrams.forEach((d) => { if (d.ok && d.fit) fitScreen(d); });
+};
+const bars = new ResizeObserver(() => requestAnimationFrame(measure));
+[nav, actions, ...document.querySelectorAll('.toolbar')].forEach((x) => bars.observe(x));
 show(fromHash());
 
 systemDark.addEventListener('change', async () => {
   if (mode === 'auto' && theme === 'auto') await renderAll();
 });
 landscape.addEventListener('change', async () => {
-  await renderAll((d) => dirOf(d) === 'auto');
+  const auto = (d) => dirOf(d) === 'auto';
+  diagrams.forEach((d) => { if (auto(d)) d.fit = true; });
+  await renderAll(auto);
 });
 let resizeFrame = 0;
 addEventListener('resize', () => {
