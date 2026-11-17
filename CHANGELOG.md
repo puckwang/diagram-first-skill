@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [1.3.0] - 2026-11-18
 ### Added
 - Add page fullscreen
 - Add a per-diagram direction menu (Follow page / Vertical / Horizontal)
@@ -57,7 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 - Fix the claude.ai sync failure (PR #2)
 
-[Unreleased]: https://github.com/puckwang/diagram-first-skill/compare/1.2.0...HEAD
+[Unreleased]: https://github.com/puckwang/diagram-first-skill/compare/1.3.0...HEAD
+[1.3.0]: https://github.com/puckwang/diagram-first-skill/compare/1.2.0...1.3.0
 [1.2.0]: https://github.com/puckwang/diagram-first-skill/compare/1.1.0...1.2.0
 [1.1.0]: https://github.com/puckwang/diagram-first-skill/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/puckwang/diagram-first-skill/releases/tag/1.0.0
