@@ -89,7 +89,7 @@ config:
 - `TD`（由上到下）：步驟與決策，預設使用。
 - `LR`（由左到右）：資料流、pipeline、分層架構。
 - 一張圖只選一個方向。
-- 方向依內容選擇，不必遷就螢幕：HTML 樣板讓讀者切換方向，「自動」在橫向視窗把 `TD`／`TB` 的圖改為 `LR`，寫明 `LR`／`RL` 的圖不改。適用 flowchart、state、class、ER、requirement。
+- 方向依內容選擇，不必遷就螢幕：HTML 樣板讓讀者切換方向，「自動」依視窗方向，橫向時改為 `LR`、直向時改為 `TB`。適用 flowchart、state、class、ER、requirement。
 
 ### 2.4 樣式
 

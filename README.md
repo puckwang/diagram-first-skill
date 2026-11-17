@@ -40,9 +40,10 @@ The skill's instructions are written in Traditional Chinese (Taiwan). Diagram la
 </picture>
 
 - Light / dark mode and Mermaid themes
-- Horizontal layout on landscape screens, zoom and pan
+- Horizontal layout on landscape screens, plus a direction switch for each diagram
+- Zoom, pan and fullscreen
 - Download as SVG / PNG / JPEG / WebP, or copy as an image
-- A table of contents when a page has two or more diagrams
+- Single-diagram view: one diagram fills the window; switch with the contents menu, ‹ ›, or ←/→, with buttons and notes floating on top
 
 ## Three output paths
 

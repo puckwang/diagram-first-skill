@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Add page fullscreen
+- Add a per-diagram direction menu (Follow page / Vertical / Horizontal)
+- Add a notes window with the page summary and the current diagram's caption, legend and source
+### Changed
+- Change the HTML page to a single-diagram view: one diagram fills the window and fits automatically; switch with the contents menu, ‹ ›, or ←/→, synced to #diagram-N
+- Change the controls to float: contents at top left, notes / settings / fullscreen at top right, toolbar at the bottom
+- Change the "Auto" direction to follow the window: horizontal in landscape, vertical in portrait
+- Cap auto-fit at 150%, keep diagrams clear of the notes window on wide screens, and collapse the notes window by default on narrow screens
+- Use the Popover API for the contents and settings panels, and make each toolbar a single Tab stop navigated with arrow keys
+- Move Download, Copy image and Copy source into the toolbar's ⋯ menu, with results shown as a toast
+### Removed
+- Remove the width switch (Wide / Standard)
+### Fixed
+- Fix PNG/JPEG/WebP export failing, and downloaded SVGs being invalid XML, when labels contain `<br>`
 
 ## [1.2.0] - 2026-10-12
 ### Added
