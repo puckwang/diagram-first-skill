@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Add fullscreen view for each diagram, with an in-page overlay where element fullscreen is unsupported
+- Add a per-diagram direction menu (Follow page / Vertical / Horizontal)
+### Changed
+- Change the HTML page to always use the full width
+- Change the header controls to stick to the top when scrolling
+- Change the table of contents into a dropdown in the controls bar that shows the current position
+### Removed
+- Remove the width switch (Wide / Standard)
 
 ## [1.2.0] - 2026-10-12
 ### Added

@@ -20,10 +20,12 @@
   以及 jsDelivr 上的 mermaid@12.1.0。
 
   標題與描述下方的模式（自動／淺色／深色）、方向（自動／垂直／水平）與 Theme 選單由程式產生，使用者的選擇存在 localStorage。
+  這條控制列往下捲動時會浮動在頁面頂端。頁面固定滿版。
   方向只影響 flowchart、state、class、ER、requirement；「自動」在橫向視窗把垂直的圖改為水平，作者寫明 LR／RL 的圖不改。
+  這些圖種的工具列另有個別方向選單（跟隨頁面／垂直／水平），只在本次瀏覽有效，不存 localStorage。
   每張圖的工具列有縮放按鈕；畫布內可用 Ctrl／⌘＋滾輪或觸控板捏合縮放、拖曳平移。
-  頁首另有寬度切換（寬版／標準，預設寬版）；工具列可下載 SVG／PNG／JPEG／WebP 或複製圖片。
-  兩張圖以上時，程式依各圖的 <h2> 自動產生目錄，Agent 不需另寫。
+  工具列可下載 SVG／PNG／JPEG／WebP、複製圖片，或切換全螢幕（Esc 離開；不支援元素全螢幕的瀏覽器改用頁內疊層）。
+  兩張圖以上時，程式依各圖的 <h2> 在控制列最左側產生目錄下拉選單，Agent 不需另寫。
   Theme 預設為「自動」：淺色模式用 redux-color，深色模式用 redux-dark-color。
   Mermaid 原始碼的 front matter 不可指定 theme，否則會蓋過使用者的選擇。
 
@@ -34,7 +36,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-VFr1YTH7QPs4a428eXCrUwbzpEQ+vEina/dqzu5x9h8=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-R0xBBe4quErruYoW0/MT+4O0/uBkmwP+OcPZUrh+gIE=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
@@ -64,27 +66,25 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 var(--font); }
-  .page { max-width: 1100px; margin: 0 auto; padding: 32px 16px 64px; }
-  :root[data-width="wide"] .page { max-width: none; padding-left: 24px; padding-right: 24px; }
+  .page { --gutter: 24px; padding: 32px var(--gutter) 64px; }
+  @media (max-width: 599px) { .page { --gutter: 16px; } }
   header .summary, .diagram .caption, .legend { max-width: 80ch; }
-  .page.has-toc { display: grid; grid-template-columns: 220px minmax(0, 1fr); column-gap: 24px; align-items: start; }
-  .page.has-toc > header, .page.has-toc > #status { grid-column: 1 / -1; }
-  .toc { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; font-size: 14px; }
-  .toc summary { cursor: pointer; color: var(--muted); margin: 0 0 8px; }
-  .toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--border); }
-  .toc a { display: block; padding: 4px 10px; margin-left: -1px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
-  .toc a:hover { color: var(--text); }
-  .toc a[aria-current="true"] { color: var(--text); border-left-color: var(--text); font-weight: 600; }
-  @media (min-width: 1200px) { .toc summary { display: none; } }
-  @media (max-width: 1199px) {
-    .page.has-toc { display: block; }
-    .toc { position: static; max-height: none; margin: 0 0 24px; }
-  }
-  section.diagram { scroll-margin-top: 16px; }
-  header { margin: 0 0 24px; }
+  section.diagram { scroll-margin-top: calc(var(--bar-h, 0px) + 8px); }
+  header { margin: 0 0 4px; }
   header h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
   header .summary { color: var(--muted); margin: 0; }
-  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 0; }
+  .controls { position: sticky; top: 0; z-index: 10; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+              margin: 0 calc(-1 * var(--gutter)) 16px; padding: 8px var(--gutter); background: var(--bg); }
+  .controls:empty { display: none; }
+  .controls.stuck { box-shadow: 0 1px 0 var(--border), 0 4px 12px rgba(0, 0, 0, .08); }
+  .toc { position: relative; font-size: 14px; }
+  .toc > button { font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .toc-panel { position: absolute; top: calc(100% + 6px); left: 0; min-width: 220px; max-width: min(360px, calc(100vw - 32px)); max-height: 60vh; overflow: auto;
+               background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 0; box-shadow: 0 8px 24px rgba(0, 0, 0, .16); }
+  .toc ol { list-style: none; margin: 0; padding: 0; }
+  .toc a { display: block; padding: 4px 12px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
+  .toc a:hover { color: var(--text); background: var(--control); }
+  .toc a[aria-current="true"] { color: var(--text); border-left-color: var(--text); font-weight: 600; }
   .segmented { display: inline-flex; background: var(--control); border-radius: 6px; padding: 2px; }
   .segmented button { font: 13px var(--font); color: var(--control-text); background: transparent; border: 0; border-radius: 4px; padding: 3px 10px; cursor: pointer; }
   .segmented button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--border); }
@@ -115,6 +115,21 @@
   details { margin: 12px 0 0; font-size: 14px; }
   details summary { cursor: pointer; color: var(--muted); }
   details pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text); }
+  /* 全螢幕：原生 Fullscreen API 與 CSS 疊層 fallback 共用 .fs；h2 與工具列同一列，畫布撐滿剩餘高度。 */
+  .diagram.fs { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); gap: 8px 16px; align-items: center;
+                margin: 0; border: 0; border-radius: 0; width: 100%; height: 100%;
+                padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  .diagram.fs > .caption, .diagram.fs > details { display: none; }
+  .diagram.fs h2 { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diagram.fs .toolbar { margin: 0; justify-content: flex-end; }
+  .diagram.fs .canvas { grid-column: 1 / -1; align-self: stretch; min-height: 0; max-height: none; display: flex; }
+  .diagram.fs .canvas svg { flex: none; margin: auto; }
+  .diagram.overlay { position: fixed; inset: 0; z-index: 100; }
+  body.locked { overflow: hidden; }
+  @media (max-width: 799px) {
+    .diagram.fs { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
+    .diagram.fs .toolbar { justify-content: flex-start; }
+  }
 </style>
 </head>
 <body>
@@ -122,8 +137,8 @@
   <header>
     <h1>{{TITLE}}</h1>
     <p class="summary">{{SUMMARY}}</p>
-    <div class="controls" id="controls"></div>
   </header>
+  <div class="controls" id="controls"></div>
   <div id="status" role="status"></div>
   <main>
 
@@ -143,7 +158,7 @@
 const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.esm.min.mjs';
 const THEMES = ['redux-color', 'redux-dark-color', 'redux', 'redux-dark', 'default', 'dark', 'neo', 'neo-dark', 'forest', 'neutral'];
 const AUTO_THEME = { light: 'redux-color', dark: 'redux-dark-color' };
-const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction', width: 'diagram-first:width' };
+const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction' };
 const ZOOM = { min: 0.25, max: 4, step: 1.25 };
 
 const I18N = {
@@ -151,7 +166,7 @@ const I18N = {
         mode: '模式', theme: 'Theme', auto: '自動', light: '淺色', dark: '深色',
         direction: '方向', vertical: '垂直', horizontal: '水平',
         zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '重設',
-        width: '寬度', wide: '寬版', standard: '標準', toc: '目錄', legend: '圖例',
+        followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
         download: '下載…', transparent: 'PNG（透明背景）', copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
         renderFail: 'Render 失敗：', some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。請把錯誤訊息回報給 Agent。`,
@@ -160,7 +175,7 @@ const I18N = {
         mode: 'Mode', theme: 'Theme', auto: 'Auto', light: 'Light', dark: 'Dark',
         direction: 'Direction', vertical: 'Vertical', horizontal: 'Horizontal',
         zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Reset',
-        width: 'Width', wide: 'Wide', standard: 'Standard', toc: 'Contents', legend: 'Legend',
+        followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
         download: 'Download…', transparent: 'PNG (transparent)', copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
         renderFail: 'Render failed:', some: (ok, bad) => `${ok} succeeded, ${bad} failed. Please report the error to the agent.`,
@@ -169,7 +184,7 @@ const I18N = {
         mode: 'モード', theme: 'テーマ', auto: '自動', light: 'ライト', dark: 'ダーク',
         direction: '方向', vertical: '縦', horizontal: '横',
         zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: 'リセット',
-        width: '幅', wide: 'ワイド', standard: '標準', toc: '目次', legend: '凡例',
+        followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
         download: 'ダウンロード…', transparent: 'PNG（透過）', copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
         renderFail: '描画に失敗しました：', some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。エラーをエージェントに報告してください。`,
@@ -199,9 +214,6 @@ let mode = load(STORE.mode, ['auto', 'light', 'dark'], 'auto');
 let theme = load(STORE.theme, ['auto', ...THEMES], 'auto');
 const landscape = matchMedia('(orientation: landscape)');
 let direction = load(STORE.direction, ['auto', 'vertical', 'horizontal'], 'auto');
-let width = load(STORE.width, ['wide', 'standard'], 'wide');
-function applyWidth() { document.documentElement.dataset.width = width; }
-applyWidth();
 
 function isDark() {
   return mode === 'dark' || (mode === 'auto' && systemDark.matches);
@@ -227,18 +239,30 @@ function dedent(text) {
 const DIRECTED = /^(flowchart(-elk)?|graph|stateDiagram(-v2)?|classDiagram(-v2)?|erDiagram|requirementDiagram)(?=[\s;]|$)/;
 const DIR = '(TB|TD|BT|LR|RL)';
 
-// 依方向設定改寫整張圖的方向；只處理有方向設定的圖種，subgraph 等區塊內的 direction 不動。
-function withDirection(source) {
-  if (direction === 'auto' && !landscape.matches) return source;
-  const lines = source.split('\n');
+// 找出圖種宣告所在的行；略過 front matter、空行與 %% 註解。找不到時回傳 -1。
+function headerIndex(lines) {
   let k = 0;
   if (lines[0].trim() === '---') {
     const end = lines.findIndex((l, n) => n > 0 && l.trim() === '---');
-    if (end < 0) return source;
+    if (end < 0) return -1;
     k = end + 1;
   }
   while (k < lines.length && (!lines[k].trim() || lines[k].trim().startsWith('%%'))) k++;
-  const header = (lines[k] || '').trim();
+  return k < lines.length ? k : -1;
+}
+function isDirected(source) {
+  const lines = source.split('\n');
+  const k = headerIndex(lines);
+  return k >= 0 && DIRECTED.test(lines[k].trim());
+}
+
+// 依方向設定 dir（auto／vertical／horizontal）改寫整張圖的方向；只處理有方向設定的圖種，subgraph 等區塊內的 direction 不動。
+function withDirection(source, dir) {
+  if (dir === 'auto' && !landscape.matches) return source;
+  const lines = source.split('\n');
+  const k = headerIndex(lines);
+  if (k < 0) return source;
+  const header = lines[k].trim();
   const type = header.match(DIRECTED);
   if (!type) return source;
 
@@ -258,10 +282,10 @@ function withDirection(source) {
   }
 
   const horizontal = author === 'LR' || author === 'RL';
-  if (direction === 'auto' && horizontal) return source;
-  if (direction === 'vertical' && !horizontal) return source;
-  if (direction === 'horizontal' && horizontal) return source;
-  const target = direction === 'vertical' ? 'TB' : 'LR';
+  if (dir === 'auto' && horizontal) return source;
+  if (dir === 'vertical' && !horizontal) return source;
+  if (dir === 'horizontal' && horizontal) return source;
+  const target = dir === 'vertical' ? 'TB' : 'LR';
 
   if (flow) {
     lines[k] = lines[k].replace(new RegExp('^(\\s*\\S+)(\\s+' + DIR + ')?(?=[\\s;]|$)'), `$1 ${target}`);
@@ -343,6 +367,7 @@ function setZoom(d, scale, anchor) {
     d.canvas.classList.add('zoomed');
   }
   d.scale = scale;
+  d.fit = false;
   if (anchor) {
     const rx = (anchor.x - before.left) / before.width;
     const ry = (anchor.y - before.top) / before.height;
@@ -352,6 +377,66 @@ function setZoom(d, scale, anchor) {
   }
   showLevel(d);
 }
+
+// 全螢幕時讓整張圖符合畫布的寬與高。
+function fitScreen(d) {
+  const svg = d.canvas.querySelector('svg');
+  const vb = svg && svg.viewBox && svg.viewBox.baseVal;
+  if (!vb || !vb.width || !vb.height) return;
+  const cs = getComputedStyle(d.canvas);
+  const w = d.canvas.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 1;
+  const h = d.canvas.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 1;
+  if (w <= 0 || h <= 0) return;
+  setZoom(d, Math.min(w / vb.width, h / vb.height));
+  d.fit = true;
+}
+
+// 全螢幕：優先用 Fullscreen API；不支援元素全螢幕的環境（例如 iPhone Safari）改用 CSS 疊層。
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+const fsEnabled = Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+function setFull(d, on, overlay) {
+  if (d.full === on) return;
+  d.full = on;
+  if (on) d.prevScale = d.scale;
+  d.section.classList.toggle('fs', on);
+  d.section.classList.toggle('overlay', on && overlay);
+  document.body.classList.toggle('locked', on && overlay);
+  d.fsBtn.textContent = on ? T.exitFullscreen : T.fullscreen;
+  d.fsBtn.setAttribute('aria-pressed', String(on));
+  requestAnimationFrame(() => {
+    if (!d.ok) return;
+    if (on) fitScreen(d);
+    else setZoom(d, d.prevScale);
+  });
+}
+async function toggleFull(d) {
+  if (d.full) {
+    if (fsElement() === d.section) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else setFull(d, false, true);
+    return;
+  }
+  diagrams.forEach((x) => { if (x.full && fsElement() !== x.section) setFull(x, false, true); });
+  if (fsEnabled) {
+    try {
+      await (d.section.requestFullscreen || d.section.webkitRequestFullscreen).call(d.section);
+      return;
+    } catch {}
+  }
+  setFull(d, true, true);
+}
+function syncFull() {
+  const current = fsElement();
+  diagrams.forEach((d) => {
+    if (current === d.section) setFull(d, true, false);
+    else if (d.full && !d.section.classList.contains('overlay')) setFull(d, false, false);
+  });
+}
+document.addEventListener('fullscreenchange', syncFull);
+document.addEventListener('webkitfullscreenchange', syncFull);
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  diagrams.forEach((d) => { if (d.full && d.section.classList.contains('overlay')) setFull(d, false, true); });
+});
 
 function bindGestures(d) {
   const c = d.canvas;
@@ -417,7 +502,7 @@ async function exportImage(d, type, transparent) {
     mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: currentTheme(), fontFamily: font,
       themeVariables: { fontFamily: font }, htmlLabels: false, flowchart: { htmlLabels: false } });
     try {
-      const { svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, withDirection(d.source));
+      const { svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, withDirection(d.source, dirOf(d)));
       return await rasterize(svg, type, background);
     } finally {
       initMermaid();
@@ -479,7 +564,8 @@ for (const [i, section] of [...document.querySelectorAll('section.diagram')].ent
     continue;
   }
 
-  const d = { i, section, source, canvas, details, toolbar, ok: false, svg: '', scale: null, baseStyle: null };
+  const d = { i, section, source, canvas, details, toolbar, ok: false, svg: '', scale: null, baseStyle: null,
+              direction: 'page', full: false, fit: false, prevScale: null };
   const downloadSelect = el('select', { 'aria-label': T.download });
   downloadSelect.append(el('option', { value: '' }, T.download));
   FORMATS.forEach(([v, label]) => downloadSelect.append(el('option', { value: v }, label || T.transparent)));
@@ -518,46 +604,70 @@ for (const [i, section] of [...document.querySelectorAll('section.diagram')].ent
   outBtn.addEventListener('click', () => setZoom(d, currentScale(d) / ZOOM.step));
   inBtn.addEventListener('click', () => setZoom(d, currentScale(d) * ZOOM.step));
   d.level.addEventListener('click', () => setZoom(d, 1));
-  resetBtn.addEventListener('click', () => setZoom(d, null));
+  resetBtn.addEventListener('click', () => (d.full ? fitScreen(d) : setZoom(d, null)));
   zoom.append(outBtn, d.level, inBtn);
   d.buttons = [downloadSelect, copyImgBtn, zoom, resetBtn];
+  if (isDirected(source)) {
+    const dirSelect = el('select', { 'aria-label': T.direction, title: T.direction });
+    [['page', T.followPage], ['vertical', T.vertical], ['horizontal', T.horizontal]]
+      .forEach(([v, label]) => dirSelect.append(el('option', { value: v }, label)));
+    dirSelect.addEventListener('change', async () => {
+      d.direction = dirSelect.value;
+      await renderOne(d);
+    });
+    d.buttons.push(dirSelect);
+  }
+  d.fsBtn = el('button', { type: 'button', 'aria-pressed': 'false' }, T.fullscreen);
+  d.fsBtn.addEventListener('click', () => toggleFull(d));
+  d.buttons.push(d.fsBtn);
   bindGestures(d);
   diagrams.push(d);
 }
 
+// 每張圖的方向：「跟隨頁面」時用頁首的方向設定。
+function dirOf(d) {
+  return d.direction === 'page' ? direction : d.direction;
+}
+
 let renderCount = 0;
-async function renderAll() {
-  const name = currentTheme();
-  initMermaid();
-  renderCount++;
-  for (const d of diagrams) {
-    d.canvas.classList.toggle('dark', name.includes('dark'));
+async function renderOne(d) {
+  const n = ++renderCount;
+  d.canvas.classList.toggle('dark', currentTheme().includes('dark'));
+  try {
+    const source = withDirection(d.source, dirOf(d));
+    let svg;
     try {
-      const source = withDirection(d.source);
-      let svg;
-      try {
-        ({ svg } = await mermaid.render(`diagram-${d.i}-${renderCount}`, source));
-      } catch (e) {
-        if (source === d.source) throw e;
-        ({ svg } = await mermaid.render(`diagram-${d.i}-${renderCount}-src`, d.source));
-      }
-      d.svg = svg;
-      d.canvas.innerHTML = svg;
-      d.baseStyle = d.canvas.querySelector('svg')?.getAttribute('style') ?? null;
-      if (!d.ok) d.toolbar.append(...d.buttons);
-      d.ok = true;
-      if (d.scale === null) showLevel(d);
-      else setZoom(d, d.scale);
+      ({ svg } = await mermaid.render(`diagram-${d.i}-${n}`, source));
     } catch (e) {
-      const box = el('div', { class: 'err' }, T.renderFail);
-      box.append(el('pre', {}, String(e.message || e)));
-      d.canvas.replaceChildren(box);
-      d.buttons.forEach((b) => b.remove());
-      d.ok = false;
-      d.details.open = true;
+      if (source === d.source) throw e;
+      ({ svg } = await mermaid.render(`diagram-${d.i}-${n}-src`, d.source));
     }
+    d.svg = svg;
+    d.canvas.innerHTML = svg;
+    d.baseStyle = d.canvas.querySelector('svg')?.getAttribute('style') ?? null;
+    if (!d.ok) d.toolbar.append(...d.buttons);
+    d.ok = true;
+    if (d.full) fitScreen(d);
+    else if (d.scale === null) showLevel(d);
+    else setZoom(d, d.scale);
+  } catch (e) {
+    const box = el('div', { class: 'err' }, T.renderFail);
+    box.append(el('pre', {}, String(e.message || e)));
+    d.canvas.replaceChildren(box);
+    d.buttons.forEach((b) => { if (b !== d.fsBtn) b.remove(); });
+    if (!d.fsBtn.isConnected) d.toolbar.append(d.fsBtn);
+    d.ok = false;
+    d.details.open = true;
   }
 }
+// filter 為 null 時重繪全部；否則只重繪符合條件的圖。
+async function renderAll(filter = null) {
+  initMermaid();
+  for (const d of diagrams) {
+    if (!filter || filter(d)) await renderOne(d);
+  }
+}
+const followsPage = (d) => d.direction === 'page';
 
 const controls = document.getElementById('controls');
 const modeGroup = el('div', { class: 'segmented', role: 'group', 'aria-label': T.mode });
@@ -590,31 +700,25 @@ const directionButtons = DIRECTIONS.map((v) => {
     direction = v;
     save(STORE.direction, v);
     directionButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(DIRECTIONS[k] === v)));
-    await renderAll();
+    await renderAll(followsPage);
   });
   return b;
 });
 directionGroup.append(...directionButtons);
-const WIDTHS = ['wide', 'standard'];
-const widthGroup = el('div', { class: 'segmented', role: 'group', 'aria-label': T.width });
-const widthButtons = WIDTHS.map((v) => {
-  const b = el('button', { type: 'button', 'aria-pressed': String(v === width) }, T[v]);
-  b.addEventListener('click', () => {
-    width = v;
-    save(STORE.width, v);
-    widthButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(WIDTHS[k] === v)));
-    applyWidth();
-    diagrams.forEach((d) => { if (d.scale === null) showLevel(d); });
-  });
-  return b;
-});
-widthGroup.append(...widthButtons);
-controls.append(modeGroup, directionGroup, widthGroup, themeSelect);
+controls.append(modeGroup, directionGroup, themeSelect);
 
+// 控制列捲動後浮動（CSS sticky）；header 離開視窗時加上陰影，並記錄列高供錨點捲動扣除。
+new IntersectionObserver(([e]) => controls.classList.toggle('stuck', !e.isIntersecting))
+  .observe(document.querySelector('header'));
+new ResizeObserver(() => document.documentElement.style.setProperty('--bar-h', `${controls.offsetHeight}px`))
+  .observe(controls);
+
+// 兩張圖以上時，在控制列最左側放目錄按鈕，點開為下拉清單；按鈕顯示目前位置。
 const sections = [...document.querySelectorAll('section.diagram')];
 if (sections.length >= 2) {
   const nav = el('nav', { class: 'toc', 'aria-label': T.toc });
-  const box = el('details');
+  const btn = el('button', { type: 'button', 'aria-expanded': 'false', 'aria-controls': 'toc-panel' });
+  const panel = el('div', { class: 'toc-panel', id: 'toc-panel', hidden: '' });
   const list = el('ol');
   const links = new Map();
   sections.forEach((section, k) => {
@@ -626,20 +730,27 @@ if (sections.length >= 2) {
     li.append(a);
     list.append(li);
   });
-  box.append(el('summary', {}, T.toc), list);
-  nav.append(box);
-  const page = document.querySelector('.page');
-  page.classList.add('has-toc');
-  document.querySelector('main').before(nav);
-  const wideToc = matchMedia('(min-width: 1200px)');
-  const syncToc = () => { if (wideToc.matches) box.open = true; };
-  syncToc();
-  wideToc.addEventListener('change', syncToc);
+  panel.append(list);
+  nav.append(btn, panel);
+  controls.prepend(nav);
+  const label = (k) => { btn.textContent = k < 0 ? `☰ ${T.toc}` : `☰ ${T.toc} ${k + 1}/${sections.length}`; };
+  label(-1);
+  const open = (v) => {
+    panel.hidden = !v;
+    btn.setAttribute('aria-expanded', String(v));
+  };
+  btn.addEventListener('click', () => open(panel.hidden));
+  list.addEventListener('click', (e) => { if (e.target.closest('a')) open(false); });
+  document.addEventListener('click', (e) => { if (!panel.hidden && !nav.contains(e.target)) open(false); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) { open(false); btn.focus(); }
+  });
   const visible = new Set();
   const spy = new IntersectionObserver((entries) => {
     entries.forEach((e) => (e.isIntersecting ? visible.add(e.target) : visible.delete(e.target)));
     const current = sections.find((x) => visible.has(x));
     links.forEach((a, x) => a.setAttribute('aria-current', String(x === current)));
+    label(current ? sections.indexOf(current) : -1);
   }, { rootMargin: '0px 0px -60% 0px' });
   sections.forEach((x) => spy.observe(x));
 }
@@ -648,9 +759,12 @@ systemDark.addEventListener('change', async () => {
   if (mode === 'auto' && theme === 'auto') await renderAll();
 });
 landscape.addEventListener('change', async () => {
-  if (direction === 'auto') await renderAll();
+  await renderAll((d) => dirOf(d) === 'auto');
 });
-addEventListener('resize', () => diagrams.forEach((d) => { if (d.scale === null) showLevel(d); }));
+addEventListener('resize', () => diagrams.forEach((d) => {
+  if (d.full && d.fit) fitScreen(d);
+  else if (d.scale === null) showLevel(d);
+}));
 
 await renderAll();
 badCount += diagrams.filter((d) => !d.ok).length;
