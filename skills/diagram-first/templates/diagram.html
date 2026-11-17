@@ -23,7 +23,7 @@
   - 左上：目錄（依各圖 <h2> 產生）。兩張圖以上時可用下拉清單、‹ ›、鍵盤 ←／→ 切換，網址同步為 #diagram-N。
   - 右上：說明視窗開關、⚙ 設定（模式、方向、Theme，存在 localStorage）、全螢幕（瀏覽器不支援時不顯示）。
   - 說明視窗：頁面標題、摘要，以及目前這張圖的標題、一句話結論、圖例與原始碼；開關狀態存在 localStorage。
-  - 下方工具列：縮放、重設（符合視窗）、個別方向、下載 SVG／PNG／JPEG／WebP、複製圖片與原始碼。
+  - 下方工具列：縮放、重設（符合視窗）、個別方向；⋯ 選單內有下載 SVG／PNG／JPEG／WebP、複製圖片與原始碼。
   方向只影響 flowchart、state、class、ER、requirement；「自動」依視窗方向，橫向時轉為水平、直向時轉為垂直。
   自動符合大小最多放大到 150%。寬螢幕打開說明視窗時，圖會避開說明視窗；窄螢幕預設收合說明視窗。
   個別方向選單（跟隨頁面／垂直／水平）只在本次瀏覽有效，不存 localStorage。
@@ -38,7 +38,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+Mn/7qtidVMkAOdqiNkIF4LDsOtl14f1lC/tgwYm66M=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JbmZK0CxZw1GLv5vfeWJz6pN2b9pzVoGvX5IbWC0V3g=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -104,8 +104,8 @@
   details pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text); max-height: 40vh; overflow: auto; }
   .float, .pop { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
   .pop[hidden] { display: none; }
-  :where(.toolbar, .float, .controls) :where(button, select) { min-block-size: 24px; min-inline-size: 24px; }
-  @media (pointer: coarse) { :where(.toolbar, .float, .controls) :where(button, select) { min-block-size: 44px; min-inline-size: 44px; } }
+  :where(.toolbar, .float, .controls, .menu) :where(button, select) { min-block-size: 24px; min-inline-size: 24px; }
+  @media (pointer: coarse) { :where(.toolbar, .float, .controls, .menu) :where(button, select) { min-block-size: 44px; min-inline-size: 44px; } }
   :where(.toolbar, .float, .controls, #info) :where(button, select, summary):focus-visible, .canvas:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
   /* 單圖檢視：一次顯示一張圖並撐滿視窗，其餘介面浮在圖上。程式載入 Mermaid 後才加上 .app；列印時改回逐張排列。 */
@@ -133,10 +133,18 @@
     #nav .toc-btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
     #nav > div, #actions > div { position: relative; min-width: 0; display: flex; }
     /* 彈出面板用 Popover API（頂層、點外面或 Esc 關閉）；位置由程式依觸發按鈕設定，不支援 Popover API 時同樣適用。 */
-    .pop { position: fixed; inset: auto; margin: 0; top: var(--pop-top, 56px); left: var(--pop-left, auto); right: var(--pop-right, auto);
+    .pop { position: fixed; inset: auto; margin: 0; top: var(--pop-top, 56px); left: var(--pop-left, auto); right: var(--pop-right, auto); bottom: var(--pop-bottom, auto);
            z-index: 35; padding: 6px 0; max-height: 70vh; overflow: auto; color: var(--text); }
     #toc-panel { min-width: 240px; max-width: min(360px, calc(100vw - 24px)); }
     #settings { padding: 10px; }
+    .menu { padding: 6px; min-width: 200px; }
+    .menu button { display: block; width: 100%; text-align: start; font: 14px var(--font); color: var(--control-text); background: transparent;
+                   border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+    .menu button:hover, .menu button:focus-visible { background: var(--control); }
+    .menu button[hidden] { display: none; }
+    .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
+             margin: 0; padding: 6px 14px; font-size: 13px; }
+    .toast:empty { display: none; }
     .toc ol { list-style: none; margin: 0; padding: 0; }
     .toc a { display: block; padding: 4px 12px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; font-size: 14px; }
     .toc a:hover { color: var(--text); background: var(--control); }
@@ -199,7 +207,7 @@ const I18N = {
         direction: '方向', vertical: '垂直', horizontal: '水平',
         zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '重設',
         followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
-        info: '說明', close: '關閉', prev: '上一張', next: '下一張', settings: '設定',
+        info: '說明', close: '關閉', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
         download: '下載…', transparent: 'PNG（透明背景）', copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
         renderFail: 'Render 失敗：', some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。請把錯誤訊息回報給 Agent。`,
@@ -209,7 +217,7 @@ const I18N = {
         direction: 'Direction', vertical: 'Vertical', horizontal: 'Horizontal',
         zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Reset',
         followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
-        info: 'Notes', close: 'Close', prev: 'Previous', next: 'Next', settings: 'Settings',
+        info: 'Notes', close: 'Close', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
         download: 'Download…', transparent: 'PNG (transparent)', copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
         renderFail: 'Render failed:', some: (ok, bad) => `${ok} succeeded, ${bad} failed. Please report the error to the agent.`,
@@ -219,7 +227,7 @@ const I18N = {
         direction: '方向', vertical: '縦', horizontal: '横',
         zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: 'リセット',
         followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
-        info: '説明', close: '閉じる', prev: '前へ', next: '次へ', settings: '設定',
+        info: '説明', close: '閉じる', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
         download: 'ダウンロード…', transparent: 'PNG（透過）', copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
         renderFail: '描画に失敗しました：', some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。エラーをエージェントに報告してください。`,
@@ -544,6 +552,81 @@ function rovingToolbar(bar) {
   return () => sync(null);
 }
 
+// 彈出面板：優先用 Popover API（點外面或 Esc 自動關閉）；不支援時以 hidden 切換並自行處理關閉。
+const nativePopover = Object.hasOwn(HTMLElement.prototype, 'popover');
+const popovers = [];
+function popover(btn, panel, align, onOpen) {
+  btn.setAttribute('aria-expanded', 'false');
+  const place = () => {
+    const r = btn.getBoundingClientRect();
+    if (align === 'up') {
+      panel.style.setProperty('--pop-top', 'auto');
+      panel.style.setProperty('--pop-bottom', `${Math.round(innerHeight - r.top + 8)}px`);
+    } else panel.style.setProperty('--pop-top', `${Math.round(r.bottom + 8)}px`);
+    if (align === 'right' || align === 'up') panel.style.setProperty('--pop-right', `${Math.round(innerWidth - r.right)}px`);
+    else panel.style.setProperty('--pop-left', `${Math.round(r.left)}px`);
+  };
+  let set;
+  if (nativePopover) {
+    panel.setAttribute('popover', 'auto');
+    btn.setAttribute('popovertarget', panel.id);
+    panel.addEventListener('beforetoggle', (e) => { if (e.newState === 'open') place(); });
+    panel.addEventListener('toggle', (e) => {
+      btn.setAttribute('aria-expanded', String(e.newState === 'open'));
+      if (e.newState === 'open') onOpen?.();
+    });
+    set = (v) => {
+      const open = panel.matches(':popover-open');
+      if (v && !open) panel.showPopover();
+      if (!v && open) panel.hidePopover();
+    };
+  } else {
+    panel.hidden = true;
+    set = (v) => {
+      if (v) place();
+      panel.hidden = !v;
+      btn.setAttribute('aria-expanded', String(v));
+      if (v) onOpen?.();
+    };
+    btn.addEventListener('click', () => {
+      const v = panel.hidden;
+      popovers.forEach((p) => p.set(false));
+      set(v);
+    });
+  }
+  const p = { btn, panel, set, isOpen: () => (nativePopover ? panel.matches(':popover-open') : !panel.hidden) };
+  popovers.push(p);
+  return p;
+}
+if (!nativePopover) {
+  document.addEventListener('click', (e) => {
+    popovers.forEach((p) => { if (p.isOpen() && !p.btn.contains(e.target) && !p.panel.contains(e.target)) p.set(false); });
+  });
+}
+
+// 下拉選單：開啟時聚焦第一項，↑／↓／Home／End 移動，Tab 離開時關閉。
+function menuKeys(menu, p) {
+  const items = () => [...menu.querySelectorAll('[role="menuitem"]')].filter((x) => !x.hidden);
+  menu.addEventListener('keydown', (e) => {
+    const list = items();
+    const k = list.indexOf(document.activeElement);
+    const next = { ArrowDown: list[(k + 1) % list.length], ArrowUp: list[(k - 1 + list.length) % list.length],
+                   Home: list[0], End: list[list.length - 1] }[e.key];
+    if (next) { e.preventDefault(); next.focus(); }
+    if (e.key === 'Tab') p.set(false);
+  });
+  return () => items()[0]?.focus();
+}
+
+// 操作結果提示（複製、匯出），同時供螢幕閱讀器讀出。
+const toast = el('p', { class: 'toast float', role: 'status' });
+let toastTimer = 0;
+function notify(text) {
+  toast.textContent = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.textContent = ''; }, 2000);
+}
+
 const diagrams = [];
 let badCount = 0;
 const sections = [...document.querySelectorAll('section.diagram')];
@@ -590,15 +673,34 @@ for (const [i, section] of sections.entries()) {
   }
   note.append(details);
 
-  const copyBtn = el('button', { type: 'button' }, T.copy);
-  copyBtn.addEventListener('click', async () => {
+  // ⋯ 選單：下載、複製圖片、複製原始碼。
+  const moreBtn = el('button', { type: 'button', 'aria-label': T.more, title: T.more, 'aria-haspopup': 'menu', 'aria-controls': `more-${i + 1}` }, '⋯');
+  const menu = el('div', { class: 'pop menu', id: `more-${i + 1}`, role: 'menu', 'aria-label': T.more });
+  toolbar.append(moreBtn);
+  toolbar.after(menu);
+  let focusFirst = () => {};
+  const more = popover(moreBtn, menu, 'up', () => focusFirst());
+  focusFirst = menuKeys(menu, more);
+  const menuItem = (label, run) => {
+    const b = el('button', { type: 'button', role: 'menuitem', tabindex: '-1' }, label);
+    b.addEventListener('click', async () => {
+      more.set(false);
+      moreBtn.focus();
+      await run();
+    });
+    menu.append(b);
+    return b;
+  };
+  menuItem(T.copy, async () => {
     try {
       await navigator.clipboard.writeText(source);
-      copyBtn.textContent = T.copied;
-      setTimeout(() => { copyBtn.textContent = T.copy; }, 1500);
-    } catch { details.open = true; showInfo(true); }
+      notify(T.copied);
+    } catch {
+      notify(T.copyFail);
+      details.open = true;
+      showInfo(true);
+    }
   });
-  toolbar.append(copyBtn);
   const syncToolbar = rovingToolbar(toolbar);
 
   try {
@@ -614,13 +716,7 @@ for (const [i, section] of sections.entries()) {
 
   const d = { i, section, source, canvas, details, toolbar, ok: false, svg: '', scale: null, baseStyle: null,
               direction: 'page', fit: true, syncToolbar };
-  const downloadSelect = el('select', { 'aria-label': T.download });
-  downloadSelect.append(el('option', { value: '' }, T.download));
-  FORMATS.forEach(([v, label]) => downloadSelect.append(el('option', { value: v }, label || T.transparent)));
-  downloadSelect.addEventListener('change', async () => {
-    const v = downloadSelect.value;
-    downloadSelect.value = '';
-    if (!v) return;
+  const download = async (v) => {
     const name = `diagram-${i + 1}`;
     try {
       if (v === 'svg') saveBlob(new Blob([d.svg], { type: 'image/svg+xml' }), `${name}.svg`);
@@ -629,21 +725,23 @@ for (const [i, section] of sections.entries()) {
         const ext = v === 'jpeg' ? 'jpg' : v === 'png-transparent' ? 'png' : v;
         saveBlob(await exportImage(d, type, v === 'png-transparent'), `${name}.${ext}`);
       }
-    } catch (e) {
-      downloadSelect.options[0].textContent = T.exportFail;
-      setTimeout(() => { downloadSelect.options[0].textContent = T.download; }, 2000);
+    } catch {
+      notify(T.exportFail);
     }
-  });
-  const copyImgBtn = el('button', { type: 'button' }, T.copyImage);
-  copyImgBtn.addEventListener('click', async () => {
+  };
+  const copyImage = async () => {
     try {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': exportImage(d, 'image/png', false) })]);
-      copyImgBtn.textContent = T.copied;
+      notify(T.copied);
     } catch {
-      copyImgBtn.textContent = T.copyFail;
+      notify(T.copyFail);
     }
-    setTimeout(() => { copyImgBtn.textContent = T.copyImage; }, 1500);
-  });
+  };
+  // 圖片相關項目放在原始碼之前；render 失敗時隱藏。
+  d.imageItems = [...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
+                  menuItem(T.copyImage, copyImage)];
+  menu.prepend(...d.imageItems);
+  d.imageItems.forEach((b) => { b.hidden = true; });
   const zoom = el('div', { class: 'zoom', role: 'group' });
   const outBtn = el('button', { type: 'button', 'aria-label': T.zoomOut, title: T.zoomOut }, '−');
   d.level = el('button', { type: 'button', class: 'level', title: T.zoomActual }, '');
@@ -667,7 +765,6 @@ for (const [i, section] of sections.entries()) {
     });
     d.buttons.push(dirSelect);
   }
-  d.buttons.push(downloadSelect, copyImgBtn);
   bindGestures(d);
   diagrams.push(d);
 }
@@ -690,10 +787,12 @@ async function renderOne(d) {
       if (source === d.source) throw e;
       ({ svg } = await mermaid.render(`diagram-${d.i}-${n}-src`, d.source));
     }
-    d.svg = svg;
     d.canvas.innerHTML = svg;
+    // 從 DOM 序列化成合法的 XML：Mermaid 的 HTML 標籤（例如 <br>）不一定是自我封閉，直接當 XML 解析會失敗。
+    d.svg = new XMLSerializer().serializeToString(d.canvas.querySelector('svg'));
     d.baseStyle = d.canvas.querySelector('svg')?.getAttribute('style') ?? null;
     if (!d.ok) { d.toolbar.prepend(...d.buttons); d.syncToolbar(); }
+    d.imageItems.forEach((b) => { b.hidden = false; });
     d.ok = true;
     if (d.fit) fitScreen(d);
     else setZoom(d, d.scale);
@@ -702,6 +801,7 @@ async function renderOne(d) {
     box.append(el('pre', {}, String(e.message || e)));
     d.canvas.replaceChildren(box);
     d.buttons.forEach((b) => b.remove());
+    d.imageItems.forEach((b) => { b.hidden = true; });
     d.syncToolbar();
     d.ok = false;
     d.details.open = true;
@@ -715,51 +815,6 @@ async function renderAll(filter = null) {
   }
 }
 const followsPage = (d) => d.direction === 'page';
-
-// 彈出面板：優先用 Popover API（點外面或 Esc 自動關閉）；不支援時以 hidden 切換並自行處理關閉。
-const nativePopover = Object.hasOwn(HTMLElement.prototype, 'popover');
-const popovers = [];
-function popover(btn, panel, align) {
-  btn.setAttribute('aria-expanded', 'false');
-  const place = () => {
-    const r = btn.getBoundingClientRect();
-    panel.style.setProperty('--pop-top', `${Math.round(r.bottom + 8)}px`);
-    if (align === 'right') panel.style.setProperty('--pop-right', `${Math.round(innerWidth - r.right)}px`);
-    else panel.style.setProperty('--pop-left', `${Math.round(r.left)}px`);
-  };
-  let set;
-  if (nativePopover) {
-    panel.setAttribute('popover', 'auto');
-    btn.setAttribute('popovertarget', panel.id);
-    panel.addEventListener('beforetoggle', (e) => { if (e.newState === 'open') place(); });
-    panel.addEventListener('toggle', (e) => btn.setAttribute('aria-expanded', String(e.newState === 'open')));
-    set = (v) => {
-      const open = panel.matches(':popover-open');
-      if (v && !open) panel.showPopover();
-      if (!v && open) panel.hidePopover();
-    };
-  } else {
-    panel.hidden = true;
-    set = (v) => {
-      if (v) place();
-      panel.hidden = !v;
-      btn.setAttribute('aria-expanded', String(v));
-    };
-    btn.addEventListener('click', () => {
-      const v = panel.hidden;
-      popovers.forEach((p) => p.set(false));
-      set(v);
-    });
-  }
-  const p = { btn, panel, set, isOpen: () => (nativePopover ? panel.matches(':popover-open') : !panel.hidden) };
-  popovers.push(p);
-  return p;
-}
-if (!nativePopover) {
-  document.addEventListener('click', (e) => {
-    popovers.forEach((p) => { if (p.isOpen() && !p.btn.contains(e.target) && !p.panel.contains(e.target)) p.set(false); });
-  });
-}
 
 // 右上角：說明、設定、全螢幕。
 const actions = el('div', { id: 'actions', class: 'float' });
@@ -872,7 +927,7 @@ if (multi) {
 } else {
   tocBtn.disabled = true;
 }
-document.body.append(nav, actions);
+document.body.append(nav, actions, toast);
 
 // 切換到第 k 張圖：顯示該圖、把它的說明移入說明視窗，並同步網址的 #id。
 function show(k, updateHash = true) {
