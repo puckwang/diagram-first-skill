@@ -43,8 +43,7 @@ The skill's instructions are written in Traditional Chinese (Taiwan). Diagram la
 - Horizontal layout on landscape screens, plus a direction switch for each diagram
 - Zoom, pan and fullscreen
 - Download as SVG / PNG / JPEG / WebP, or copy as an image
-- Always full width; the controls bar sticks to the top as you scroll
-- A table of contents when a page has two or more diagrams (a dropdown in the controls bar)
+- Single-diagram view: one diagram fills the window; switch with the contents menu, ‹ ›, or ←/→, with buttons and notes floating on top
 
 ## Three output paths
 

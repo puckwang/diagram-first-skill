@@ -9,12 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
-- Add fullscreen view for each diagram, with an in-page overlay where element fullscreen is unsupported
+- Add page fullscreen
 - Add a per-diagram direction menu (Follow page / Vertical / Horizontal)
+- Add a notes window with the page summary and the current diagram's caption, legend and source
 ### Changed
-- Change the HTML page to always use the full width
-- Change the header controls to stick to the top when scrolling
-- Change the table of contents into a dropdown in the controls bar that shows the current position
+- Change the HTML page to a single-diagram view: one diagram fills the window and fits automatically; switch with the contents menu, ‹ ›, or ←/→, synced to #diagram-N
+- Change the controls to float: contents at top left, notes / settings / fullscreen at top right, toolbar at the bottom
 ### Removed
 - Remove the width switch (Wide / Standard)
 
