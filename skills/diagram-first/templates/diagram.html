@@ -36,7 +36,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-R0xBBe4quErruYoW0/MT+4O0/uBkmwP+OcPZUrh+gIE=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WkxonMaPU9c3PBj5bQ5qk92RSBQqeFtru1NJeyJBeKk=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{TITLE}}</title>
@@ -389,6 +389,7 @@ function fitScreen(d) {
   if (w <= 0 || h <= 0) return;
   setZoom(d, Math.min(w / vb.width, h / vb.height));
   d.fit = true;
+  d.canvas.classList.remove('zoomed');
 }
 
 // 全螢幕：優先用 Fullscreen API；不支援元素全螢幕的環境（例如 iPhone Safari）改用 CSS 疊層。
@@ -435,8 +436,11 @@ document.addEventListener('fullscreenchange', syncFull);
 document.addEventListener('webkitfullscreenchange', syncFull);
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  diagrams.forEach((d) => { if (d.full && d.section.classList.contains('overlay')) setFull(d, false, true); });
-});
+  const d = diagrams.find((x) => x.full && x.section.classList.contains('overlay'));
+  if (!d) return;
+  e.stopImmediatePropagation();
+  setFull(d, false, true);
+}, true);
 
 function bindGestures(d) {
   const c = d.canvas;
@@ -457,7 +461,7 @@ function bindGestures(d) {
   });
   let drag = null;
   c.addEventListener('pointerdown', (e) => {
-    if (d.scale === null || e.pointerType !== 'mouse' || e.button !== 0) return;
+    if (d.scale === null || d.fit || e.pointerType !== 'mouse' || e.button !== 0) return;
     drag = { x: e.clientX, y: e.clientY, left: c.scrollLeft, top: c.scrollTop };
     c.setPointerCapture(e.pointerId);
     c.classList.add('dragging');
@@ -613,6 +617,10 @@ for (const [i, section] of [...document.querySelectorAll('section.diagram')].ent
       .forEach(([v, label]) => dirSelect.append(el('option', { value: v }, label)));
     dirSelect.addEventListener('change', async () => {
       d.direction = dirSelect.value;
+      // 方向改變後圖的尺寸不同，舊倍率不再適用：全螢幕中重新符合視窗，離開後回到符合寬度。
+      d.prevScale = null;
+      if (d.full) d.fit = true;
+      else d.scale = null;
       await renderOne(d);
     });
     d.buttons.push(dirSelect);
@@ -647,8 +655,7 @@ async function renderOne(d) {
     d.baseStyle = d.canvas.querySelector('svg')?.getAttribute('style') ?? null;
     if (!d.ok) d.toolbar.append(...d.buttons);
     d.ok = true;
-    if (d.full) fitScreen(d);
-    else if (d.scale === null) showLevel(d);
+    if (d.full && d.fit) fitScreen(d);
     else setZoom(d, d.scale);
   } catch (e) {
     const box = el('div', { class: 'err' }, T.renderFail);
@@ -708,8 +715,8 @@ directionGroup.append(...directionButtons);
 controls.append(modeGroup, directionGroup, themeSelect);
 
 // 控制列捲動後浮動（CSS sticky）；header 離開視窗時加上陰影，並記錄列高供錨點捲動扣除。
-new IntersectionObserver(([e]) => controls.classList.toggle('stuck', !e.isIntersecting))
-  .observe(document.querySelector('header'));
+const headerEl = document.querySelector('header');
+if (headerEl) new IntersectionObserver(([e]) => controls.classList.toggle('stuck', !e.isIntersecting)).observe(headerEl);
 new ResizeObserver(() => document.documentElement.style.setProperty('--bar-h', `${controls.offsetHeight}px`))
   .observe(controls);
 
@@ -761,10 +768,14 @@ systemDark.addEventListener('change', async () => {
 landscape.addEventListener('change', async () => {
   await renderAll((d) => dirOf(d) === 'auto');
 });
-addEventListener('resize', () => diagrams.forEach((d) => {
-  if (d.full && d.fit) fitScreen(d);
-  else if (d.scale === null) showLevel(d);
-}));
+let resizeFrame = 0;
+addEventListener('resize', () => {
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame = requestAnimationFrame(() => diagrams.forEach((d) => {
+    if (d.full && d.fit) fitScreen(d);
+    else if (d.scale === null) showLevel(d);
+  }));
+});
 
 await renderAll();
 badCount += diagrams.filter((d) => !d.ok).length;
