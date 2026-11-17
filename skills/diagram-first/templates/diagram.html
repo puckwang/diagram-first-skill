@@ -24,7 +24,8 @@
   - 右上：說明視窗開關、⚙ 設定（模式、方向、Theme，存在 localStorage）、全螢幕（瀏覽器不支援時不顯示）。
   - 說明視窗：頁面標題、摘要，以及目前這張圖的標題、一句話結論、圖例與原始碼；開關狀態存在 localStorage。
   - 下方工具列：縮放、重設（符合視窗）、個別方向、下載 SVG／PNG／JPEG／WebP、複製圖片與原始碼。
-  方向只影響 flowchart、state、class、ER、requirement；「自動」在橫向視窗把垂直的圖改為水平，作者寫明 LR／RL 的圖不改。
+  方向只影響 flowchart、state、class、ER、requirement；「自動」依視窗方向，橫向時轉為水平、直向時轉為垂直。
+  自動符合大小最多放大到 150%。寬螢幕打開說明視窗時，圖會避開說明視窗；窄螢幕預設收合說明視窗。
   個別方向選單（跟隨頁面／垂直／水平）只在本次瀏覽有效，不存 localStorage。
   畫布內可用 Ctrl／⌘＋滾輪或觸控板捏合縮放、拖曳平移。列印時改為逐張排列。
   Theme 預設為「自動」：淺色模式用 redux-color，深色模式用 redux-dark-color。
@@ -37,9 +38,10 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FSj6dDwDVYAGDZbnqMISDGzUC0yglKDNHhkcXeliGew=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-LoeGF3vNrdnSjoSopsNuKxQrobXpyjtqW3rH7D2Qjmg=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>{{TITLE}}</title>
 <style>
   :root {
@@ -102,6 +104,9 @@
   details pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text); max-height: 40vh; overflow: auto; }
   .float, .pop { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
   .pop[hidden], #info[hidden] { display: none; }
+  :where(.toolbar, .float, .controls) :where(button, select) { min-block-size: 24px; min-inline-size: 24px; }
+  @media (pointer: coarse) { :where(.toolbar, .float, .controls) :where(button, select) { min-block-size: 44px; min-inline-size: 44px; } }
+  :where(.toolbar, .float, .controls, #info) :where(button, select, summary):focus-visible, .canvas:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
   /* 單圖檢視：一次顯示一張圖並撐滿視窗，其餘介面浮在圖上。程式載入 Mermaid 後才加上 .app；列印時改回逐張排列。 */
   @media screen {
@@ -124,9 +129,11 @@
     #actions { right: 12px; }
     #nav .toc-btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
     #nav > div, #actions > div { position: relative; min-width: 0; display: flex; }
-    .pop { position: absolute; top: calc(100% + 8px); z-index: 35; padding: 6px 0; max-height: 70vh; overflow: auto; }
-    #toc-panel { left: -4px; min-width: 240px; max-width: min(360px, calc(100vw - 24px)); }
-    #settings { right: -4px; padding: 10px; }
+    /* 彈出面板用 Popover API（頂層、點外面或 Esc 關閉）；位置由程式依觸發按鈕設定，不支援 Popover API 時同樣適用。 */
+    .pop { position: fixed; inset: auto; margin: 0; top: var(--pop-top, 56px); left: var(--pop-left, auto); right: var(--pop-right, auto);
+           z-index: 35; padding: 6px 0; max-height: 70vh; overflow: auto; color: var(--text); }
+    #toc-panel { min-width: 240px; max-width: min(360px, calc(100vw - 24px)); }
+    #settings { padding: 10px; }
     .toc ol { list-style: none; margin: 0; padding: 0; }
     .toc a { display: block; padding: 4px 12px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; font-size: 14px; }
     .toc a:hover { color: var(--text); background: var(--control); }
@@ -136,6 +143,9 @@
             background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
     #info header h1 { font-size: 16px; margin: 0 28px 2px 0; line-height: 1.4; }
     #info header .summary { font-size: 14px; }
+    @media (min-width: 900px) {
+      html.app.info-open .canvas { padding-left: calc(min(380px, 100vw - 24px) + 28px); }
+    }
     #info .notes { border-top: 1px solid var(--border); margin: 10px 0 0; padding: 10px 0 0; }
     #info .notes h3 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
     #info .caption { margin: 0; }
@@ -176,7 +186,7 @@ const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.es
 const THEMES = ['redux-color', 'redux-dark-color', 'redux', 'redux-dark', 'default', 'dark', 'neo', 'neo-dark', 'forest', 'neutral'];
 const AUTO_THEME = { light: 'redux-color', dark: 'redux-dark-color' };
 const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction', info: 'diagram-first:info' };
-const ZOOM = { min: 0.25, max: 4, step: 1.25 };
+const ZOOM = { min: 0.25, max: 4, step: 1.25, fitMax: 1.5 };
 
 const I18N = {
   zh: { copy: '複製原始碼', copied: '已複製', svg: '下載 SVG', source: 'Mermaid 原始碼',
@@ -278,7 +288,8 @@ function isDirected(source) {
 
 // 依方向設定 dir（auto／vertical／horizontal）改寫整張圖的方向；只處理有方向設定的圖種，subgraph 等區塊內的 direction 不動。
 function withDirection(source, dir) {
-  if (dir === 'auto' && !landscape.matches) return source;
+  // 「自動」依視窗方向：橫向轉為水平，直向轉為垂直。
+  if (dir === 'auto') dir = landscape.matches ? 'horizontal' : 'vertical';
   const lines = source.split('\n');
   const k = headerIndex(lines);
   if (k < 0) return source;
@@ -302,7 +313,6 @@ function withDirection(source, dir) {
   }
 
   const horizontal = author === 'LR' || author === 'RL';
-  if (dir === 'auto' && horizontal) return source;
   if (dir === 'vertical' && !horizontal) return source;
   if (dir === 'horizontal' && horizontal) return source;
   const target = dir === 'vertical' ? 'TB' : 'LR';
@@ -407,7 +417,7 @@ function fitScreen(d) {
   const w = d.canvas.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 1;
   const h = d.canvas.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 1;
   if (w <= 0 || h <= 0) return;
-  setZoom(d, Math.min(w / vb.width, h / vb.height));
+  setZoom(d, Math.min(w / vb.width, h / vb.height, ZOOM.fitMax));
   d.fit = true;
   d.canvas.classList.remove('zoomed');
 }
@@ -503,6 +513,32 @@ const probe = document.createElement('canvas');
 const FORMATS = [['svg', 'SVG'], ['png', 'PNG'], ['png-transparent', null], ['jpeg', 'JPEG']];
 if (probe.toDataURL('image/webp').startsWith('data:image/webp')) FORMATS.push(['webp', 'WebP']);
 
+// 工具列只佔一個 Tab 停留點，以方向鍵在按鈕間移動；瀏覽器支援 focusgroup 時交給瀏覽器處理。
+function rovingToolbar(bar) {
+  bar.setAttribute('focusgroup', 'toolbar wrap');
+  if ('focusGroup' in HTMLElement.prototype) return () => {};
+  const items = () => [...bar.querySelectorAll('button, select')];
+  const sync = (active) => {
+    const list = items();
+    const keep = list.includes(active) ? active : list.find((b) => b.tabIndex === 0) || list[0];
+    list.forEach((b) => { b.tabIndex = b === keep ? 0 : -1; });
+  };
+  bar.addEventListener('focusin', (e) => sync(e.target));
+  bar.addEventListener('keydown', (e) => {
+    const list = items();
+    const k = list.indexOf(e.target);
+    if (k < 0) return;
+    const rtl = getComputedStyle(bar).direction === 'rtl';
+    const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 }[e.key];
+    const next = step ? list[(k + step + list.length) % list.length]
+      : e.key === 'Home' ? list[0] : e.key === 'End' ? list[list.length - 1] : null;
+    if (!next) return;
+    e.preventDefault();
+    next.focus();
+  });
+  return () => sync(null);
+}
+
 const diagrams = [];
 let badCount = 0;
 const sections = [...document.querySelectorAll('section.diagram')];
@@ -533,10 +569,12 @@ for (const [i, section] of sections.entries()) {
   if (!srcNode) continue;
   const source = dedent(srcNode.textContent);
 
-  const toolbar = el('div', { class: 'toolbar' });
-  const canvas = el('div', { class: 'canvas' });
+  const toolbar = el('div', { class: 'toolbar', role: 'toolbar', 'aria-label': title });
+  const canvas = el('div', { class: 'canvas', role: 'region', 'aria-label': title, tabindex: '0' });
   const details = el('details');
-  details.append(el('summary', {}, T.source), el('pre', {}, source));
+  const pre = el('pre', { tabindex: '0' });
+  pre.append(el('code', {}, source));
+  details.append(el('summary', {}, T.source), pre);
   srcNode.after(canvas, toolbar);
   const legend = section.querySelector('.legend');
   if (legend) {
@@ -556,6 +594,7 @@ for (const [i, section] of sections.entries()) {
     } catch { details.open = true; showInfo(true); }
   });
   toolbar.append(copyBtn);
+  const syncToolbar = rovingToolbar(toolbar);
 
   try {
     await mermaid.parse(source);
@@ -569,7 +608,7 @@ for (const [i, section] of sections.entries()) {
   }
 
   const d = { i, section, source, canvas, details, toolbar, ok: false, svg: '', scale: null, baseStyle: null,
-              direction: 'page', fit: true };
+              direction: 'page', fit: true, syncToolbar };
   const downloadSelect = el('select', { 'aria-label': T.download });
   downloadSelect.append(el('option', { value: '' }, T.download));
   FORMATS.forEach(([v, label]) => downloadSelect.append(el('option', { value: v }, label || T.transparent)));
@@ -649,7 +688,7 @@ async function renderOne(d) {
     d.svg = svg;
     d.canvas.innerHTML = svg;
     d.baseStyle = d.canvas.querySelector('svg')?.getAttribute('style') ?? null;
-    if (!d.ok) d.toolbar.prepend(...d.buttons);
+    if (!d.ok) { d.toolbar.prepend(...d.buttons); d.syncToolbar(); }
     d.ok = true;
     if (d.fit) fitScreen(d);
     else setZoom(d, d.scale);
@@ -658,6 +697,7 @@ async function renderOne(d) {
     box.append(el('pre', {}, String(e.message || e)));
     d.canvas.replaceChildren(box);
     d.buttons.forEach((b) => b.remove());
+    d.syncToolbar();
     d.ok = false;
     d.details.open = true;
   }
@@ -671,45 +711,73 @@ async function renderAll(filter = null) {
 }
 const followsPage = (d) => d.direction === 'page';
 
-// 彈出面板：點按鈕開關，點外面或按 Esc 關閉。
+// 彈出面板：優先用 Popover API（點外面或 Esc 自動關閉）；不支援時以 hidden 切換並自行處理關閉。
+const nativePopover = Object.hasOwn(HTMLElement.prototype, 'popover');
 const popovers = [];
-function popover(btn, panel) {
-  const set = (v) => {
-    panel.hidden = !v;
-    btn.setAttribute('aria-expanded', String(v));
+function popover(btn, panel, align) {
+  btn.setAttribute('aria-expanded', 'false');
+  const place = () => {
+    const r = btn.getBoundingClientRect();
+    panel.style.setProperty('--pop-top', `${Math.round(r.bottom + 8)}px`);
+    if (align === 'right') panel.style.setProperty('--pop-right', `${Math.round(innerWidth - r.right)}px`);
+    else panel.style.setProperty('--pop-left', `${Math.round(r.left)}px`);
   };
-  set(false);
-  btn.addEventListener('click', () => {
-    const v = panel.hidden;
-    popovers.forEach((p) => p.set(false));
-    set(v);
-  });
-  const p = { btn, panel, set };
+  let set;
+  if (nativePopover) {
+    panel.setAttribute('popover', 'auto');
+    btn.setAttribute('popovertarget', panel.id);
+    panel.addEventListener('beforetoggle', (e) => { if (e.newState === 'open') place(); });
+    panel.addEventListener('toggle', (e) => btn.setAttribute('aria-expanded', String(e.newState === 'open')));
+    set = (v) => {
+      const open = panel.matches(':popover-open');
+      if (v && !open) panel.showPopover();
+      if (!v && open) panel.hidePopover();
+    };
+  } else {
+    panel.hidden = true;
+    set = (v) => {
+      if (v) place();
+      panel.hidden = !v;
+      btn.setAttribute('aria-expanded', String(v));
+    };
+    btn.addEventListener('click', () => {
+      const v = panel.hidden;
+      popovers.forEach((p) => p.set(false));
+      set(v);
+    });
+  }
+  const p = { btn, panel, set, isOpen: () => (nativePopover ? panel.matches(':popover-open') : !panel.hidden) };
   popovers.push(p);
   return p;
 }
-document.addEventListener('click', (e) => {
-  popovers.forEach((p) => { if (!p.panel.hidden && !p.btn.parentElement.contains(e.target)) p.set(false); });
-});
+if (!nativePopover) {
+  document.addEventListener('click', (e) => {
+    popovers.forEach((p) => { if (p.isOpen() && !p.btn.contains(e.target) && !p.panel.contains(e.target)) p.set(false); });
+  });
+}
 
 // 右上角：說明、設定、全螢幕。
 const actions = el('div', { id: 'actions', class: 'float' });
 const infoBtn = el('button', { type: 'button', 'aria-label': T.info, title: T.info, 'aria-controls': 'info' }, `ⓘ ${T.info}`);
-function showInfo(v) {
+function showInfo(v, remember = true) {
   info.hidden = !v;
   infoBtn.setAttribute('aria-pressed', String(v));
-  save(STORE.info, v ? 'open' : 'closed');
+  document.documentElement.classList.toggle('info-open', v);
+  if (remember) save(STORE.info, v ? 'open' : 'closed');
+  // 寬螢幕時說明視窗會讓出畫布左側，圖要重新符合大小。
+  diagrams.forEach((d) => { if (d.ok && d.fit) requestAnimationFrame(() => fitScreen(d)); });
 }
 infoBtn.addEventListener('click', () => showInfo(info.hidden));
 closeInfo.addEventListener('click', () => showInfo(false));
-showInfo(load(STORE.info, ['open', 'closed'], 'open') === 'open');
+// 預設：寬螢幕打開，窄螢幕收合，避免遮住圖。
+showInfo(load(STORE.info, ['open', 'closed'], matchMedia('(min-width: 600px)').matches ? 'open' : 'closed') === 'open', false);
 const settingsWrap = el('div');
 const settingsBtn = el('button', { type: 'button', 'aria-label': T.settings, title: T.settings, 'aria-controls': 'settings' }, '⚙');
 const settings = el('div', { class: 'pop', id: 'settings', role: 'group', 'aria-label': T.settings });
 const controls = document.getElementById('controls') || el('div', { class: 'controls' });
 settings.append(controls);
 settingsWrap.append(settingsBtn, settings);
-popover(settingsBtn, settings);
+popover(settingsBtn, settings, 'right');
 actions.append(infoBtn, settingsWrap);
 if (fsEnabled) {
   const fsBtn = el('button', { type: 'button', 'aria-pressed': 'false' }, T.fullscreen);
@@ -811,11 +879,11 @@ function show(k, updateHash = true) {
 const fromHash = () => Math.max(0, sections.findIndex((x) => `#${x.id}` === decodeURIComponent(location.hash)));
 addEventListener('hashchange', () => show(fromHash(), false));
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    popovers.forEach((p) => { if (!p.panel.hidden) { p.set(false); p.btn.focus(); } });
+  if (e.key === 'Escape' && !nativePopover) {
+    popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
     return;
   }
-  if (!multi || e.altKey || e.ctrlKey || e.metaKey || e.target.closest('input, select, textarea, [contenteditable]')) return;
+  if (!multi || e.altKey || e.ctrlKey || e.metaKey || e.target.closest('input, select, textarea, [contenteditable], [role="toolbar"]')) return;
   if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(current - 1); }
   if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(current + 1); }
 });

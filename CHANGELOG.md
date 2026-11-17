@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 - Change the HTML page to a single-diagram view: one diagram fills the window and fits automatically; switch with the contents menu, ‹ ›, or ←/→, synced to #diagram-N
 - Change the controls to float: contents at top left, notes / settings / fullscreen at top right, toolbar at the bottom
+- Change the "Auto" direction to follow the window: horizontal in landscape, vertical in portrait
+- Cap auto-fit at 150%, keep diagrams clear of the notes window on wide screens, and collapse the notes window by default on narrow screens
+- Use the Popover API for the contents and settings panels, and make each toolbar a single Tab stop navigated with arrow keys
 ### Removed
 - Remove the width switch (Wide / Standard)
 
