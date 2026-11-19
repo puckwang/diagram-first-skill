@@ -42,7 +42,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xiJR7Dl81W51NLOLEf+eKmwlp7aCx4vLM2BGO0Wsg4w=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-2SU0VtitZnqtjBrff2HHfGjrKWGmawUm4C6gFVbOy3c=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -100,6 +100,7 @@
   .legend { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
   .legend ul { margin: 0; padding-left: 20px; }
   details.legend-box .legend { margin: 8px 0 0; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .err { background: var(--danger-bg); color: var(--danger); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
   .err pre, details pre { font: 13px/1.5 var(--mono); white-space: pre-wrap; margin: 8px 0 0; }
   details { margin: 12px 0 0; font-size: 14px; }
@@ -123,14 +124,15 @@
     /* 標題只在視覺上隱藏（目錄按鈕已顯示），螢幕閱讀器仍可讀到。 */
     html.app section.diagram > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     /* 無限畫布：整個視窗都可拖曳平移，圖以 translate 定位；縮放改 SVG 的寬高，文字維持向量清晰。 */
-    html.app .canvas { position: absolute; inset: 0; border-radius: 0; padding: 0; overflow: hidden; touch-action: none; cursor: grab;
+    html.app .canvas { position: absolute; inset: 0; border-radius: 0; padding: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
                        --dot: rgba(0, 0, 0, .13);
                        background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.25px);
                        background-size: var(--grid, 24px) var(--grid, 24px); background-position: var(--gx, 0) var(--gy, 0); }
     html.app .canvas.dark { --dot: rgba(255, 255, 255, .11); }
+    html.app .canvas.ready { cursor: grab; }
     html.app .canvas.dragging { cursor: grabbing; }
     html.app .canvas svg { position: absolute; left: 0; top: 0; margin: 0; max-width: none; transform-origin: 0 0; will-change: transform; }
-    html.app .canvas > .err { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); cursor: auto; touch-action: auto;
+    html.app .canvas > .err { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); cursor: auto; touch-action: auto; user-select: text; -webkit-user-select: text;
                               width: max-content; max-width: min(720px, calc(100% - 32px)); max-height: 60vh; overflow: auto; }
     @media (prefers-contrast: more) { html.app .canvas { background-image: none; } }
     html.app .toolbar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
@@ -166,7 +168,6 @@
             max-height: calc(100dvh - var(--top-h, 48px) - var(--bottom-h, 52px) - 36px); overflow: auto; padding: 12px 16px;
             background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
     #info header h1 { font-size: 16px; margin: 0 28px 2px 0; line-height: 1.4; }
-    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     #info header .summary { font-size: 14px; }
     /* 小卡：預設只顯示目前這張圖的標題與一句話結論，點「展開說明」才顯示完整內容；小卡以外的區域都交給畫布。 */
     #info.card { width: auto; max-width: min(320px, calc(100vw - 24px)); padding: 8px 12px; }
@@ -436,9 +437,10 @@ function clampPan(d, w, h) {
 }
 
 // 依 d.scale、d.tx、d.ty 擺放 SVG：寬高決定縮放（向量重繪、不模糊），translate 決定位置。
+// 畫布不可見（未切換到的圖）時不動作，避免以 0 寬度夾住位置；切換到這張圖時再套用。
 function applyView(d) {
   const v = viewBox(d);
-  if (!v) return;
+  if (!v || !d.canvas.clientWidth) return;
   clampPan(d, v.w, v.h);
   v.svg.style.maxWidth = 'none';
   v.svg.style.width = `${v.w * d.scale}px`;
@@ -596,11 +598,16 @@ function bindGestures(d) {
       drag = null;
     }
   };
-  c.addEventListener('pointerup', end);
-  c.addEventListener('pointercancel', end);
-  // 拖曳結束時不要觸發圖內連結的點擊。
+  // 拖曳結束時不要觸發圖內連結的點擊：click 在 pointerup 之後同步觸發，所以下一個 frame 才移除 .dragging。
+  const release = (e) => {
+    end(e);
+    requestAnimationFrame(() => { if (!pointers.size) c.classList.remove('dragging'); });
+  };
+  c.addEventListener('pointerup', release);
+  c.addEventListener('pointercancel', release);
   c.addEventListener('click', (e) => { if (c.classList.contains('dragging')) e.preventDefault(); }, true);
-  c.addEventListener('pointerup', () => requestAnimationFrame(() => { if (!pointers.size) c.classList.remove('dragging'); }));
+  // 圖內連結與文字的原生拖放會觸發 pointercancel 中斷平移。
+  c.addEventListener('dragstart', (e) => e.preventDefault());
 
   // macOS Safari 的觸控板捏合只送 gesture 事件；觸控螢幕已由 pointer events 處理，避免重複縮放。
   let gestureBase = 1;
@@ -961,6 +968,7 @@ async function renderOne(d) {
     if (!d.ok) { d.toolbar.prepend(...d.buttons); d.syncToolbar(); }
     d.imageItems.forEach((b) => { b.hidden = false; });
     d.ok = true;
+    d.canvas.classList.add('ready');
     if (d.fit) fitScreen(d);
     else applyView(d);
   } catch (e) {
@@ -971,6 +979,7 @@ async function renderOne(d) {
     d.imageItems.forEach((b) => { b.hidden = true; });
     d.syncToolbar();
     d.ok = false;
+    d.canvas.classList.remove('ready', 'dragging');
     d.details.open = true;
   }
 }
