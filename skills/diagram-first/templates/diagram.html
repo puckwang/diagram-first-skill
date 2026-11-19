@@ -42,7 +42,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-2SU0VtitZnqtjBrff2HHfGjrKWGmawUm4C6gFVbOy3c=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5J3+Htm7XrrjSa9jlERGqWRdzENQKFyFQ4a4vHGO99U=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -100,7 +100,6 @@
   .legend { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
   .legend ul { margin: 0; padding-left: 20px; }
   details.legend-box .legend { margin: 8px 0 0; }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .err { background: var(--danger-bg); color: var(--danger); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
   .err pre, details pre { font: 13px/1.5 var(--mono); white-space: pre-wrap; margin: 8px 0 0; }
   details { margin: 12px 0 0; font-size: 14px; }
@@ -108,8 +107,12 @@
   details pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text); max-height: 40vh; overflow: auto; }
   .float, .pop { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
   .pop[hidden] { display: none; }
-  :where(.toolbar, .float, .controls, .menu) :where(button, select) { min-block-size: 24px; min-inline-size: 24px; }
-  @media (pointer: coarse) { :where(.toolbar, .float, .controls, .menu) :where(button, select) { min-block-size: 44px; min-inline-size: 44px; } }
+  :where(.toolbar, .float, .controls, .menu, #info) :where(button, select) { min-block-size: 24px; min-inline-size: 24px; }
+  @media (pointer: coarse) {
+    :where(.toolbar, .float, .controls, .menu, #info) :where(button, select) { min-block-size: 44px; min-inline-size: 44px; }
+    #info header h1 { margin-right: 72px !important; }
+  }
+  .float button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--border); }
   :where(.toolbar, .float, .controls, #info) :where(button, select, summary):focus-visible, .canvas:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
   /* 單圖檢視：一次顯示一張圖並撐滿視窗，其餘介面浮在圖上。程式載入 Mermaid 後才加上 .app；列印時改回逐張排列。 */
@@ -129,6 +132,8 @@
                        background-size: var(--grid, 24px) var(--grid, 24px); background-position: var(--gx, 0) var(--gy, 0); }
     html.app .canvas.dark { --dot: rgba(255, 255, 255, .11); }
     html.app .canvas.ready { cursor: grab; }
+    /* 畫布撐滿視窗，焦點框畫在內側才看得到。 */
+    html.app .canvas:focus-visible { outline-offset: -4px; }
     html.app .canvas.dragging { cursor: grabbing; }
     html.app .canvas svg { position: absolute; left: 0; top: 0; margin: 0; max-width: none; transform-origin: 0 0; will-change: transform; }
     html.app .canvas > .err { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); cursor: auto; touch-action: auto; user-select: text; -webkit-user-select: text;
@@ -137,11 +142,12 @@
     html.app .toolbar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
                         margin: 0; padding: 6px; width: max-content; max-width: calc(100vw - 24px); justify-content: center;
                         background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
-    html.app #status { position: fixed; top: calc(var(--top-h, 48px) + 12px); left: 50%; transform: translateX(-50%); z-index: 40; margin: 0; width: max-content; max-width: calc(100vw - 24px); }
+    html.app #status { position: fixed; top: calc(var(--top-h, 48px) + 20px); left: 50%; transform: translateX(-50%); z-index: 40; margin: 0; width: max-content; max-width: calc(100vw - 24px); }
     #nav, #actions { position: fixed; top: max(12px, env(safe-area-inset-top)); z-index: 30; display: flex; gap: 4px; align-items: center; padding: 4px; }
     #nav { left: max(12px, env(safe-area-inset-left)); max-width: calc(100vw - var(--actions-w, 150px) - 36px); }
     #actions { right: max(12px, env(safe-area-inset-right)); }
-    #nav .toc-btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #nav .toc-btn { display: flex; gap: 6px; min-width: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #nav .toc-btn .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     #nav > div, #actions > div { position: relative; min-width: 0; display: flex; }
     /* 彈出面板用 Popover API（頂層、點外面或 Esc 關閉）；位置由程式依觸發按鈕設定，不支援 Popover API 時同樣適用。 */
     .pop { position: fixed; inset: auto; margin: 0; top: var(--pop-top, 56px); left: var(--pop-left, auto); right: var(--pop-right, auto); bottom: var(--pop-bottom, auto);
@@ -162,18 +168,29 @@
     .toc a:hover { color: var(--text); background: var(--control); }
     .toc a[aria-current="true"] { color: var(--text); border-left-color: var(--text); font-weight: 600; }
     .controls { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-    #info { position: fixed; top: calc(var(--top-h, 48px) + 12px); left: max(12px, env(safe-area-inset-left)); z-index: 25; width: min(380px, calc(100vw - 24px));
+    #info { position: fixed; top: calc(var(--top-h, 48px) + 20px); left: max(12px, env(safe-area-inset-left)); z-index: 25; width: min(380px, calc(100vw - 24px));
             cursor: auto;
-            max-height: calc(100dvh - var(--top-h, 48px) - var(--bottom-h, 52px) - 36px); overflow: auto; padding: 12px 16px;
+            max-height: calc(100dvh - var(--top-h, 48px) - var(--bottom-h, 52px) - 52px); overflow: auto; padding: 12px 16px;
             background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
     #info header h1 { font-size: 16px; margin: 0 28px 2px 0; line-height: 1.4; }
     #info header .summary { font-size: 14px; }
     /* 小卡：預設只顯示目前這張圖的標題與一句話結論，點「展開說明」才顯示完整內容；小卡以外的區域都交給畫布。 */
-    #info.card { width: auto; max-width: min(320px, calc(100vw - 24px)); padding: 8px 12px; }
-    #info.card > header, #info.card .notes details, #info.card .close { display: none; }
+    /* 小卡不攔截拖曳與滾輪（只有「展開說明」可點），畫布在它底下照樣能拖。 */
+    #info.card { width: auto; max-width: min(320px, calc(100vw - 24px)); padding: 8px 12px; pointer-events: none; }
+    #info.card .expand { pointer-events: auto; }
+    #info.card > header, #info.card .notes details, #info.card .close, #info.card .hint { display: none; }
     #info.card .notes { border-top: 0; margin: 0; padding: 0; }
+    /* 寬螢幕有一句話結論時，標題已在左上目錄，小卡只顯示結論；窄螢幕目錄標題會被截斷，兩者都留。 */
+    @media (min-width: 600px) { #info.card .notes:has(.caption) > h3 { display: none; } }
+    @media (max-width: 599px) {
+      #info.card { display: flex; align-items: center; gap: 10px; }
+      #info.card .notes { min-width: 0; }
+      #info.card .notes > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; }
+      #info.card .expand { margin: 0; flex: none; }
+    }
+    #info .hint { margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
     #info:not(.card) .expand { display: none; }
-    #info .expand { margin: 6px 0 0; font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+    #info .expand { margin: 6px 0 0; min-block-size: 28px; font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
     #info .notes { border-top: 1px solid var(--border); margin: 10px 0 0; padding: 10px 0 0; }
     #info .notes h3 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
     #info .caption { margin: 0; }
@@ -184,7 +201,7 @@
     .toolbar, .float, .pop, .close { display: none !important; }
     .canvas { background-image: none !important; }
     .canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }
-    #info .expand { display: none; }
+    #info .expand, #info .hint { display: none; }
     section.diagram { break-inside: avoid; }
   }
 </style>
@@ -224,10 +241,10 @@ const I18N = {
   zh: { copy: '複製原始碼', copied: '已複製', source: 'Mermaid 原始碼',
         mode: '模式', theme: 'Theme', auto: '自動', light: '淺色', dark: '深色',
         direction: '方向', vertical: '垂直', horizontal: '水平',
-        zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '重設',
+        zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '全圖', fitTitle: '符合視窗',
         followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
-        info: '說明', close: '關閉', expand: '展開說明',
-        hint: '拖曳或方向鍵平移；Ctrl／⌘＋滾輪、捏合或 +／− 縮放；0 符合視窗，1 原始大小。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
+        info: '說明', close: '收合', expand: '展開說明',
+        hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
         transparent: 'PNG（透明背景）', copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
         renderFail: 'Render 失敗：', some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。請把錯誤訊息回報給 Agent。`,
@@ -235,10 +252,10 @@ const I18N = {
   en: { copy: 'Copy source', copied: 'Copied', source: 'Mermaid source',
         mode: 'Mode', theme: 'Theme', auto: 'Auto', light: 'Light', dark: 'Dark',
         direction: 'Direction', vertical: 'Vertical', horizontal: 'Horizontal',
-        zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Reset',
+        zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Fit', fitTitle: 'Fit to window',
         followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
-        info: 'Notes', close: 'Close', expand: 'Show notes',
-        hint: 'Drag or use arrow keys to pan; Ctrl/⌘ + wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
+        info: 'Notes', close: 'Collapse', expand: 'Show notes',
+        hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
         transparent: 'PNG (transparent)', copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
         renderFail: 'Render failed:', some: (ok, bad) => `${ok} succeeded, ${bad} failed. Please report the error to the agent.`,
@@ -246,10 +263,10 @@ const I18N = {
   ja: { copy: 'ソースをコピー', copied: 'コピーしました', source: 'Mermaid ソース',
         mode: 'モード', theme: 'テーマ', auto: '自動', light: 'ライト', dark: 'ダーク',
         direction: '方向', vertical: '縦', horizontal: '横',
-        zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: 'リセット',
+        zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: '全体', fitTitle: '画面に合わせる',
         followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
-        info: '説明', close: '閉じる', expand: '説明を開く',
-        hint: 'ドラッグまたは矢印キーで移動、Ctrl／⌘＋ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
+        info: '説明', close: '折りたたむ', expand: '説明を開く',
+        hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
         transparent: 'PNG（透過）', copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
         renderFail: '描画に失敗しました：', some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。エラーをエージェントに報告してください。`,
@@ -410,7 +427,10 @@ function currentScale(d) {
   return d.scale || 1;
 }
 function showLevel(d) {
-  if (d.ok) d.level.textContent = `${Math.round(currentScale(d) * 100)}%`;
+  if (!d.ok) return;
+  const pct = `${Math.round(currentScale(d) * 100)}%`;
+  d.level.textContent = pct;
+  d.level.setAttribute('aria-label', `${pct}, ${T.zoomActual}`);
 }
 
 // 點陣格線跟著平移與縮放移動；螢幕上的點距超出 12–48px 時以 ×2／÷2 換級，避免太密或太疏。
@@ -424,14 +444,22 @@ function syncGrid(d) {
   c.setProperty('--gy', `${d.ty % g}px`);
 }
 
-// 讓圖至少保留 PAN.keep 像素在畫布內，避免拖到看不見。
+// 上方浮動列以下、下方工具列以上的範圍（畫布座標）。
+function barLimits(d) {
+  const ch = d.canvas.clientHeight;
+  const top = (parseFloat(root.style.getPropertyValue('--top-h')) || 48) + 20;
+  const bottom = ch - (parseFloat(root.style.getPropertyValue('--bottom-h')) || 52) - 20;
+  return { top, bottom: Math.max(top + 1, bottom) };
+}
+
+// 讓圖至少保留 PAN.keep 像素在上下浮動列之間，避免拖到看不見或整個藏在工具列後面。
 function clampPan(d, w, h) {
   const cw = d.canvas.clientWidth;
-  const ch = d.canvas.clientHeight;
+  const { top, bottom } = barLimits(d);
   const keepX = Math.min(PAN.keep, w * d.scale);
   const keepY = Math.min(PAN.keep, h * d.scale);
   d.tx = Math.min(cw - keepX, Math.max(keepX - w * d.scale, d.tx));
-  d.ty = Math.min(ch - keepY, Math.max(keepY - h * d.scale, d.ty));
+  d.ty = Math.min(bottom - keepY, Math.max(top + keepY - h * d.scale, d.ty));
 }
 
 // 依 d.scale、d.tx、d.ty 擺放 SVG：寬高決定縮放（向量重繪、不模糊），translate 決定位置。
@@ -468,41 +496,48 @@ function panBy(d, dx, dy) {
   applyView(d);
 }
 
-// 可放圖的區域：扣掉上下浮動列；說明視窗或小卡擋到時，取它右側或下方較大的一塊。
+// 窄螢幕展開的說明視窗視為暫時閱讀用，蓋在圖上、圖不讓位也不重新符合大小。
+const overlayOpen = () => !info.classList.contains('card') && innerWidth < 900;
+
+// 可放圖的區域：扣掉上下浮動列；小卡或說明視窗擋到時，另外提供它右側與下方兩塊，由 fitScreen 擇優。
 function fitArea(d) {
   const r = d.canvas.getBoundingClientRect();
-  const top = (parseFloat(root.style.getPropertyValue('--top-h')) || 48) + 12;
-  const bottom = r.height - (parseFloat(root.style.getPropertyValue('--bottom-h')) || 52) - 12;
-  const full = { left: 16, top, right: r.width - 16, bottom };
-  const areas = [full];
-  const box = info.getBoundingClientRect();
-  // 窄螢幕展開的說明視窗視為暫時閱讀用，圖不讓位。
-  const overlay = !info.classList.contains('card') && innerWidth < 900;
-  if (box.width && !overlay) {
-    areas[0] = { ...full, left: Math.max(full.left, box.right - r.left + 16) };
-    areas.push({ ...full, top: Math.max(full.top, box.bottom - r.top + 12) });
-  }
-  return areas;
+  const full = { left: 16, ...barLimits(d), right: r.width - 16 };
+  const b = info.getBoundingClientRect();
+  if (!b.width) return { full, around: [] };
+  const box = { left: b.left - r.left, top: b.top - r.top, right: b.right - r.left, bottom: b.bottom - r.top };
+  return { full, box, around: [{ ...full, left: Math.max(full.left, box.right + 16) }, { ...full, top: Math.max(full.top, box.bottom + 12) }] };
 }
 
 // 讓整張圖符合可見區並置中；畫布不可見時不動作，等切換到這張圖時再計算。
-function fitScreen(d) {
+// user 為 true 表示使用者按了「全圖」或 0；否則是自動重新符合（窄螢幕展開說明時跳過，避免圖跳動）。
+// 先用整塊區域，置中後不碰到小卡或說明視窗就採用；碰到時改用它右側或下方較大的一塊。
+function fitScreen(d, user = false) {
   const v = viewBox(d);
   if (!v || !d.canvas.clientWidth) return;
-  let best = null;
-  for (const a of fitArea(d)) {
+  if (!user && overlayOpen() && d.placed) { applyView(d); return; }
+  const place = (a) => {
     const w = a.right - a.left;
     const h = a.bottom - a.top;
-    if (w <= 0 || h <= 0) continue;
+    if (w <= 0 || h <= 0) return null;
     const s = Math.min(w / v.w, h / v.h, ZOOM.fitMax);
-    if (!best || s > best.s) best = { s, a, w, h };
+    const x = a.left + (w - v.w * s) / 2;
+    const y = a.top + (h - v.h * s) / 2;
+    return { s, x, y, right: x + v.w * s, bottom: y + v.h * s };
+  };
+  const { full, box, around } = fitArea(d);
+  let best = place(full);
+  const hits = (p) => box && !overlayOpen() && p.x < box.right && p.right > box.left && p.y < box.bottom && p.bottom > box.top;
+  if (best && hits(best)) {
+    best = around.map(place).filter(Boolean).reduce((m, p) => (!m || p.s > m.s ? p : m), null);
   }
   if (!best) return;
   d.scale = best.s;
-  d.tx = best.a.left + (best.w - v.w * best.s) / 2;
-  d.ty = best.a.top + (best.h - v.h * best.s) / 2;
+  d.tx = best.x;
+  d.ty = best.y;
   applyView(d);
   d.fit = true;
+  d.placed = true;
 }
 
 // 全螢幕：整頁進入 Fullscreen API，隱藏瀏覽器介面；不支援的環境（例如 iPhone Safari）不顯示按鈕。
@@ -516,25 +551,38 @@ async function toggleFullscreen() {
   } catch {}
 }
 
+// 判斷 wheel 來自觸控板還是滑鼠滾輪：滑鼠以行／頁為單位，或每格是 120 的整數倍（wheelDelta）、或 delta 為 ≥50 的整數。
+// 同一串連續事件（間隔 < 150ms）沿用第一個事件的判斷，觸控板快速滑動或慣性階段不會中途變成縮放。
+let wheelKind = null;
+let wheelAt = 0;
+function wheelSource(e) {
+  // 有水平分量（以像素為單位）幾乎一定是觸控板，直接改判。
+  if (e.deltaMode === 0 && e.deltaX !== 0) wheelKind = null;
+  else if (wheelKind && e.timeStamp - wheelAt < 150) { wheelAt = e.timeStamp; return wheelKind; }
+  const notch = e.deltaX === 0 && ((e.wheelDeltaY && e.wheelDeltaY % 120 === 0) || (Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50));
+  wheelKind = e.deltaMode !== 0 || notch ? 'mouse' : 'trackpad';
+  wheelAt = e.timeStamp;
+  return wheelKind;
+}
+// 觸控板雙指 = 平移、捏合（帶 ctrlKey）= 縮放；滑鼠滾輪 = 縮放、Shift＋滾輪 = 水平平移。縮放倍率與 delta 成比例，誤判時也不會暴衝。
+function wheelZoomOrPan(d, e) {
+  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? d.canvas.clientHeight : 1;
+  const dx = e.deltaX * unit;
+  const dy = e.deltaY * unit;
+  const at = { x: e.clientX, y: e.clientY };
+  const kind = wheelSource(e);
+  if (e.ctrlKey || e.metaKey) setZoom(d, currentScale(d) * Math.exp(-dy * (kind === 'trackpad' ? 0.01 : 0.0025)), at);
+  else if (e.shiftKey) panBy(d, -(dx || dy), 0);
+  else if (kind === 'trackpad') panBy(d, -dx, -dy);
+  else setZoom(d, currentScale(d) * Math.exp(-dy * 0.0025), at);
+}
+
 function bindGestures(d) {
   const c = d.canvas;
   c.addEventListener('wheel', (e) => {
     if (!d.ok) return;
     e.preventDefault();
-    // 觸控板送出小幅、連續的 delta（捏合時帶 ctrlKey）；滑鼠滾輪每格的 delta 較大或以行為單位。
-    const trackpad = e.deltaMode === 0 && (e.deltaX !== 0 || Math.abs(e.deltaY) < 50);
-    const at = { x: e.clientX, y: e.clientY };
-    if (e.ctrlKey || e.metaKey) {
-      const factor = trackpad ? Math.exp(-e.deltaY * 0.01) : e.deltaY < 0 ? ZOOM.step : 1 / ZOOM.step;
-      setZoom(d, currentScale(d) * factor, at);
-    } else if (trackpad || e.shiftKey) {
-      // 觸控板雙指 = 平移；滑鼠 Shift＋滾輪 = 水平平移。
-      const line = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? c.clientHeight : 1;
-      if (e.shiftKey && !e.deltaX) panBy(d, -e.deltaY * line, 0);
-      else panBy(d, -e.deltaX * line, -e.deltaY * line);
-    } else {
-      setZoom(d, currentScale(d) * (e.deltaY < 0 ? ZOOM.step : 1 / ZOOM.step), at);
-    }
+    wheelZoomOrPan(d, e);
   }, { passive: false });
 
   // 任何縮放狀態都可用滑鼠、觸控筆或手指拖曳；兩指捏合以兩指中點為中心縮放並跟著移動。
@@ -546,8 +594,17 @@ function bindGestures(d) {
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, dist: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
   };
   const startDrag = (e) => { drag = { id: e.pointerId, x: e.clientX, y: e.clientY, tx: d.tx, ty: d.ty, moved: false }; };
+  // 按下後才在 window 監聽移動與放開：指標在超過拖曳門檻前滑到浮動列上，拖曳也不會中斷。
+  // 不在按下時 capture，圖內連結的 click 才能正常觸發。
+  const listen = (on) => {
+    const f = on ? addEventListener : removeEventListener;
+    f('pointermove', move);
+    f('pointerup', release);
+    f('pointercancel', release);
+  };
   c.addEventListener('pointerdown', (e) => {
     if (!d.ok || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('.err')) return;
+    if (!pointers.size) listen(true);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) startDrag(e);
     else if (pointers.size === 2) {
@@ -558,7 +615,7 @@ function bindGestures(d) {
       [...pointers.keys()].forEach((id) => { try { c.setPointerCapture(id); } catch {} });
     }
   });
-  c.addEventListener('pointermove', (e) => {
+  function move(e) {
     if (!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pinch && pointers.size >= 2) {
@@ -584,7 +641,7 @@ function bindGestures(d) {
     d.ty = drag.ty + dy;
     d.fit = false;
     applyView(d);
-  });
+  }
   const end = (e) => {
     if (!pointers.delete(e.pointerId)) return;
     if (pointers.size < 2) pinch = null;
@@ -594,15 +651,22 @@ function bindGestures(d) {
       drag = { id, x: p.x, y: p.y, tx: d.tx, ty: d.ty, moved: true };
     } else if (!pointers.size) {
       drag = null;
+      listen(false);
     }
   };
   // 拖曳結束時不要觸發圖內連結的點擊：click 在 pointerup 之後同步觸發，所以下一個 frame 才移除 .dragging。
-  const release = (e) => {
+  function release(e) {
     end(e);
     requestAnimationFrame(() => { if (!pointers.size) c.classList.remove('dragging'); });
-  };
-  c.addEventListener('pointerup', release);
-  c.addEventListener('pointercancel', release);
+  }
+  // 視窗失焦時（例如在拖曳中切換 App）清掉殘留的指標，避免之後被誤判成捏合。
+  addEventListener('blur', () => {
+    if (!pointers.size) return;
+    pointers.clear();
+    drag = pinch = null;
+    listen(false);
+    c.classList.remove('dragging');
+  });
   c.addEventListener('click', (e) => { if (c.classList.contains('dragging')) e.preventDefault(); }, true);
   // 圖內連結與文字的原生拖放會觸發 pointercancel 中斷平移。
   c.addEventListener('dragstart', (e) => e.preventDefault());
@@ -624,7 +688,7 @@ function bindGestures(d) {
     if (move) panBy(d, ...move);
     else if (e.key === '+' || e.key === '=') setZoom(d, currentScale(d) * ZOOM.step);
     else if (e.key === '-' || e.key === '_') setZoom(d, currentScale(d) / ZOOM.step);
-    else if (e.key === '0') fitScreen(d);
+    else if (e.key === '0') fitScreen(d, true);
     else if (e.key === '1') setZoom(d, 1);
     else return;
     e.preventDefault();
@@ -809,7 +873,7 @@ const info = el('aside', { id: 'info', 'aria-label': T.info });
 const closeInfo = el('button', { type: 'button', class: 'close', 'aria-label': T.close, title: T.close }, '×');
 const expandInfo = el('button', { type: 'button', class: 'expand', 'aria-expanded': 'false', 'aria-controls': 'info' }, T.expand);
 info.append(closeInfo);
-document.body.append(el('p', { id: 'canvas-hint', class: 'sr-only' }, T.hint));
+const hint = el('p', { id: 'canvas-hint', class: 'hint' }, T.hint);
 const headerEl = document.querySelector('header');
 if (headerEl) info.append(headerEl);
 page.prepend(info);
@@ -919,11 +983,11 @@ for (const [i, section] of sections.entries()) {
   const outBtn = el('button', { type: 'button', 'aria-label': T.zoomOut, title: T.zoomOut }, '−');
   d.level = el('button', { type: 'button', class: 'level', title: T.zoomActual }, '');
   const inBtn = el('button', { type: 'button', 'aria-label': T.zoomIn, title: T.zoomIn }, '+');
-  const resetBtn = el('button', { type: 'button' }, T.reset);
+  const resetBtn = el('button', { type: 'button', title: `${T.fitTitle} (0)` }, T.reset);
   outBtn.addEventListener('click', () => setZoom(d, currentScale(d) / ZOOM.step));
   inBtn.addEventListener('click', () => setZoom(d, currentScale(d) * ZOOM.step));
   d.level.addEventListener('click', () => setZoom(d, 1));
-  resetBtn.addEventListener('click', () => fitScreen(d));
+  resetBtn.addEventListener('click', () => fitScreen(d, true));
   zoom.append(outBtn, d.level, inBtn);
   d.buttons = [zoom, resetBtn];
   if (isDirected(source)) {
@@ -1114,8 +1178,11 @@ function show(k, updateHash = true) {
   const section = sections[current];
   sections.forEach((x) => x.classList.toggle('active', x === section));
   info.querySelectorAll('.notes').forEach((n) => n.remove());
-  info.append(notes.get(section), expandInfo);
-  tocBtn.textContent = multi ? `☰ ${section.dataset.title}  ${current + 1}/${sections.length} ▾` : section.dataset.title;
+  info.append(notes.get(section), hint, expandInfo);
+  // 標題過長時只截斷標題，張數與 ▾ 保持可見。
+  tocBtn.replaceChildren(el('span', { class: 't' }, section.dataset.title));
+  if (multi) tocBtn.prepend(el('span', { 'aria-hidden': 'true' }, '☰'));
+  if (multi) tocBtn.append(el('span', {}, `${current + 1}/${sections.length} ▾`));
   links.forEach((a, x) => a.setAttribute('aria-current', String(x === section)));
   if (updateHash && location.hash !== `#${section.id}`) history.replaceState(null, '', `#${section.id}`);
   const d = diagrams.find((x) => x.section === section);
@@ -1127,6 +1194,14 @@ const fromHash = () => {
   return Math.max(0, sections.findIndex((x) => `#${x.id}` === hash));
 };
 addEventListener('hashchange', () => show(fromHash(), false));
+// Ctrl／⌘＋滾輪或捏合落在浮動列、小卡上時，縮放目前這張圖，而不是整個頁面。
+document.addEventListener('wheel', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.target.closest?.('.canvas')) return;
+  e.preventDefault();
+  const d = diagrams.find((x) => x.section === sections[current]);
+  if (d && d.ok) wheelZoomOrPan(d, e);
+}, { passive: false });
+document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !nativePopover) {
     popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
