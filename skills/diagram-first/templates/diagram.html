@@ -20,7 +20,7 @@
   以及 jsDelivr 上的 mermaid@12.1.0。
 
   頁面為單圖檢視：一次顯示一張圖並撐滿視窗、自動符合大小，其餘介面都由程式產生並浮在圖上：
-  - 左上：目錄（依各圖 <h2> 產生）。兩張圖以上時可用下拉清單、‹ ›、鍵盤 ←／→（焦點不在畫布時）或 PageUp／PageDown 切換，
+  - 左上：目錄（依各圖 <h2> 產生）。兩張圖以上時可用下拉清單、‹ ›、PageUp／PageDown 或目錄內的 ←／→ 切換，
     網址同步為 #diagram-N。
   - 右上：說明視窗開關、⚙ 設定（模式、方向、Theme，存在 localStorage）、全螢幕（瀏覽器不支援時不顯示）。
   - 說明視窗：預設收合成左上小卡（目前這張圖的標題與一句話結論）；展開後顯示頁面標題、摘要、圖例與原始碼；
@@ -31,7 +31,8 @@
   個別方向選單（跟隨頁面／垂直／水平）只在本次瀏覽有效，不存 localStorage。
   整個視窗是無限畫布（淡點陣背景）：任何縮放狀態都可用滑鼠、觸控筆或手指拖曳平移，圖至少保留 48px 在畫面內。
   觸控板雙指平移、捏合縮放；滑鼠滾輪縮放、Shift＋滾輪水平平移；觸控螢幕兩指捏合縮放。
-  畫布取得焦點時：方向鍵平移、+／− 縮放、0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。列印時改為逐張排列。
+  畫布或頁面取得焦點時：方向鍵平移、+／− 縮放、0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。列印時改為逐張排列。
+  畫布上的文字不可選取（拖曳優先），小卡不攔截滑鼠；需要文字時用「⋯ → 複製原始碼」或展開說明視窗。
   Theme 預設為「自動」：淺色模式用 redux-color，深色模式用 redux-dark-color。
   Mermaid 原始碼的 front matter 不可指定 theme，否則會蓋過使用者的選擇。
 
@@ -42,7 +43,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5J3+Htm7XrrjSa9jlERGqWRdzENQKFyFQ4a4vHGO99U=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-eGhg0/d4E9JQClL3MvNGK2Jkldt9T7MwSSiwB5w9rUY=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -146,7 +147,9 @@
     #nav, #actions { position: fixed; top: max(12px, env(safe-area-inset-top)); z-index: 30; display: flex; gap: 4px; align-items: center; padding: 4px; }
     #nav { left: max(12px, env(safe-area-inset-left)); max-width: calc(100vw - var(--actions-w, 150px) - 36px); }
     #actions { right: max(12px, env(safe-area-inset-right)); }
-    #nav .toc-btn { display: flex; gap: 6px; min-width: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #nav .toc-btn { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    /* 窄螢幕目錄按鈕放不下標題時只留 ☰ 與張數；標題顯示在小卡上。 */
+    @media (max-width: 599px) { #nav .toc-btn:has(> span + .t) .t { display: none; } }
     #nav .toc-btn .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     #nav > div, #actions > div { position: relative; min-width: 0; display: flex; }
     /* 彈出面板用 Popover API（頂層、點外面或 Esc 關閉）；位置由程式依觸發按鈕設定，不支援 Popover API 時同樣適用。 */
@@ -180,8 +183,8 @@
     #info.card .expand { pointer-events: auto; }
     #info.card > header, #info.card .notes details, #info.card .close, #info.card .hint { display: none; }
     #info.card .notes { border-top: 0; margin: 0; padding: 0; }
-    /* 寬螢幕有一句話結論時，標題已在左上目錄，小卡只顯示結論；窄螢幕目錄標題會被截斷，兩者都留。 */
-    @media (min-width: 600px) { #info.card .notes:has(.caption) > h3 { display: none; } }
+    /* 寬螢幕有一句話結論時，標題已在左上目錄，小卡只顯示結論；較窄時目錄標題可能被截斷，兩者都留。 */
+    @media (min-width: 900px) { #info.card .notes:has(.caption) > h3 { display: none; } }
     @media (max-width: 599px) {
       #info.card { display: flex; align-items: center; gap: 10px; }
       #info.card .notes { min-width: 0; }
@@ -244,6 +247,7 @@ const I18N = {
         zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '全圖', fitTitle: '符合視窗',
         followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
         info: '說明', close: '收合', expand: '展開說明',
+        hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原。',
         hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
         transparent: 'PNG（透明背景）', copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
@@ -255,6 +259,7 @@ const I18N = {
         zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Fit', fitTitle: 'Fit to window',
         followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
         info: 'Notes', close: 'Collapse', expand: 'Show notes',
+        hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset.',
         hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
         transparent: 'PNG (transparent)', copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
@@ -266,6 +271,7 @@ const I18N = {
         zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: '全体', fitTitle: '画面に合わせる',
         followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
         info: '説明', close: '折りたたむ', expand: '説明を開く',
+        hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。',
         hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
         transparent: 'PNG（透過）', copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
@@ -510,12 +516,13 @@ function fitArea(d) {
 }
 
 // 讓整張圖符合可見區並置中；畫布不可見時不動作，等切換到這張圖時再計算。
-// user 為 true 表示使用者按了「全圖」或 0；否則是自動重新符合（窄螢幕展開說明時跳過，避免圖跳動）。
+// soft 為 true 表示只因說明視窗展開或浮動列尺寸改變而重新符合；窄螢幕展開說明時跳過，避免圖跳動。
+// 改方向、旋轉、Theme 重繪、視窗縮放與使用者按「全圖」或 0 都會照常重新計算。
 // 先用整塊區域，置中後不碰到小卡或說明視窗就採用；碰到時改用它右側或下方較大的一塊。
-function fitScreen(d, user = false) {
+function fitScreen(d, soft = false) {
   const v = viewBox(d);
   if (!v || !d.canvas.clientWidth) return;
-  if (!user && overlayOpen() && d.placed) { applyView(d); return; }
+  if (soft && overlayOpen() && d.placed) { applyView(d); return; }
   const place = (a) => {
     const w = a.right - a.left;
     const h = a.bottom - a.top;
@@ -559,14 +566,17 @@ function wheelSource(e) {
   // 有水平分量（以像素為單位）幾乎一定是觸控板，直接改判。
   if (e.deltaMode === 0 && e.deltaX !== 0) wheelKind = null;
   else if (wheelKind && e.timeStamp - wheelAt < 150) { wheelAt = e.timeStamp; return wheelKind; }
-  const notch = e.deltaX === 0 && ((e.wheelDeltaY && e.wheelDeltaY % 120 === 0) || (Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50));
+  // Chrome 觸控板的 wheelDeltaY 約為 −3×deltaY，剛好是 120 的倍數時排除。
+  const wheel120 = e.wheelDeltaY && e.wheelDeltaY % 120 === 0 && Math.abs(e.deltaY * 3) !== Math.abs(e.wheelDeltaY);
+  const notch = e.deltaX === 0 && (wheel120 || (Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50));
   wheelKind = e.deltaMode !== 0 || notch ? 'mouse' : 'trackpad';
   wheelAt = e.timeStamp;
   return wheelKind;
 }
 // 觸控板雙指 = 平移、捏合（帶 ctrlKey）= 縮放；滑鼠滾輪 = 縮放、Shift＋滾輪 = 水平平移。縮放倍率與 delta 成比例，誤判時也不會暴衝。
 function wheelZoomOrPan(d, e) {
-  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? d.canvas.clientHeight : 1;
+  // 以行為單位（Firefox 滑鼠每格 3 行）時，每行約 33px，讓每格與 Chrome 的 100px 手感一致。
+  const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? d.canvas.clientHeight : 1;
   const dx = e.deltaX * unit;
   const dy = e.deltaY * unit;
   const at = { x: e.clientX, y: e.clientY };
@@ -574,7 +584,11 @@ function wheelZoomOrPan(d, e) {
   if (e.ctrlKey || e.metaKey) setZoom(d, currentScale(d) * Math.exp(-dy * (kind === 'trackpad' ? 0.01 : 0.0025)), at);
   else if (e.shiftKey) panBy(d, -(dx || dy), 0);
   else if (kind === 'trackpad') panBy(d, -dx, -dy);
-  else setZoom(d, currentScale(d) * Math.exp(-dy * 0.0025), at);
+  else {
+    // 滑鼠每格至少縮放約 10%、最多約 26%：macOS 慢速轉動的小 delta 不會「滾了沒反應」，也不會暴衝。
+    const notch = Math.sign(dy) * Math.min(120, Math.max(40, Math.abs(dy)));
+    setZoom(d, currentScale(d) * Math.exp(-notch * 0.0025), at);
+  }
 }
 
 function bindGestures(d) {
@@ -680,19 +694,21 @@ function bindGestures(d) {
     setZoom(d, gestureBase * e.scale, { x: e.clientX, y: e.clientY });
   });
 
-  // 畫布取得焦點時：方向鍵平移（Shift 加大步距），+／− 縮放，0 符合視窗，1 原始大小。
-  c.addEventListener('keydown', (e) => {
-    if (!d.ok || e.altKey || e.ctrlKey || e.metaKey) return;
-    const step = e.shiftKey ? PAN.key * 5 : PAN.key;
-    const move = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
-    if (move) panBy(d, ...move);
-    else if (e.key === '+' || e.key === '=') setZoom(d, currentScale(d) * ZOOM.step);
-    else if (e.key === '-' || e.key === '_') setZoom(d, currentScale(d) / ZOOM.step);
-    else if (e.key === '0') fitScreen(d, true);
-    else if (e.key === '1') setZoom(d, 1);
-    else return;
-    e.preventDefault();
-  });
+  c.addEventListener('keydown', (e) => viewKey(d, e));
+}
+
+// 畫布或頁面本身取得焦點時：方向鍵平移（Shift 加大步距），+／− 縮放，0 符合視窗，1 原始大小。
+function viewKey(d, e) {
+  if (!d || !d.ok || e.altKey || e.ctrlKey || e.metaKey) return;
+  const step = e.shiftKey ? PAN.key * 5 : PAN.key;
+  const move = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+  if (move) panBy(d, ...move);
+  else if (e.key === '+' || e.key === '=') setZoom(d, currentScale(d) * ZOOM.step);
+  else if (e.key === '-' || e.key === '_') setZoom(d, currentScale(d) / ZOOM.step);
+  else if (e.key === '0') fitScreen(d);
+  else if (e.key === '1') setZoom(d, 1);
+  else return;
+  e.preventDefault();
 }
 
 // 把 SVG 轉成點陣圖。含 foreignObject 的 SVG 在部分瀏覽器會污染 canvas，此時改用純 SVG 文字標籤重新 render。
@@ -873,7 +889,8 @@ const info = el('aside', { id: 'info', 'aria-label': T.info });
 const closeInfo = el('button', { type: 'button', class: 'close', 'aria-label': T.close, title: T.close }, '×');
 const expandInfo = el('button', { type: 'button', class: 'expand', 'aria-expanded': 'false', 'aria-controls': 'info' }, T.expand);
 info.append(closeInfo);
-const hint = el('p', { id: 'canvas-hint', class: 'hint' }, T.hint);
+// 觸控裝置用精簡版提示，不列出滾輪與鍵盤操作。
+const hint = el('p', { id: 'canvas-hint', class: 'hint' }, matchMedia('(pointer: coarse)').matches ? T.hintTouch : T.hint);
 const headerEl = document.querySelector('header');
 if (headerEl) info.append(headerEl);
 page.prepend(info);
@@ -987,7 +1004,7 @@ for (const [i, section] of sections.entries()) {
   outBtn.addEventListener('click', () => setZoom(d, currentScale(d) / ZOOM.step));
   inBtn.addEventListener('click', () => setZoom(d, currentScale(d) * ZOOM.step));
   d.level.addEventListener('click', () => setZoom(d, 1));
-  resetBtn.addEventListener('click', () => fitScreen(d, true));
+  resetBtn.addEventListener('click', () => fitScreen(d));
   zoom.append(outBtn, d.level, inBtn);
   d.buttons = [zoom, resetBtn];
   if (isDirected(source)) {
@@ -1064,7 +1081,7 @@ function showInfo(v, remember = true) {
   expandInfo.setAttribute('aria-expanded', String(v));
   if (remember) save(STORE.info, v ? 'open' : 'closed');
   // 只重新符合仍在 fit 狀態的圖；使用者已手動平移或縮放的圖不動，避免跳動。
-  diagrams.forEach((d) => { if (d.ok && d.fit) requestAnimationFrame(() => fitScreen(d)); });
+  diagrams.forEach((d) => { if (d.ok && d.fit) requestAnimationFrame(() => fitScreen(d, true)); });
 }
 const isOpen = () => !info.classList.contains('card');
 infoBtn.addEventListener('click', () => showInfo(!isOpen()));
@@ -1140,8 +1157,8 @@ nav.append(tocWrap);
 const links = new Map();
 let current = 0;
 const multi = sections.length >= 2;
-const prevBtn = el('button', { type: 'button', 'aria-label': T.prev, title: T.prev }, '‹');
-const nextBtn = el('button', { type: 'button', 'aria-label': T.next, title: T.next }, '›');
+const prevBtn = el('button', { type: 'button', 'aria-label': T.prev, title: `${T.prev} (PageUp)` }, '‹');
+const nextBtn = el('button', { type: 'button', 'aria-label': T.next, title: `${T.next} (PageDown)` }, '›');
 if (multi) {
   const panel = el('div', { class: 'pop', id: 'toc-panel' });
   const list = el('ol');
@@ -1194,28 +1211,35 @@ const fromHash = () => {
   return Math.max(0, sections.findIndex((x) => `#${x.id}` === hash));
 };
 addEventListener('hashchange', () => show(fromHash(), false));
-// Ctrl／⌘＋滾輪或捏合落在浮動列、小卡上時，縮放目前這張圖，而不是整個頁面。
+// Ctrl／⌘＋滾輪或觸控板捏合落在浮動列上時，縮放目前這張圖，而不是整個頁面。
+// 展開的說明視窗與彈出面板保留瀏覽器縮放，讓需要放大文字的人仍能放大閱讀。
+const keepsPageZoom = (t) => Boolean(t.closest?.('.canvas, #info:not(.card), .pop'));
 document.addEventListener('wheel', (e) => {
-  if (!(e.ctrlKey || e.metaKey) || e.target.closest?.('.canvas')) return;
+  if (!(e.ctrlKey || e.metaKey) || keepsPageZoom(e.target)) return;
   e.preventDefault();
   const d = diagrams.find((x) => x.section === sections[current]);
   if (d && d.ok) wheelZoomOrPan(d, e);
 }, { passive: false });
-document.addEventListener('gesturestart', (e) => e.preventDefault());
+// Safari 的 gesture 事件也來自 iOS 觸控捏合；觸控裝置上不攔截，保留整頁放大。
+if (!navigator.maxTouchPoints) document.addEventListener('gesturestart', (e) => { if (!keepsPageZoom(e.target)) e.preventDefault(); });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !nativePopover) {
     popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
     return;
   }
-  if (!multi || e.altKey || e.ctrlKey || e.metaKey) return;
-  // PageUp／PageDown 在頁面與畫布上都能切換；←／→ 只在焦點不在畫布、原始碼與工具列時切換（畫布上用來平移）。
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  // 整頁就是畫布：焦點在頁面本身時，方向鍵與 +／−／0／1 作用在目前這張圖，和畫布取得焦點時一致。
+  // 切換圖：PageUp／PageDown（頁面、畫布、目錄上），以及目錄內的 ←／→。原始碼、工具列與面板內的按鍵不攔截。
   const t = e.target;
-  const onCanvas = t.classList?.contains('canvas');
-  const free = t === document.body || t === document.documentElement || t.closest('#nav');
+  const page = t === document.body || t === document.documentElement;
+  const inNav = Boolean(t.closest?.('#nav'));
   const paging = e.key === 'PageUp' || e.key === 'PageDown';
-  if (!(free || (paging && onCanvas))) return;
-  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(current - 1); }
-  if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(current + 1); }
+  if (multi && (paging ? page || inNav || t.classList?.contains('canvas') : inNav && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) {
+    e.preventDefault();
+    show(current + (e.key === 'ArrowLeft' || e.key === 'PageUp' ? -1 : 1));
+    return;
+  }
+  if (page) viewKey(diagrams.find((x) => x.section === sections[current]), e);
 });
 // 列印時把各圖的說明放回原位，逐張印出。
 addEventListener('beforeprint', () => notes.forEach((n, section) => section.append(n)));
@@ -1227,7 +1251,7 @@ const measure = () => {
   root.style.setProperty('--top-h', `${Math.ceil(Math.max(nav.offsetHeight, actions.offsetHeight))}px`);
   root.style.setProperty('--actions-w', `${Math.ceil(actions.offsetWidth)}px`);
   root.style.setProperty('--bottom-h', `${Math.ceil(Math.max(0, ...toolbars.map((x) => x.offsetHeight)))}px`);
-  diagrams.forEach((d) => { if (d.ok && d.fit) fitScreen(d); });
+  diagrams.forEach((d) => { if (d.ok && d.fit) fitScreen(d, true); });
 };
 const bars = new ResizeObserver(() => requestAnimationFrame(measure));
 [nav, actions, info, ...document.querySelectorAll('.toolbar')].forEach((x) => bars.observe(x));

@@ -43,7 +43,7 @@ The skill's instructions are written in Traditional Chinese (Taiwan). Diagram la
 - Horizontal layout on landscape screens, plus a direction switch for each diagram
 - Infinite canvas: drag anywhere to pan, pinch or Ctrl/⌘ + wheel to zoom, plus fullscreen
 - Download as SVG / PNG / JPEG / WebP, or copy as an image
-- Single-diagram view: one diagram fills the window; switch with the contents menu, ‹ ›, or ←/→, with buttons and notes floating on top
+- Single-diagram view: one diagram fills the window; switch with the contents menu, ‹ ›, or PageUp/PageDown, with buttons and notes floating on top
 
 ## Three output paths
 

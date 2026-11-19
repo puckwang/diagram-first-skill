@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Change the HTML page to an infinite canvas: drag to pan at any zoom level with mouse, pen or touch, pan with two-finger trackpad scroll, pinch to zoom, and show a subtle dot grid that follows pan and zoom
 - Change the notes window to start collapsed as a small card at top left with the current diagram's title and caption; expand it for the full notes. Everywhere outside the card can be dragged
 - Change fit-to-window to avoid the card or expanded notes window instead of pushing the canvas aside
-- Change keyboard controls: with the canvas focused, arrow keys pan, +/− zoom, 0 fits, 1 shows actual size; PageUp/PageDown switch diagrams
+- Change keyboard controls: arrow keys pan, +/− zoom, 0 fits, 1 shows actual size; switch diagrams with PageUp/PageDown or ←/→ inside the contents menu
+- Rename the "Reset" button to "Fit" and show the controls hint in the expanded notes window
 
 ## [1.3.0] - 2026-11-18
 ### Added
