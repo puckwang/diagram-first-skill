@@ -119,7 +119,6 @@
     html.app main { position: fixed; inset: 0; }
     html.app section.diagram { display: none; position: absolute; inset: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
     html.app section.diagram.active { display: block; }
-    #info[hidden] { display: none; }
     html.app section.diagram > .notes { display: none; }
     /* 標題只在視覺上隱藏（目錄按鈕已顯示），螢幕閱讀器仍可讀到。 */
     html.app section.diagram > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -182,7 +181,6 @@
   }
   @media print {
     #info .notes, .notes h3 { display: none; }
-    #info[hidden] { display: block !important; }
     .toolbar, .float, .pop, .close { display: none !important; }
     .canvas { background-image: none !important; }
     .canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }
