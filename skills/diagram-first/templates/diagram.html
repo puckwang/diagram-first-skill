@@ -25,7 +25,7 @@
   - 右上：說明視窗開關、⚙ 設定（模式、方向、Theme，存在 localStorage）、全螢幕（瀏覽器不支援時不顯示）。
   - 說明視窗：預設收合成左上小卡（目前這張圖的標題與一句話結論）；展開後顯示頁面標題、摘要、圖例與原始碼；
     展開狀態存在 localStorage。
-  - 下方工具列：縮放、重設（符合視窗）、個別方向；⋯ 選單內有下載 SVG／PNG／JPEG／WebP、複製圖片與原始碼。
+  - 下方工具列：縮放、全圖（符合視窗）、個別方向；⋯ 選單內有下載 SVG／PNG／JPEG／WebP、複製圖片與原始碼。
   方向只影響 flowchart、state、class、ER、requirement；「自動」依視窗方向，橫向時轉為水平、直向時轉為垂直。
   自動符合大小最多放大到 150%，並避開小卡或寬螢幕上展開的說明視窗（取其右側或下方較大的區域）。
   個別方向選單（跟隨頁面／垂直／水平）只在本次瀏覽有效，不存 localStorage。
@@ -43,7 +43,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wDmQ95w1C7AYVLjdbabnFFBVnBnJgT2mZwTdTliOP1I=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oCuCKcvd0i70YDNtw5z1ftCdJ6pEmBDmu6LR6zdCo4s=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -482,13 +482,18 @@ function applyView(d) {
   showLevel(d);
 }
 
+// 縮放範圍：大圖符合視窗後可能小於 ZOOM.min，下限放寬到符合視窗的倍率，縮小時才不會反而變大。
+function clampScale(d, s) {
+  return Math.min(ZOOM.max, Math.max(Math.min(ZOOM.min, d.fitScale || ZOOM.min), s));
+}
+
 // anchor 為縮放時保持不動的螢幕座標，預設為畫布中心。
 function setZoom(d, scale, anchor) {
   if (!viewBox(d)) return;
   const r = d.canvas.getBoundingClientRect();
   const ax = (anchor ? anchor.x : r.left + r.width / 2) - r.left;
   const ay = (anchor ? anchor.y : r.top + r.height / 2) - r.top;
-  const next = Math.min(ZOOM.max, Math.max(ZOOM.min, scale));
+  const next = clampScale(d, scale);
   d.tx = ax - (ax - d.tx) * (next / d.scale);
   d.ty = ay - (ay - d.ty) * (next / d.scale);
   d.scale = next;
@@ -540,6 +545,7 @@ function fitScreen(d, soft = false) {
   }
   if (!best) return;
   d.scale = best.s;
+  d.fitScale = best.s;
   d.tx = best.x;
   d.ty = best.y;
   applyView(d);
@@ -568,9 +574,10 @@ function wheelSource(e) {
   // 有水平分量（以像素為單位）幾乎一定是觸控板，直接改判。
   if (e.deltaMode === 0 && e.deltaX !== 0) wheelKind = null;
   else if (wheelKind && e.timeStamp - wheelAt < 150) { wheelAt = e.timeStamp; return wheelKind; }
-  // Chrome 觸控板的 wheelDeltaY 約為 −3×deltaY，剛好是 120 的倍數時排除。
-  const wheel120 = e.wheelDeltaY && e.wheelDeltaY % 120 === 0 && Math.abs(e.deltaY * 3) !== Math.abs(e.wheelDeltaY);
-  const notch = e.deltaX === 0 && (wheel120 || (Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50));
+  // Chrome 觸控板的 wheelDeltaY 約為 −3×deltaY；符合時一律不當成滑鼠（兩條滑鼠判斷都排除）。
+  const chromePad = Boolean(e.wheelDeltaY) && Math.abs(e.deltaY * 3) === Math.abs(e.wheelDeltaY);
+  const wheel120 = !chromePad && e.wheelDeltaY && e.wheelDeltaY % 120 === 0;
+  const notch = e.deltaX === 0 && !chromePad && (wheel120 || (Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50));
   wheelKind = e.deltaMode !== 0 || notch ? 'mouse' : 'trackpad';
   wheelNotch = e.deltaMode !== 0 || Boolean(wheel120);
   wheelAt = e.timeStamp;
@@ -583,15 +590,18 @@ function wheelZoomOrPan(d, e) {
   const dx = e.deltaX * unit;
   const dy = e.deltaY * unit;
   const at = { x: e.clientX, y: e.clientY };
+  const zoom = e.ctrlKey || e.metaKey;
+  // Shift＋滾輪：瀏覽器會把滑鼠的垂直滾動轉成 deltaX，不用來判斷來源，也不留下判斷結果，放開 Shift 後滾輪照常縮放。
+  if (e.shiftKey && !zoom) { wheelKind = null; panBy(d, -(dx || dy), 0); return; }
   const kind = wheelSource(e);
-  if (e.ctrlKey || e.metaKey) setZoom(d, currentScale(d) * Math.exp(-dy * (kind === 'trackpad' ? 0.01 : 0.0025)), at);
-  else if (e.shiftKey) panBy(d, -(dx || dy), 0);
+  // 滑鼠每格最多約 26%；以頁為單位或滾輪自由轉動時的大 delta 不會一次縮到底。
+  const cap = (v, lo) => Math.sign(v) * Math.min(120, Math.max(lo, Math.abs(v)));
+  if (zoom) setZoom(d, currentScale(d) * Math.exp(kind === 'trackpad' ? -dy * 0.01 : -cap(dy, 0) * 0.0025), at);
   else if (kind === 'trackpad') panBy(d, -dx, -dy);
   else {
     // 滑鼠每格最多縮放約 26%；確定是滾輪格時至少約 10%，macOS 慢速轉動的小 delta 不會「滾了沒反應」。
     // 只靠 delta 大小判斷成滑鼠的事件不套用下限，誤判的觸控板事件仍按比例縮放、不會暴衝。
-    const notch = Math.sign(dy) * Math.min(120, Math.max(wheelNotch ? 40 : 0, Math.abs(dy)));
-    setZoom(d, currentScale(d) * Math.exp(-notch * 0.0025), at);
+    setZoom(d, currentScale(d) * Math.exp(-cap(dy, wheelNotch ? 40 : 0) * 0.0025), at);
   }
 }
 
@@ -611,6 +621,11 @@ function bindGestures(d) {
     const [a, b] = [...pointers.values()];
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, dist: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
   };
+  // 以目前的兩指位置重新建立捏合基準；手指組合改變（例如三指放開其中一指）時也要重建，避免倍率跳動。
+  const startPinch = () => {
+    const r = c.getBoundingClientRect();
+    pinch = { ...mid(), scale: d.scale, tx: d.tx, ty: d.ty, left: r.left, top: r.top };
+  };
   const startDrag = (e) => { drag = { id: e.pointerId, x: e.clientX, y: e.clientY, tx: d.tx, ty: d.ty, moved: false }; };
   // 按下後才在 window 監聽移動與放開：指標在超過拖曳門檻前滑到浮動列上，拖曳也不會中斷。
   // 不在按下時 capture，圖內連結的 click 才能正常觸發。
@@ -627,9 +642,7 @@ function bindGestures(d) {
     if (pointers.size === 1) startDrag(e);
     else if (pointers.size === 2) {
       drag = null;
-      const m = mid();
-      const r = c.getBoundingClientRect();
-      pinch = { ...m, scale: d.scale, tx: d.tx, ty: d.ty, left: r.left, top: r.top };
+      startPinch();
       [...pointers.keys()].forEach((id) => { try { c.setPointerCapture(id); } catch {} });
     }
   });
@@ -638,7 +651,7 @@ function bindGestures(d) {
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pinch && pointers.size >= 2) {
       const m = mid();
-      const s = Math.min(ZOOM.max, Math.max(ZOOM.min, pinch.scale * m.dist / pinch.dist));
+      const s = clampScale(d, pinch.scale * m.dist / pinch.dist);
       d.tx = m.x - pinch.left - (pinch.x - pinch.left - pinch.tx) * (s / pinch.scale);
       d.ty = m.y - pinch.top - (pinch.y - pinch.top - pinch.ty) * (s / pinch.scale);
       d.scale = s;
@@ -663,6 +676,7 @@ function bindGestures(d) {
   const end = (e) => {
     if (!pointers.delete(e.pointerId)) return;
     if (pointers.size < 2) pinch = null;
+    else if (pinch) startPinch();
     if (pointers.size === 1) {
       // 捏合後剩一指，從目前位置接著拖曳。
       const [[id, p]] = [...pointers];
@@ -737,7 +751,9 @@ async function rasterize(svgText, type, background) {
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), type, 0.92));
 }
 async function exportImage(d, type, transparent) {
-  const background = transparent ? null : getComputedStyle(d.canvas).backgroundColor;
+  // 淺色匯出用純白，不帶畫布的米白底；深色沿用深色畫布色。
+  const background = transparent ? null : d.canvas.classList.contains('dark')
+    ? getComputedStyle(document.documentElement).getPropertyValue('--canvas-dark').trim() : '#FFFFFF';
   try {
     return await rasterize(d.svg, type, background);
   } catch (e) {
@@ -1222,14 +1238,33 @@ addEventListener('hashchange', () => show(fromHash(), false));
 // Ctrl／⌘＋滾輪或觸控板捏合落在浮動列上時，縮放目前這張圖，而不是整個頁面。
 // 展開的說明視窗與彈出面板保留瀏覽器縮放，讓需要放大文字的人仍能放大閱讀。
 const keepsPageZoom = (t) => Boolean(t.closest?.('.canvas, #info:not(.card), .pop'));
-document.addEventListener('wheel', (e) => {
-  if (!(e.ctrlKey || e.metaKey) || keepsPageZoom(e.target)) return;
-  e.preventDefault();
+// 目前這張圖 render 失敗時不攔截，保留瀏覽器縮放。
+const zoomTarget = (t) => {
+  if (keepsPageZoom(t)) return null;
   const d = diagrams.find((x) => x.section === sections[current]);
-  if (d && d.ok) wheelZoomOrPan(d, e);
+  return d && d.ok ? d : null;
+};
+document.addEventListener('wheel', (e) => {
+  const d = (e.ctrlKey || e.metaKey) && zoomTarget(e.target);
+  if (!d) return;
+  e.preventDefault();
+  wheelZoomOrPan(d, e);
 }, { passive: false });
-// Safari 的 gesture 事件也來自 iOS 觸控捏合；觸控裝置上不攔截，保留整頁放大。
-if (!navigator.maxTouchPoints) document.addEventListener('gesturestart', (e) => { if (!keepsPageZoom(e.target)) e.preventDefault(); });
+// macOS Safari 的觸控板捏合落在浮動列上時也縮放目前這張圖。gesture 事件也來自 iOS 觸控捏合，觸控裝置上不攔截，保留整頁放大。
+if (!navigator.maxTouchPoints) {
+  let base = null;
+  document.addEventListener('gesturestart', (e) => {
+    const d = zoomTarget(e.target);
+    base = d ? { d, scale: currentScale(d) } : null;
+    if (d) e.preventDefault();
+  });
+  document.addEventListener('gesturechange', (e) => {
+    if (!base) return;
+    e.preventDefault();
+    setZoom(base.d, base.scale * e.scale, { x: e.clientX, y: e.clientY });
+  });
+  document.addEventListener('gestureend', () => { base = null; });
+}
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !nativePopover) {
     popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
