@@ -43,7 +43,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-eGhg0/d4E9JQClL3MvNGK2Jkldt9T7MwSSiwB5w9rUY=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wDmQ95w1C7AYVLjdbabnFFBVnBnJgT2mZwTdTliOP1I=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -562,6 +562,8 @@ async function toggleFullscreen() {
 // 同一串連續事件（間隔 < 150ms）沿用第一個事件的判斷，觸控板快速滑動或慣性階段不會中途變成縮放。
 let wheelKind = null;
 let wheelAt = 0;
+// 確定是實體滾輪格（以行／頁為單位或 wheelDelta 為 120 的倍數）時才套用每格最小縮放量。
+let wheelNotch = false;
 function wheelSource(e) {
   // 有水平分量（以像素為單位）幾乎一定是觸控板，直接改判。
   if (e.deltaMode === 0 && e.deltaX !== 0) wheelKind = null;
@@ -570,6 +572,7 @@ function wheelSource(e) {
   const wheel120 = e.wheelDeltaY && e.wheelDeltaY % 120 === 0 && Math.abs(e.deltaY * 3) !== Math.abs(e.wheelDeltaY);
   const notch = e.deltaX === 0 && (wheel120 || (Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50));
   wheelKind = e.deltaMode !== 0 || notch ? 'mouse' : 'trackpad';
+  wheelNotch = e.deltaMode !== 0 || Boolean(wheel120);
   wheelAt = e.timeStamp;
   return wheelKind;
 }
@@ -585,8 +588,9 @@ function wheelZoomOrPan(d, e) {
   else if (e.shiftKey) panBy(d, -(dx || dy), 0);
   else if (kind === 'trackpad') panBy(d, -dx, -dy);
   else {
-    // 滑鼠每格至少縮放約 10%、最多約 26%：macOS 慢速轉動的小 delta 不會「滾了沒反應」，也不會暴衝。
-    const notch = Math.sign(dy) * Math.min(120, Math.max(40, Math.abs(dy)));
+    // 滑鼠每格最多縮放約 26%；確定是滾輪格時至少約 10%，macOS 慢速轉動的小 delta 不會「滾了沒反應」。
+    // 只靠 delta 大小判斷成滑鼠的事件不套用下限，誤判的觸控板事件仍按比例縮放、不會暴衝。
+    const notch = Math.sign(dy) * Math.min(120, Math.max(wheelNotch ? 40 : 0, Math.abs(dy)));
     setZoom(d, currentScale(d) * Math.exp(-notch * 0.0025), at);
   }
 }
@@ -890,7 +894,7 @@ const closeInfo = el('button', { type: 'button', class: 'close', 'aria-label': T
 const expandInfo = el('button', { type: 'button', class: 'expand', 'aria-expanded': 'false', 'aria-controls': 'info' }, T.expand);
 info.append(closeInfo);
 // 觸控裝置用精簡版提示，不列出滾輪與鍵盤操作。
-const hint = el('p', { id: 'canvas-hint', class: 'hint' }, matchMedia('(pointer: coarse)').matches ? T.hintTouch : T.hint);
+const hint = el('p', { id: 'canvas-hint', class: 'hint' }, matchMedia('(any-pointer: fine)').matches ? T.hint : T.hintTouch);
 const headerEl = document.querySelector('header');
 if (headerEl) info.append(headerEl);
 page.prepend(info);
@@ -1198,7 +1202,11 @@ function show(k, updateHash = true) {
   info.append(notes.get(section), hint, expandInfo);
   // 標題過長時只截斷標題，張數與 ▾ 保持可見。
   tocBtn.replaceChildren(el('span', { class: 't' }, section.dataset.title));
-  if (multi) tocBtn.prepend(el('span', { 'aria-hidden': 'true' }, '☰'));
+  if (multi) {
+    tocBtn.prepend(el('span', { 'aria-hidden': 'true' }, '☰'));
+    // 窄螢幕會隱藏標題，無障礙名稱仍保留完整資訊。
+    tocBtn.setAttribute('aria-label', `${T.toc}: ${section.dataset.title} ${current + 1}/${sections.length}`);
+  }
   if (multi) tocBtn.append(el('span', {}, `${current + 1}/${sections.length} ▾`));
   links.forEach((a, x) => a.setAttribute('aria-current', String(x === section)));
   if (updateHash && location.hash !== `#${section.id}`) history.replaceState(null, '', `#${section.id}`);
