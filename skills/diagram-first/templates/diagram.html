@@ -51,7 +51,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-AfDYKlLlFJS+6gxEYzap+ziH402v7ItgSQrZo52UGws=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0DfHDtpGvWK5N5yK9WASZ8WzQU99to58TBBssJ7jrb8=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -198,6 +198,8 @@
     html.app .canvas svg :is(g.node, [data-hl-edge], g.cluster) { transition: opacity .15s; }
     /* 預覽（滑鼠移入、鍵盤聚焦）只加光暈；鎖定時外框改為強調色並加粗，兩種狀態看得出差別。 */
     html.app .canvas svg g.node.hl-sel { filter: drop-shadow(0 0 6px var(--hl)); }
+    /* 鎖定：疊兩層緊貼的陰影形成外框，不依賴各圖種節點的內部結構（class、ER 的外框不一定是可描邊的單一元素）。 */
+    html.app .canvas svg g.node.hl-lock { filter: drop-shadow(0 0 1px var(--hl)) drop-shadow(0 0 1px var(--hl)) drop-shadow(0 0 6px var(--hl)); }
     html.app .canvas svg g.node.hl-lock > :is(rect, polygon, circle, ellipse, path), html.app .canvas svg g.node.hl-lock > g:first-child > :is(rect, polygon, circle, ellipse, path):first-child,
     html.app .canvas svg g.node.hl-lock .label-container { stroke: var(--hl) !important; stroke-width: 3px !important; }
     @media (prefers-reduced-motion: reduce) { html.app .canvas svg :is(g.node, [data-hl-edge], g.cluster) { transition: none; } }
@@ -1692,6 +1694,8 @@ function renderOne(d) {
 async function renderOneNow(d) {
   const n = ++renderCount;
   d.canvas.classList.toggle('dark', currentTheme().includes('dark'));
+  // 重繪前記下鍵盤焦點所在的節點（重繪會移除它）。
+  const focusId = d.graph?.byEl.get(document.activeElement)?.id ?? null;
   try {
     const source = withDirection(d.source, dirOf(d));
     let svg;
@@ -1707,7 +1711,6 @@ async function renderOneNow(d) {
     errors.delete(d.i);
     // 重繪（換 Theme、方向、旋轉）後，依節點 id 還原原本鎖定的節點。
     const keep = selected?.d === d ? selected.node.id : null;
-    const focusId = d.graph?.byEl.get(document.activeElement)?.id ?? null;
     clearSelection(d);
     await indexGraph(d, source);
     const again = keep !== null && d.graph?.nodes.get(keep);
