@@ -2,7 +2,8 @@
 <!--
   diagram-first HTML 樣板
 
-  使用方式（Agent 直接編輯文字，不執行任何程式）：
+  使用方式（複製本檔後只替換佔位符，不必讀取或改動 <style> 與 <script>；本檔逾 100 KB，請勿整檔讀取或重寫）：
+  0. cp 本檔到目標路徑，以 grep -n '{{' 找出佔位符所在行，只讀本段註解與 <body> 開頭的佔位符段落。
   1. 替換 {{LANG}}：使用者語言的 BCP 47 代碼，例如 zh-Hant-TW、en、ja。介面文字會依此切換。
      只能包含英數字與 -（此處在 CSP 生效之前）。
   2. 替換 {{TITLE}} 與 {{SUMMARY}}：頁面標題與一句話摘要，使用使用者的語言。
@@ -12,7 +13,7 @@
      - {{MERMAID_SOURCE}}：Mermaid 原始碼，貼在 <script type="text/plain"> 內，縮排不影響結果
      - {{LEGEND}}：圖例，預設不寫，刪除整個 <div class="legend">；只在有縮寫、代號或非補充不可的節點時加，
        最多 5 條、每條一行（見 references/mermaid-guide.md 2.6）。頁面上預設收合。
-  4. 刪除所有尚未替換的 {{…}} 佔位符與本段註解。
+  4. 刪除所有尚未替換的 {{…}} 佔位符與本段註解，完成後再以 grep -n '{{' 確認沒有殘留。
   5. Mermaid 原始碼中不可出現字串 </script，必要時改寫標籤。
 
   不要修改 <script type="module"> 內的程式、版本號與 CSP。
@@ -50,7 +51,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-kbjwtd5YVw4AztnOOoepk6I5Zzrw2BCTie7XgYTLeqk=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-AfDYKlLlFJS+6gxEYzap+ziH402v7ItgSQrZo52UGws=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -197,7 +198,8 @@
     html.app .canvas svg :is(g.node, [data-hl-edge], g.cluster) { transition: opacity .15s; }
     /* 預覽（滑鼠移入、鍵盤聚焦）只加光暈；鎖定時外框改為強調色並加粗，兩種狀態看得出差別。 */
     html.app .canvas svg g.node.hl-sel { filter: drop-shadow(0 0 6px var(--hl)); }
-    html.app .canvas svg g.node.hl-lock :is(rect, polygon, circle, ellipse, path, line) { stroke: var(--hl) !important; stroke-width: 3px !important; }
+    html.app .canvas svg g.node.hl-lock > :is(rect, polygon, circle, ellipse, path), html.app .canvas svg g.node.hl-lock > g:first-child > :is(rect, polygon, circle, ellipse, path):first-child,
+    html.app .canvas svg g.node.hl-lock .label-container { stroke: var(--hl) !important; stroke-width: 3px !important; }
     @media (prefers-reduced-motion: reduce) { html.app .canvas svg :is(g.node, [data-hl-edge], g.cluster) { transition: none; } }
     .err .report, #status .report { margin: 8px 0 0; font: 13px var(--font); color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
     #status .report { margin: 0 0 0 10px; }
@@ -302,7 +304,7 @@ const I18N = {
         info: '說明', close: '收合', expand: '展開說明',
         nodeAria: (label, up, down) => `${label}，上游 ${up} 個、下游 ${down} 個`, upstream: '上游', downstream: '下游', none: '無',
         selInfo: (label, up, down) => `「${label}」上游 ${up}・下游 ${down}`, copyRef: '複製引用', clearSel: '取消選取', selected: '已選取節點',
-        nodeRef: (k, n, title, id, label, ups, downs, up, down) => `第 ${k}/${n} 張圖〈${title}〉的節點 ${id}「${label}」（直接上游：${ups}；直接下游：${downs}；全部上游 ${up} 個、下游 ${down} 個）`,
+        nodeRef: (k, n, title, id, label, ups, downs, up, down) => `第 ${k}/${n} 張圖〈${title}〉的節點${id ? ` ${id}` : ''}「${label}」（直接上游：${ups}；直接下游：${downs}；全部上游 ${up} 個、下游 ${down} 個）`,
         more: (n) => `等 ${n} 個`,
         report: '複製給 Claude', reportAll: '複製全部問題給 Claude', reportMenu: '複製問題回報給 Claude',
         reportTitle: '內容含原始碼與瀏覽器版本', reportCopied: '已複製，貼回對話給 Claude 即可',
@@ -311,7 +313,7 @@ const I18N = {
         layout: '版面', layoutPlain: '只有圖', layoutCard: '卡片', palette: '配色', paletteFollow: '同畫面',
         hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原；點節點看上下游。',
         hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。點節點或從畫布按 Tab 進入節點看上下游，節點間用 [ ] 或 Alt＋方向鍵移動，Enter 鎖定、Esc 取消；按 ? 開啟這段說明。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
-        transparent: 'PNG（透明背景）', printPdf: '列印／向量 PDF', size: '大小', sizeMax: '最大',
+        transparent: 'PNG（透明背景）', printPdf: '列印／向量 PDF', printTitle: '只印圖本身，不套用版面與配色', size: '大小', sizeMax: '最大',
         pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `已達瀏覽器上限，輸出 ${w}×${h} px`, copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
         renderFail: 'Render 失敗：', some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。可複製問題回報，貼回對話給 Claude。`,
@@ -324,7 +326,7 @@ const I18N = {
         info: 'Notes', close: 'Collapse', expand: 'Show notes',
         nodeAria: (label, up, down) => `${label}, ${up} upstream, ${down} downstream`, upstream: 'Upstream', downstream: 'Downstream', none: 'none',
         selInfo: (label, up, down) => `"${label}" ${up} upstream · ${down} downstream`, copyRef: 'Copy reference', clearSel: 'Clear selection', selected: 'Selected node',
-        nodeRef: (k, n, title, id, label, ups, downs, up, down) => `Node ${id} "${label}" in diagram ${k}/${n} "${title}" (direct upstream: ${ups}; direct downstream: ${downs}; ${up} upstream and ${down} downstream in total)`,
+        nodeRef: (k, n, title, id, label, ups, downs, up, down) => `Node ${id ? `${id} ` : ''}"${label}" in diagram ${k}/${n} "${title}" (direct upstream: ${ups}; direct downstream: ${downs}; ${up} upstream and ${down} downstream in total)`,
         more: (n) => `and ${n} more`,
         report: 'Copy for Claude', reportAll: 'Copy all issues for Claude', reportMenu: 'Copy issue report for Claude',
         reportTitle: 'Includes the source and browser version', reportCopied: 'Copied. Paste it into the chat with Claude',
@@ -333,7 +335,7 @@ const I18N = {
         layout: 'Layout', layoutPlain: 'Diagram only', layoutCard: 'Card', palette: 'Colors', paletteFollow: 'As shown',
         hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset; tap a node to trace its upstream and downstream.',
         hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams. Hover or click a node, or Tab from the canvas into the nodes, to trace its upstream and downstream; move between nodes with [ ] or Alt + arrow keys; Enter locks, Esc clears; press ? to open this help.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
-        transparent: 'PNG (transparent)', printPdf: 'Print / vector PDF', size: 'Size', sizeMax: 'Max',
+        transparent: 'PNG (transparent)', printPdf: 'Print / vector PDF', printTitle: 'Prints the diagram only; layout and colors are not applied', size: 'Size', sizeMax: 'Max',
         pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `Browser limit reached, exported ${w}×${h} px`, copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
         renderFail: 'Render failed:', some: (ok, bad) => `${ok} succeeded, ${bad} failed. Copy the issue report and paste it into the chat with Claude.`,
@@ -346,7 +348,7 @@ const I18N = {
         info: '説明', close: '折りたたむ', expand: '説明を開く',
         nodeAria: (label, up, down) => `${label}、上流 ${up} 件、下流 ${down} 件`, upstream: '上流', downstream: '下流', none: 'なし',
         selInfo: (label, up, down) => `「${label}」上流 ${up}・下流 ${down}`, copyRef: '参照をコピー', clearSel: '選択を解除', selected: '選択中のノード',
-        nodeRef: (k, n, title, id, label, ups, downs, up, down) => `図 ${k}/${n}〈${title}〉のノード ${id}「${label}」（直接の上流：${ups}；直接の下流：${downs}；上流 ${up} 件・下流 ${down} 件）`,
+        nodeRef: (k, n, title, id, label, ups, downs, up, down) => `図 ${k}/${n}〈${title}〉のノード${id ? ` ${id}` : ''}「${label}」（直接の上流：${ups}；直接の下流：${downs}；上流 ${up} 件・下流 ${down} 件）`,
         more: (n) => `ほか ${n} 件`,
         report: 'Claude 用にコピー', reportAll: 'すべての問題を Claude 用にコピー', reportMenu: '問題レポートを Claude 用にコピー',
         reportTitle: 'ソースとブラウザのバージョンを含みます', reportCopied: 'コピーしました。Claude との会話に貼り付けてください',
@@ -355,7 +357,7 @@ const I18N = {
         layout: 'レイアウト', layoutPlain: '図のみ', layoutCard: 'カード', palette: '配色', paletteFollow: '表示どおり',
         hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。ノードをタップすると上流と下流を表示。',
         hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。ノードにポインターを置く・クリック・キャンバスから Tab で上流と下流を表示、ノード間は [ ] か Alt＋矢印キーで移動、Enter で固定、Esc で解除。? でこの説明を開く。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
-        transparent: 'PNG（透過）', printPdf: '印刷／ベクター PDF', size: 'サイズ', sizeMax: '最大',
+        transparent: 'PNG（透過）', printPdf: '印刷／ベクター PDF', printTitle: '図のみを印刷し、レイアウトと配色は適用しません', size: 'サイズ', sizeMax: '最大',
         pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `ブラウザの上限に達したため ${w}×${h} px で書き出しました`, copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
         renderFail: '描画に失敗しました：', some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。問題レポートをコピーして Claude との会話に貼り付けてください。`,
@@ -912,6 +914,7 @@ function exportTheme(d) {
 }
 // 讀取淺色或深色模式下的 CSS token（匯出配色可能與畫面不同）。
 // 暫時切換 data-theme 讀值後立即還原；同一個 task 內完成，畫面不會閃動。
+// 注意：若日後替顏色加上 transition，這裡的強制樣式計算可能造成閃動，屆時改為快取兩組值。
 function tokenColor(name, dark) {
   const html = document.documentElement;
   const keep = html.dataset.theme;
@@ -1340,7 +1343,7 @@ for (const [i, section] of sections.entries()) {
     optRow('palette', T.palette, [['follow', T.paletteFollow], ['light', T.light], ['dark', T.dark]]));
   // 圖片相關項目放在原始碼之前；render 失敗時隱藏。
   d.imageItems = [opts, ...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
-                  menuItem(T.printPdf, () => printOne(d)), menuItem(T.copyImage, copyImage)];
+                  Object.assign(menuItem(T.printPdf, () => printOne(d)), { title: T.printTitle }), menuItem(T.copyImage, copyImage)];
   // 問題回報不受 render 成敗影響，排在最後，語法錯誤時也能用。
   menu.append(reportItem);
   menu.prepend(...d.imageItems);
@@ -1509,6 +1512,8 @@ function select(d, node, quiet = false) {
   selbar.hidden = !node;
   // 浮動列佔掉底部空間，平移邊界與「全圖」要跟著讓位。
   root.style.setProperty('--sel-h', node ? `${selbar.offsetHeight + 12}px` : '0px');
+  // 鎖定的節點若被浮動列或其他浮動元素蓋住，平移讓它露出來（沒被蓋住時不動）。
+  if (node && !quiet) ensureVisible(d, node.el);
 }
 function clearSelection(d) {
   if (selected && (!d || selected.d === d)) select(selected.d, selected.node);
@@ -1524,7 +1529,9 @@ function nodeRef(d, node) {
     return uniq.length > 8 ? `${shown} ${T.more(uniq.length - 8)}` : shown;
   };
   const k = sections.indexOf(d.section) + 1;
-  return T.nodeRef(k, sections.length, d.section.dataset.title, node.id, node.label,
+  // mindmap 等圖種的 id 是自動流水號，對定位沒有幫助，省略。
+  const id = /^\d+$/.test(String(node.id)) ? '' : node.id;
+  return T.nodeRef(k, sections.length, d.section.dataset.title, id, node.label,
     names(node.in.map((e) => e.a)), names(node.out.map((e) => e.b)), r.ups.size, r.downs.size);
 }
 selCopy.addEventListener('click', async () => {
@@ -1556,6 +1563,8 @@ function bindNodes(d) {
   });
   c.addEventListener('click', (e) => {
     if (c.classList.contains('dragging') || !d.graph) return;
+    // 帶連結的節點交給連結本身，不同時鎖定。
+    if (e.target.closest?.('a')) return;
     const n = nodeOf(e.target);
     if (n) select(d, n);
     else if (selected?.d === d) clearSelection();
@@ -1575,7 +1584,9 @@ function bindNodes(d) {
     if (!n) return;
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); select(d, n); return; }
     const next = moveTarget(d, n, e);
-    if (next) { e.preventDefault(); e.stopPropagation(); next.el.focus(); }
+    // Alt＋方向鍵在 Windows／Linux 是瀏覽器的上一頁／下一頁；焦點在節點上時一律攔下，找不到目標就停在原節點。
+    const altArrow = e.altKey && /^Arrow/.test(e.key);
+    if (next || altArrow) { e.preventDefault(); e.stopPropagation(); next?.el.focus(); }
     else if (e.key === 'Escape' && !selected) { e.preventDefault(); c.focus(); }
   }, true);
   // 畫布是 overflow: hidden，瀏覽器聚焦節點時仍可能捲動它；一律歸零，改以平移帶到可見處。
@@ -1696,10 +1707,17 @@ async function renderOneNow(d) {
     errors.delete(d.i);
     // 重繪（換 Theme、方向、旋轉）後，依節點 id 還原原本鎖定的節點。
     const keep = selected?.d === d ? selected.node.id : null;
+    const focusId = d.graph?.byEl.get(document.activeElement)?.id ?? null;
     clearSelection(d);
     await indexGraph(d, source);
     const again = keep !== null && d.graph?.nodes.get(keep);
     if (again) select(d, again, true);
+    // 原本聚焦的節點被重繪移除了：把 roving tabindex 與焦點放回同 id 的節點。
+    const back = d.graph?.nodes.get(focusId ?? keep);
+    if (back) {
+      d.graph.nodes.forEach((x) => x.el.setAttribute('tabindex', x === back ? '0' : '-1'));
+      if (focusId !== null) back.el.focus({ preventScroll: true });
+    }
     if (!d.ok) { d.toolbar.prepend(...d.buttons); d.syncToolbar(); }
     d.imageItems.forEach((b) => { b.hidden = false; });
     d.ok = true;

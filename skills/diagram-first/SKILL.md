@@ -91,8 +91,14 @@ ASCII 只畫流程、分層架構、樹狀結構、決策樹與簡單 sequence�
 
 **HTML**
 1. 讀取 `references/mermaid-guide.md`，寫出 Mermaid 原始碼；適用 ELK 的圖種加上 `layout: elk` 的 front matter。
-2. 讀取 `templates/diagram.html`，依檔內說明替換佔位符；多張圖放在同一份 HTML。圖說一句話寫結論，圖例依 `mermaid-guide.md` 2.6 判斷是否需要。
-3. 寫入檔案：使用者指定的路徑優先；否則寫到目前工作目錄的 `diagrams/<主題>.html`。
+2. 決定路徑：使用者指定的路徑優先；否則寫到目前工作目錄的 `diagrams/<主題>.html`。
+3. 複製樣板並只替換佔位符（樣板逾 100 KB，不整檔讀取或重寫，以節省 token）：
+   - 以 `mkdir -p` 建立目錄，再以 `cp` 把本 skill 的 `templates/diagram.html` 複製到目標路徑。
+   - 以 `grep -n '{{' <目標路徑>` 找出佔位符所在行，只讀檔頭的說明註解與 `<body>` 開頭的佔位符段落，依說明替換；多張圖時複製 `<section class="diagram">` 區塊，放在同一份 HTML。
+   - 圖說一句話寫結論，圖例依 `mermaid-guide.md` 2.6 判斷是否需要。
+   - 不改動 `<style>`、`<script type="module">` 與 CSP：改動任何字元，CSP hash 就會讓程式無法執行。
+   - 完成後再以 `grep -n '{{' <目標路徑>` 確認沒有殘留的佔位符。
+   - 無法執行指令的環境才整檔讀取樣板，替換後寫出。
 4. 開啟瀏覽器：macOS 用 `open`，Linux 用 `xdg-open`，Windows 用 `start ""`。開啟失敗時不重試，直接告知路徑。
 5. 沒有本機檔案系統時，依 `references/routing.md` 第 2 節改用 Artifact、傳送檔案，或提供 Mermaid code block。
 
