@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - Add an export size choice (1x / 2x / 4x / Max); exports that exceed the browser limit shrink automatically and report the actual pixels
 - Add PDF download (high-resolution raster) and Print / vector PDF (current diagram only, page sized to the diagram)
+- Add upstream/downstream highlighting: hover, click or Tab to a node to highlight everything it connects to; lock it to copy a node reference back into the chat
+- Add "Copy for Claude" issue reports from error messages, the status bar and the ⋯ menu, with the error, diagram name, source and environment
+- Add card exports (title and caption above the diagram) and export colors (as shown / light / dark)
+- Add ? to open the controls hint
 ### Changed
 - Change the HTML page to an infinite canvas: drag to pan at any zoom level with mouse, pen or touch, pan with two-finger trackpad scroll, pinch to zoom, and show a subtle dot grid that follows pan and zoom
 - Change the notes window to start collapsed as a small card at top left with the current diagram's title and caption; expand it for the full notes. Everywhere outside the card can be dragged

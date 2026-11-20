@@ -42,7 +42,8 @@ The skill's instructions are written in Traditional Chinese (Taiwan). Diagram la
 - Light / dark mode and Mermaid themes
 - Horizontal layout on landscape screens, plus a direction switch for each diagram
 - Infinite canvas: drag anywhere or scroll with two fingers on a trackpad to pan; mouse wheel, pinch or Ctrl/⌘ + wheel to zoom; plus fullscreen
-- Download as SVG / PNG / JPEG / WebP / PDF at 1x / 2x / 4x / max size, print a vector PDF, or copy as an image
+- Download as SVG / PNG / JPEG / WebP / PDF at 1x / 2x / 4x / max size, as the diagram alone or a card with title and caption, print a vector PDF, or copy as an image
+- Click or Tab to a node to highlight its upstream and downstream, and copy a node reference or an issue report back to the agent
 - Single-diagram view: one diagram fills the window; switch with the contents menu, ‹ ›, or PageUp/PageDown, with buttons and notes floating on top
 
 ## Three output paths

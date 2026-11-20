@@ -25,9 +25,14 @@
   - 右上：說明視窗開關、⚙ 設定（模式、方向、Theme，存在 localStorage）、全螢幕（瀏覽器不支援時不顯示）。
   - 說明視窗：預設收合成左上小卡（目前這張圖的標題與一句話結論）；展開後顯示頁面標題、摘要、圖例與原始碼；
     展開狀態存在 localStorage。
-  - 下方工具列：縮放、全圖（符合視窗）、個別方向；⋯ 選單內有大小（1x／2x／4x／最大，存在 localStorage）、
-    下載 PNG／JPEG／WebP／PDF（點陣，解析度依大小）／SVG、列印／向量 PDF（只印目前這張圖）、複製圖片與原始碼。
-    點陣輸出超過瀏覽器 canvas 上限時自動縮小並提示實際像素。
+  - 下方工具列：縮放、全圖（符合視窗）、個別方向；⋯ 選單內有匯出選項（大小 1x／2x／4x／最大、版面 只有圖／卡片、
+    配色 跟隨畫面／淺色／深色，存在 localStorage）、下載 PNG／JPEG／WebP／PDF（點陣，解析度依大小）／SVG、
+    列印／向量 PDF（只印目前這張圖）、複製圖片與原始碼、複製問題回報給 Claude。
+    點陣輸出超過瀏覽器 canvas 上限時自動縮小並提示實際像素。卡片版面在圖上方加上標題與一句話結論。
+  - 節點：flowchart、state、class、ER、requirement、mindmap 可滑鼠移入、點擊或 Tab 到節點，高亮所有上下游並淡化其他元素；
+    點擊或 Enter 鎖定、Esc 或點空白處取消；鎖定時下方浮動列可「複製引用」（圖名、節點、上下游）貼回對話。
+    其他圖種（例如 sequence）沒有節點資料，不啟用。
+  - 錯誤訊息與狀態列旁有「複製給 Claude」，帶出錯誤、圖名、原始碼與環境資訊；按 ? 開啟說明視窗的操作提示。
   方向只影響 flowchart、state、class、ER、requirement；「自動」依視窗方向，橫向時轉為水平、直向時轉為垂直。
   自動符合大小最多放大到 150%，並避開小卡或寬螢幕上展開的說明視窗（取其右側或下方較大的區域）。
   個別方向選單（跟隨頁面／垂直／水平）只在本次瀏覽有效，不存 localStorage。
@@ -45,7 +50,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-P3RT61O/DTAvhTX3Ack/1slP+xE3AUn9c3u27qvDuVQ=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-VVlEu5OmQJ/6OlE3zr8KKl5Sp5MIE+pVVY+SiIaa394=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -163,14 +168,34 @@
     .menu button { display: block; width: 100%; text-align: start; font: 14px var(--font); color: var(--control-text); background: transparent;
                    border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
     .menu button:hover, .menu button:focus-visible { background: var(--control); }
-    .menu button[hidden], .menu .sizes[hidden] { display: none; }
+    .menu button[hidden], .menu .opts[hidden] { display: none; }
+    .menu .opts { margin: 0 0 4px; padding: 0 0 4px; border-bottom: 1px solid var(--border); }
     /* 匯出大小：倍率或最大，下方顯示這張圖實際輸出的像素。 */
-    .menu .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 6px 8px; margin: 0 0 4px; border-bottom: 1px solid var(--border); }
+    .menu .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 6px; }
     .menu .sizes .size-label { flex: 1 0 100%; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
     .menu .sizes button { display: inline-block; width: auto; flex: 1; text-align: center; padding: 4px 6px; background: var(--control); }
     .menu .sizes button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--text); font-weight: 600; }
     .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
              margin: 0; padding: 6px 14px; font-size: 13px; }
+    /* 選取節點時的浮動列：節點名稱、上下游數量、複製引用；出現時提示訊息往上移。 */
+    #selbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 30;
+              display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; max-width: calc(100vw - 24px); font-size: 13px; }
+    #selbar[hidden] { display: none; }
+    #selbar .sel-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #selbar:not([hidden]) ~ .toast { bottom: calc(var(--bottom-h, 52px) + 72px); }
+    /* 節點高亮：選取或預覽時，不在上下游路徑上的節點與連線淡化。 */
+    html.app .canvas svg g.node { cursor: pointer; }
+    html.app .canvas svg g.node:focus { outline: none; }
+    html.app .canvas svg g.node:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+    html.app .canvas svg.hl :is(g.node, [data-hl-edge]):not(.hl-on) { opacity: .15; }
+    html.app .canvas svg :is(g.node, [data-hl-edge]) { transition: opacity .15s; }
+    html.app .canvas svg g.node.hl-sel { filter: drop-shadow(0 0 6px var(--hl, #2F81F7)); }
+    @media (prefers-reduced-motion: reduce) { html.app .canvas svg :is(g.node, [data-hl-edge]) { transition: none; } }
+    .err .report, #status .report { margin: 8px 0 0; font: 13px var(--font); color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+    #status .report { margin: 0 0 0 10px; }
+    #info .hint.flash { animation: hint-flash 1.2s ease-out; }
+    @keyframes hint-flash { from { background: var(--control); } to { background: transparent; } }
+    @media (prefers-reduced-motion: reduce) { #info .hint.flash { animation: none; } }
     /* 提示區域保持在無障礙樹中，沒有內容時只在視覺上隱藏，讓螢幕閱讀器穩定讀出。 */
     .toast:empty { opacity: 0; padding: 0; border-color: transparent; box-shadow: none; pointer-events: none; }
     .toc ol { list-style: none; margin: 0; padding: 0; }
@@ -208,7 +233,8 @@
   }
   @media print {
     #info .notes, .notes h3 { display: none; }
-    .toolbar, .float, .pop, .close { display: none !important; }
+    .toolbar, .float, .pop, .close, #selbar { display: none !important; }
+    .canvas svg.hl :is(g.node, [data-hl-edge]) { opacity: 1 !important; filter: none !important; }
     .canvas { background-image: none !important; }
     .canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }
     #info .expand, #info .hint { display: none; }
@@ -250,9 +276,11 @@
 const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.esm.min.mjs';
 const THEMES = ['redux-color', 'redux-dark-color', 'redux', 'redux-dark', 'default', 'dark', 'neo', 'neo-dark', 'forest', 'neutral'];
 const AUTO_THEME = { light: 'redux-color', dark: 'redux-dark-color' };
-const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction', info: 'diagram-first:info', size: 'diagram-first:export-size' };
+const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction', info: 'diagram-first:info', size: 'diagram-first:export-size',
+                layout: 'diagram-first:export-layout', palette: 'diagram-first:export-palette' };
 // 匯出點陣圖的大小：倍率或最大。side、area 為保守的 canvas 上限（Chrome 單邊 16384px）；實際配置失敗時再自動縮小。
 const EXPORT = { sizes: ['1', '2', '4', 'max'], side: 16384, area: 64e6 };
+const MERMAID_VERSION = '12.1.0';
 const ZOOM = { min: 0.1, max: 8, step: 1.25, fitMax: 1.5 };
 // 平移時圖至少留在可見區內的像素；拖曳超過門檻才算拖曳，點擊圖內連結不受影響。
 const PAN = { keep: 48, threshold: 4, key: 40 };
@@ -264,8 +292,15 @@ const I18N = {
         zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '全圖', fitTitle: '符合視窗',
         followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
         info: '說明', close: '收合', expand: '展開說明',
-        hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原。',
-        hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
+        nodeAria: (label, up, down) => `${label}，上游 ${up} 個、下游 ${down} 個`, upstream: '上游', downstream: '下游', none: '無',
+        selInfo: (label, up, down) => `「${label}」上游 ${up}・下游 ${down}`, copyRef: '複製引用', clearSel: '取消選取',
+        nodeRef: (k, n, title, label, ups, downs) => `第 ${k}/${n} 張圖〈${title}〉的節點「${label}」（上游：${ups}；下游：${downs}）`,
+        report: '複製給 Claude', reportMenu: '複製問題回報給 Claude', reportCopied: '已複製，貼回對話給 Claude 即可',
+        reportHead: '[diagram-first 問題回報]', reportPage: '頁面', reportDiagram: (k, n, title) => `第 ${k}/${n} 張〈${title}〉`, reportFig: '圖',
+        reportState: '狀態', reportOk: 'render 成功', reportEnv: '環境', reportView: '檢視', reportSource: '原始碼', reportNote: '問題描述：',
+        layout: '版面', layoutPlain: '只有圖', layoutCard: '卡片', palette: '配色', paletteFollow: '跟隨畫面',
+        hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原；點節點看上下游。',
+        hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。點節點或按 Tab 看上下游，Enter 鎖定、Esc 取消；按 ? 開啟這段說明。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
         transparent: 'PNG（透明背景）', printPdf: '列印／向量 PDF', size: '大小', sizeMax: '最大',
         pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `已達瀏覽器上限，輸出 ${w}×${h} px`, copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
@@ -277,8 +312,15 @@ const I18N = {
         zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Fit', fitTitle: 'Fit to window',
         followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
         info: 'Notes', close: 'Collapse', expand: 'Show notes',
-        hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset.',
-        hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
+        nodeAria: (label, up, down) => `${label}, ${up} upstream, ${down} downstream`, upstream: 'Upstream', downstream: 'Downstream', none: 'none',
+        selInfo: (label, up, down) => `"${label}" ${up} upstream · ${down} downstream`, copyRef: 'Copy reference', clearSel: 'Clear selection',
+        nodeRef: (k, n, title, label, ups, downs) => `Node "${label}" in diagram ${k}/${n} "${title}" (upstream: ${ups}; downstream: ${downs})`,
+        report: 'Copy for Claude', reportMenu: 'Copy issue report for Claude', reportCopied: 'Copied. Paste it into the chat with Claude',
+        reportHead: '[diagram-first issue report]', reportPage: 'Page', reportDiagram: (k, n, title) => `${k}/${n} "${title}"`, reportFig: 'Diagram',
+        reportState: 'Status', reportOk: 'rendered', reportEnv: 'Environment', reportView: 'View', reportSource: 'Source', reportNote: 'What looks wrong:',
+        layout: 'Layout', layoutPlain: 'Diagram only', layoutCard: 'Card', palette: 'Colors', paletteFollow: 'As shown',
+        hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset; tap a node to trace its upstream and downstream.',
+        hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams. Hover, click or Tab to a node to trace its upstream and downstream; Enter locks, Esc clears; press ? to open this help.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
         transparent: 'PNG (transparent)', printPdf: 'Print / vector PDF', size: 'Size', sizeMax: 'Max',
         pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `Browser limit reached, exported ${w}×${h} px`, copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
@@ -290,8 +332,15 @@ const I18N = {
         zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: '全体', fitTitle: '画面に合わせる',
         followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
         info: '説明', close: '折りたたむ', expand: '説明を開く',
-        hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。',
-        hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
+        nodeAria: (label, up, down) => `${label}、上流 ${up} 件、下流 ${down} 件`, upstream: '上流', downstream: '下流', none: 'なし',
+        selInfo: (label, up, down) => `「${label}」上流 ${up}・下流 ${down}`, copyRef: '参照をコピー', clearSel: '選択を解除',
+        nodeRef: (k, n, title, label, ups, downs) => `図 ${k}/${n}〈${title}〉のノード「${label}」（上流：${ups}；下流：${downs}）`,
+        report: 'Claude 用にコピー', reportMenu: '問題レポートを Claude 用にコピー', reportCopied: 'コピーしました。Claude との会話に貼り付けてください',
+        reportHead: '[diagram-first 問題レポート]', reportPage: 'ページ', reportDiagram: (k, n, title) => `${k}/${n}〈${title}〉`, reportFig: '図',
+        reportState: '状態', reportOk: '描画成功', reportEnv: '環境', reportView: '表示', reportSource: 'ソース', reportNote: '問題の説明：',
+        layout: 'レイアウト', layoutPlain: '図のみ', layoutCard: 'カード', palette: '配色', paletteFollow: '表示どおり',
+        hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。ノードをタップすると上流と下流を表示。',
+        hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。ノードにポインターを置く・クリック・Tab で上流と下流を表示、Enter で固定、Esc で解除。? でこの説明を開く。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
         transparent: 'PNG（透過）', printPdf: '印刷／ベクター PDF', size: 'サイズ', sizeMax: '最大',
         pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `ブラウザの上限に達したため ${w}×${h} px で書き出しました`, copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
@@ -302,9 +351,13 @@ const lang = (document.documentElement.lang || 'zh').toLowerCase();
 const T = I18N[lang.slice(0, 2)] || I18N.en;
 
 const statusEl = document.getElementById('status');
-function setStatus(kind, text) {
+// 各圖的錯誤訊息（依圖的索引）與 ELK 檢查結果，供「回報給 Claude」使用。
+const errors = new Map();
+let elkOk = null;
+function setStatus(kind, text, extra) {
   statusEl.className = 'show ' + kind;
   statusEl.textContent = text;
+  if (extra) statusEl.append(extra);
 }
 
 function load(key, allowed, fallback) {
@@ -750,6 +803,15 @@ function viewKey(d, e) {
 }
 
 let exportSize = load(STORE.size, EXPORT.sizes, '2');
+// 版面：只有圖或卡片（加上標題與一句話結論）；配色：跟隨畫面，或固定匯出淺色／深色（必要時以對應 Theme 重新 render）。
+let exportLayout = load(STORE.layout, ['plain', 'card'], 'plain');
+let exportPalette = load(STORE.palette, ['follow', 'light', 'dark'], 'follow');
+
+// 讀出 SVG 字串的 viewBox 尺寸。
+function svgSize(svgText) {
+  const m = svgText.match(/viewBox="[^"]*?([\d.]+)[\s,]+([\d.]+)"/);
+  return m ? { w: Number(m[1]), h: Number(m[2]) } : { w: 1, h: 1 };
+}
 
 // 依選擇的大小算出輸出像素（w、h 為圖的 viewBox 尺寸）；超過 canvas 上限時等比縮小。
 function exportDims(w, h) {
@@ -798,29 +860,114 @@ async function rasterize(svgText, type, background) {
   if (background) { g.fillStyle = background; g.fillRect(0, 0, c.width, c.height); }
   g.drawImage(img, 0, 0, c.width, c.height);
   const blob = await new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), type, 0.92));
-  const out = { blob, width: c.width, height: c.height, capped: want.capped || shrunk };
+  const out = { blob, width: c.width, height: c.height, capped: want.capped || shrunk, svg: svgText };
   c.width = c.height = 0;
   return out;
 }
+// 以指定 Theme 與 label 模式重新 render 一份匯出用 SVG，結束後還原畫面用的設定。
+async function renderExport(d, themeName, htmlLabels) {
+  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: themeName, fontFamily: font,
+    themeVariables: { fontFamily: font }, ...(htmlLabels ? {} : { htmlLabels: false, flowchart: { htmlLabels: false } }) });
+  try {
+    const { svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, withDirection(d.source, dirOf(d)));
+    // 與 d.svg 相同，經由 DOM 序列化成合法的 XML。
+    const box = document.createElement('div');
+    box.innerHTML = svg;
+    return new XMLSerializer().serializeToString(box.querySelector('svg'));
+  } finally {
+    initMermaid();
+  }
+}
+
+// 匯出配色：跟隨畫面時用目前的圖；指定淺色／深色而與畫面不同時，改用對應的自動 Theme 重新 render。
+function exportTheme(d) {
+  const shownDark = d.canvas.classList.contains('dark');
+  const dark = exportPalette === 'follow' ? shownDark : exportPalette === 'dark';
+  return { dark, rerender: dark !== shownDark ? AUTO_THEME[dark ? 'dark' : 'light'] : null };
+}
+function exportBackground(dark) {
+  return dark ? getComputedStyle(document.documentElement).getPropertyValue('--canvas-dark').trim() : '#FFFFFF';
+}
+
+// 依文字寬度斷行（中日文逐字、其他語言依詞），回傳行陣列。
+const measureCtx = document.createElement('canvas').getContext('2d');
+function wrapText(text, css, width) {
+  measureCtx.font = css;
+  const seg = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(lang, { granularity: 'word' }) : null;
+  const parts = seg ? [...seg.segment(text)].map((x) => x.segment) : [...text];
+  const lines = [];
+  let line = '';
+  for (const part of parts) {
+    const next = line + part;
+    if (line && measureCtx.measureText(next).width > width) {
+      lines.push(line.trimEnd());
+      line = part.trimStart();
+    } else line = next;
+  }
+  if (line.trim()) lines.push(line.trimEnd());
+  return lines;
+}
+
+// 卡片：在圖的上方加上標題與一句話結論，整體仍是一份 SVG，點陣、PDF、SVG 下載共用。
+function cardSvg(svgText, title, caption, background, dark) {
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const inner = new DOMParser().parseFromString(svgText, 'image/svg+xml').documentElement;
+  const vb = (inner.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+  if (vb.length !== 4 || !vb[2] || !vb[3]) return svgText;
+  const pad = 32;
+  const W = Math.max(vb[2], 480);
+  const titleCss = `600 22px ${font}`;
+  const capCss = `15px ${font}`;
+  const titleLines = title ? wrapText(title, titleCss, W) : [];
+  const capLines = caption ? wrapText(caption, capCss, W) : [];
+  const head = titleLines.length * 30 + (capLines.length ? 6 + capLines.length * 22 : 0) + (titleLines.length || capLines.length ? 20 : 0);
+  const TW = W + pad * 2;
+  const TH = pad + head + vb[3] + pad;
+  const doc = document.implementation.createDocument(SVGNS, 'svg', null);
+  const root = doc.documentElement;
+  [['viewBox', `0 0 ${TW} ${TH}`], ['width', TW], ['height', TH]].forEach(([k, v]) => root.setAttribute(k, v));
+  if (background) {
+    const r = doc.createElementNS(SVGNS, 'rect');
+    [['width', TW], ['height', TH], ['fill', background]].forEach(([k, v]) => r.setAttribute(k, v));
+    root.append(r);
+  }
+  let y = pad;
+  const text = (lines, css, size, lineH, color) => lines.forEach((t) => {
+    const n = doc.createElementNS(SVGNS, 'text');
+    y += lineH;
+    [['x', pad], ['y', y - (lineH - size) / 2 - 4], ['fill', color], ['font-family', font], ['font-size', size]].forEach(([k, v]) => n.setAttribute(k, v));
+    if (css.startsWith('600')) n.setAttribute('font-weight', '600');
+    n.textContent = t;
+    root.append(n);
+  });
+  text(titleLines, titleCss, 22, 30, dark ? '#E8E8EA' : '#1F2328');
+  if (capLines.length) y += 6;
+  text(capLines, capCss, 15, 22, dark ? '#A0A0A8' : '#59636E');
+  const graph = doc.importNode(inner, true);
+  graph.removeAttribute('style');
+  [['x', pad + (W - vb[2]) / 2], ['y', pad + head], ['width', vb[2]], ['height', vb[3]]].forEach(([k, v]) => graph.setAttribute(k, v));
+  root.append(graph);
+  return new XMLSerializer().serializeToString(root);
+}
+
+// 組出匯出用的 SVG（依配色與版面）。htmlLabels 為 false 時改用純 SVG 文字標籤，避免污染 canvas。
+async function exportSvg(d, transparent, htmlLabels = true) {
+  const t = exportTheme(d);
+  const base = t.rerender || !htmlLabels ? await renderExport(d, t.rerender || currentTheme(), htmlLabels) : d.svg;
+  if (exportLayout !== 'card') return { svg: base, dark: t.dark };
+  const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
+  return { svg: cardSvg(base, d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark), dark: t.dark };
+}
+
 async function exportImage(d, type, transparent) {
   // 淺色匯出用純白，不帶畫布的米白底；深色沿用深色畫布色。
-  const background = transparent ? null : d.canvas.classList.contains('dark')
-    ? getComputedStyle(document.documentElement).getPropertyValue('--canvas-dark').trim() : '#FFFFFF';
+  const first = await exportSvg(d, transparent);
+  const background = transparent ? null : exportBackground(first.dark);
   try {
-    return await rasterize(d.svg, type, background);
+    return await rasterize(first.svg, type, background);
   } catch (e) {
     if (e.name !== 'SecurityError') throw e;
-    mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: currentTheme(), fontFamily: font,
-      themeVariables: { fontFamily: font }, htmlLabels: false, flowchart: { htmlLabels: false } });
-    try {
-      const { svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, withDirection(d.source, dirOf(d)));
-      // 與 d.svg 相同，經由 DOM 序列化成合法的 XML 再轉點陣圖。
-      const box = document.createElement('div');
-      box.innerHTML = svg;
-      return await rasterize(new XMLSerializer().serializeToString(box.querySelector('svg')), type, background);
-    } finally {
-      initMermaid();
-    }
+    return await rasterize((await exportSvg(d, transparent, false)).svg, type, background);
   }
 }
 
@@ -1081,13 +1228,15 @@ for (const [i, section] of sections.entries()) {
     }
   });
   const syncToolbar = rovingToolbar(toolbar);
+  const reportItem = menuItem(T.reportMenu, () => copyReport(i));
 
   try {
     await mermaid.parse(source);
   } catch (e) {
     badCount++;
     const box = el('div', { class: 'err' }, T.parseFail);
-    box.append(el('pre', {}, String(e.message || e)));
+    errors.set(i, String(e.message || e));
+    box.append(el('pre', {}, String(e.message || e)), reportButton(i));
     canvas.append(box);
     details.open = true;
     continue;
@@ -1100,10 +1249,10 @@ for (const [i, section] of sections.entries()) {
   const download = async (v) => {
     const name = `diagram-${i + 1}`;
     try {
-      if (v === 'svg') saveBlob(new Blob([d.svg], { type: 'image/svg+xml' }), `${name}.svg`);
+      if (v === 'svg') saveBlob(new Blob([(await exportSvg(d, false)).svg], { type: 'image/svg+xml' }), `${name}.svg`);
       else if (v === 'pdf') {
-        const vb = viewBox(d);
         const r = await exportImage(d, 'image/jpeg', false);
+        const vb = svgSize(r.svg);
         saveBlob(await jpegToPdf(r, vb.w, vb.h), `${name}.pdf`);
         report(r);
       } else {
@@ -1127,21 +1276,29 @@ for (const [i, section] of sections.entries()) {
       notify(T.copyFail);
     }
   };
-  // 大小：倍率或最大，所有圖共用並記在 localStorage；點選不關閉選單，下方顯示這張圖的輸出像素。
-  const sizes = el('div', { class: 'sizes', role: 'group' });
+  // 匯出選項：大小（倍率或最大）、版面（只有圖／卡片）、配色（跟隨畫面／淺色／深色）。所有圖共用並記在 localStorage；
+  // 點選不關閉選單，第一列顯示這張圖實際輸出的像素。
+  const opts = el('div', { class: 'opts' });
   d.sizeLabel = el('span', { class: 'size-label', 'aria-hidden': 'true' });
-  sizes.append(d.sizeLabel, ...EXPORT.sizes.map((v) => {
-    const b = el('button', { type: 'button', role: 'menuitemradio', tabindex: '-1', 'data-size': v }, v === 'max' ? T.sizeMax : `${v}x`);
-    b.addEventListener('click', () => {
-      exportSize = v;
-      save(STORE.size, v);
-      syncSizes();
-    });
-    return b;
-  }));
+  const optRow = (key, label, values) => {
+    const row = el('div', { class: 'sizes', role: 'group', 'aria-label': label });
+    row.append(...values.map(([v, text]) => {
+      const b = el('button', { type: 'button', role: 'menuitemradio', tabindex: '-1', 'data-opt': key, 'data-value': v }, text);
+      b.addEventListener('click', () => setExportOpt(key, v));
+      return b;
+    }));
+    return row;
+  };
+  const sizeRow = optRow('size', T.size, EXPORT.sizes.map((v) => [v, v === 'max' ? T.sizeMax : `${v}x`]));
+  sizeRow.prepend(d.sizeLabel);
+  opts.append(sizeRow,
+    optRow('layout', T.layout, [['plain', T.layoutPlain], ['card', T.layoutCard]]),
+    optRow('palette', T.palette, [['follow', T.paletteFollow], ['light', T.light], ['dark', T.dark]]));
   // 圖片相關項目放在原始碼之前；render 失敗時隱藏。
-  d.imageItems = [sizes, ...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
+  d.imageItems = [opts, ...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
                   menuItem(T.printPdf, () => printOne(d)), menuItem(T.copyImage, copyImage)];
+  // 問題回報不受 render 成敗影響，排在最後，語法錯誤時也能用。
+  menu.append(reportItem);
   menu.prepend(...d.imageItems);
   d.imageItems.forEach((b) => { b.hidden = true; });
   const zoom = el('div', { class: 'zoom', role: 'group' });
@@ -1168,16 +1325,240 @@ for (const [i, section] of sections.entries()) {
     d.buttons.push(dirSelect);
   }
   bindGestures(d);
+  bindNodes(d);
   diagrams.push(d);
 }
 
-// 同步所有選單的大小選擇，並更新每張圖的輸出像素說明。
+function setExportOpt(key, v) {
+  if (key === 'size') { exportSize = v; save(STORE.size, v); }
+  if (key === 'layout') { exportLayout = v; save(STORE.layout, v); }
+  if (key === 'palette') { exportPalette = v; save(STORE.palette, v); }
+  syncSizes();
+}
+// ---- 節點索引：由 Mermaid 的 diagram 資料取得節點與連線，對應到 SVG 元素。解析不到時整個高亮功能不出現（例如 sequence）。----
+async function indexGraph(d, source) {
+  d.graph = null;
+  let data;
+  try {
+    const dg = await mermaid.mermaidAPI.getDiagramFromText(source);
+    data = typeof dg.db.getData === 'function' ? dg.db.getData() : null;
+  } catch { return; }
+  const svg = d.canvas.querySelector('svg');
+  if (!svg || !data || !data.nodes?.length || !data.edges?.length) return;
+  const pre = svg.id + '-';
+  const exact = new Map();
+  const loose = new Map();
+  svg.querySelectorAll('g.node').forEach((g) => {
+    if (!g.id.startsWith(pre)) return;
+    const k = g.id.slice(pre.length);
+    exact.set(k, g);
+    // 部分圖種（例如 class）的 DOM id 尾端流水號與資料不同，去掉尾端數字後若唯一也可對應。
+    const s = k.replace(/-\d+$/, '');
+    loose.set(s, loose.has(s) ? null : g);
+  });
+  const nodes = new Map();
+  for (const n of data.nodes) {
+    if (n.isGroup) continue;
+    const keys = [n.domId, n.id].filter(Boolean).map(String);
+    const g = keys.map((k) => exact.get(k)).find(Boolean) || keys.map((k) => loose.get(k.replace(/-\d+$/, ''))).find(Boolean);
+    if (!g || [...nodes.values()].some((x) => x.el === g)) continue;
+    const raw = typeof n.label === 'string' && !/[<>]/.test(n.label) && n.label !== 'undefined' ? n.label : '';
+    const shown = (g.querySelector('.nodeLabel, .label, text')?.textContent || g.textContent || '').replace(/\s+/g, ' ').trim();
+    const label = /^(stateStart|stateEnd)$/.test(n.shape) ? (n.shape === 'stateStart' ? '[*] start' : '[*] end') : shown || raw || String(n.id);
+    nodes.set(n.id, { id: n.id, el: g, label, out: [], in: [] });
+  }
+  const edgeEls = new Map();
+  svg.querySelectorAll('[data-id]').forEach((x) => {
+    if (x.closest('g.node')) return;
+    const list = edgeEls.get(x.dataset.id) || [];
+    list.push(x);
+    edgeEls.set(x.dataset.id, list);
+  });
+  let count = 0;
+  for (const e of data.edges) {
+    const a = nodes.get(e.start);
+    const b = nodes.get(e.end);
+    const els = edgeEls.get(e.id) || [];
+    if (!a || !b) continue;
+    els.forEach((x) => x.setAttribute('data-hl-edge', ''));
+    const edge = { a, b, els };
+    a.out.push(edge);
+    b.in.push(edge);
+    count++;
+  }
+  if (nodes.size < 2 || !count) return;
+  d.graph = { nodes, byEl: new Map([...nodes.values()].map((n) => [n.el, n])) };
+  for (const n of nodes.values()) {
+    const { ups, downs } = reach(n);
+    n.el.setAttribute('tabindex', '0');
+    n.el.setAttribute('role', 'button');
+    n.el.setAttribute('aria-pressed', 'false');
+    n.el.setAttribute('aria-label', T.nodeAria(n.label, ups.size, downs.size));
+  }
+}
+
+// 上游與下游：沿連線方向往前、往後走訪所有可到達的節點（含間接）。
+function reach(node) {
+  const walk = (dir) => {
+    const seen = new Set();
+    const edges = new Set();
+    const stack = [node];
+    while (stack.length) {
+      const n = stack.pop();
+      for (const e of n[dir]) {
+        edges.add(e);
+        const m = dir === 'out' ? e.b : e.a;
+        if (m !== node && !seen.has(m)) { seen.add(m); stack.push(m); }
+      }
+    }
+    return { seen, edges };
+  };
+  const down = walk('out');
+  const up = walk('in');
+  return { ups: up.seen, downs: down.seen, edges: new Set([...up.edges, ...down.edges]) };
+}
+
+// 套用高亮：node 為 null 時清除。locked 表示使用者點選鎖定（hover／focus 只是預覽）。
+function highlight(d, node) {
+  const svg = d.canvas.querySelector('svg');
+  if (!svg) return;
+  svg.querySelectorAll('.hl-on, .hl-sel').forEach((x) => x.classList.remove('hl-on', 'hl-sel'));
+  svg.classList.toggle('hl', Boolean(node));
+  if (!node) return;
+  const r = reach(node);
+  node.el.classList.add('hl-on', 'hl-sel');
+  [...r.ups, ...r.downs].forEach((n) => n.el.classList.add('hl-on'));
+  r.edges.forEach((e) => e.els.forEach((x) => x.classList.add('hl-on')));
+}
+
+const selbar = el('div', { id: 'selbar', class: 'float', role: 'group', hidden: '' });
+const selText = el('span', { class: 'sel-text', 'aria-live': 'polite' });
+const selCopy = el('button', { type: 'button' }, T.copyRef);
+const selClear = el('button', { type: 'button', 'aria-label': T.clearSel, title: `${T.clearSel} (Esc)` }, '×');
+selbar.append(selText, selCopy, selClear);
+let selected = null;
+
+function select(d, node) {
+  if (selected?.node === node) node = null;
+  if (selected) selected.node.el.setAttribute('aria-pressed', 'false');
+  selected = node ? { d, node } : null;
+  highlight(d, node);
+  if (node) {
+    node.el.setAttribute('aria-pressed', 'true');
+    const r = reach(node);
+    selText.textContent = T.selInfo(node.label, r.ups.size, r.downs.size);
+  }
+  selbar.hidden = !node;
+}
+function clearSelection(d) {
+  if (selected && (!d || selected.d === d)) select(selected.d, selected.node);
+  else if (d) highlight(d, null);
+}
+function nodeRef(d, node) {
+  const r = reach(node);
+  const names = (set) => (set.size ? [...set].map((n) => n.label).join('、') : T.none);
+  const k = sections.indexOf(d.section) + 1;
+  return T.nodeRef(k, sections.length, d.section.dataset.title, node.label, names(r.ups), names(r.downs));
+}
+selCopy.addEventListener('click', async () => {
+  if (!selected) return;
+  try {
+    await navigator.clipboard.writeText(nodeRef(selected.d, selected.node));
+    notify(T.copied);
+  } catch {
+    notify(T.copyFail);
+  }
+});
+selClear.addEventListener('click', () => {
+  const n = selected?.node;
+  clearSelection();
+  n?.el.focus({ preventScroll: true });
+});
+
+// 節點互動：滑鼠移入或鍵盤聚焦時預覽，點擊或 Enter／Space 鎖定，Esc 或點空白處取消。
+function bindNodes(d) {
+  const c = d.canvas;
+  const nodeOf = (t) => d.graph?.byEl.get(t.closest?.('g.node'));
+  const preview = (n) => { if (!selected || selected.d !== d) highlight(d, n); };
+  c.addEventListener('pointerover', (e) => { if (e.pointerType === 'mouse') { const n = nodeOf(e.target); if (n) preview(n); } });
+  c.addEventListener('pointerout', (e) => {
+    if (e.pointerType !== 'mouse' || !nodeOf(e.target) || nodeOf(e.relatedTarget || c) === nodeOf(e.target)) return;
+    preview(null);
+  });
+  c.addEventListener('click', (e) => {
+    if (c.classList.contains('dragging') || !d.graph) return;
+    const n = nodeOf(e.target);
+    if (n) select(d, n);
+    else if (selected?.d === d) clearSelection();
+  });
+  c.addEventListener('focusin', (e) => {
+    const n = nodeOf(e.target);
+    if (!n) return;
+    preview(n);
+    ensureVisible(d, n.el);
+  });
+  c.addEventListener('focusout', (e) => { if (nodeOf(e.target) && !nodeOf(e.relatedTarget || c)) preview(null); });
+  c.addEventListener('keydown', (e) => {
+    const n = nodeOf(e.target);
+    if (n && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); select(d, n); }
+  }, true);
+  // 畫布是 overflow: hidden，瀏覽器聚焦節點時仍可能捲動它；一律歸零，改以平移帶到可見處。
+  c.addEventListener('scroll', () => { if (c.scrollLeft || c.scrollTop) { c.scrollLeft = 0; c.scrollTop = 0; } });
+}
+// 節點不在上下浮動列之間的可見區時，平移把它帶進來。
+function ensureVisible(d, node) {
+  const r = node.getBoundingClientRect();
+  const c = d.canvas.getBoundingClientRect();
+  const { top, bottom } = barLimits(d);
+  const dx = r.left < c.left + 16 ? c.left + 16 - r.left : r.right > c.right - 16 ? c.right - 16 - r.right : 0;
+  const dy = r.top < c.top + top ? c.top + top - r.top : r.bottom > c.top + bottom ? c.top + bottom - r.bottom : 0;
+  if (dx || dy) panBy(d, dx, dy);
+}
+
+// ---- 回報給 Claude：把錯誤、圖的位置、環境與原始碼整理成一段文字，貼回對話。----
+function buildReport(i) {
+  const lines = [T.reportHead, `${T.reportPage}: ${document.title}`];
+  const list = i === null ? sections.map((_, k) => k) : [i];
+  for (const k of list) {
+    const section = sections[k];
+    const d = diagrams.find((x) => x.section === section);
+    if (i === null && !errors.has(k)) continue;
+    lines.push('', `${T.reportFig}: ${T.reportDiagram(k + 1, sections.length, section.dataset.title)}`);
+    lines.push(`${T.reportState}: ${errors.get(k) || (d && d.ok ? T.reportOk : '?')}`);
+    if (d) lines.push(`${T.reportView}: ${T.direction} ${dirOf(d)}, Theme ${currentTheme()}`);
+    const src = section.querySelector('script.mermaid-src');
+    if (src) lines.push(`${T.reportSource}:`, '```mermaid', dedent(src.textContent), '```');
+  }
+  lines.push('', `${T.reportEnv}: Mermaid ${MERMAID_VERSION}, ELK ${elkOk === null ? '?' : elkOk ? 'on' : 'off'}, ${navigator.userAgent}`);
+  if (i !== null && !errors.has(i)) lines.push('', T.reportNote);
+  return lines.join('\n');
+}
+async function copyReport(i) {
+  try {
+    await navigator.clipboard.writeText(buildReport(i));
+    notify(T.reportCopied);
+  } catch {
+    notify(T.copyFail);
+  }
+}
+function reportButton(i) {
+  const b = el('button', { type: 'button', class: 'report' }, T.report);
+  b.addEventListener('click', () => copyReport(i));
+  return b;
+}
+
+// 同步所有選單的匯出選項，並更新每張圖的輸出像素說明（卡片版面依實際卡片尺寸計算）。
 function syncSizes() {
-  document.querySelectorAll('[data-size]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.size === exportSize)));
+  const cur = { size: exportSize, layout: exportLayout, palette: exportPalette };
+  document.querySelectorAll('[data-opt]').forEach((b) => b.setAttribute('aria-checked', String(cur[b.dataset.opt] === b.dataset.value)));
   diagrams.forEach((d) => {
-    const v = d.ok && viewBox(d);
-    if (!v || !d.sizeLabel) return;
-    const o = exportDims(v.w, v.h);
+    if (!d.ok || !d.sizeLabel || !viewBox(d)) return;
+    let { w, h } = svgSize(d.svg);
+    if (exportLayout === 'card') {
+      const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
+      ({ w, h } = svgSize(cardSvg(d.svg, d.section.dataset.title, caption, null, false)));
+    }
+    const o = exportDims(w, h);
     const text = T.pixels(o.w, o.h);
     d.sizeLabel.textContent = `${T.size} · ${text}`;
     d.sizeLabel.parentElement.setAttribute('aria-label', `${T.size} ${text}`);
@@ -1205,6 +1586,9 @@ async function renderOne(d) {
     d.canvas.innerHTML = svg;
     // 從 DOM 序列化成合法的 XML：Mermaid 的 HTML 標籤（例如 <br>）不一定是自我封閉，直接當 XML 解析會失敗。
     d.svg = new XMLSerializer().serializeToString(d.canvas.querySelector('svg'));
+    errors.delete(d.i);
+    clearSelection(d);
+    await indexGraph(d, source);
     if (!d.ok) { d.toolbar.prepend(...d.buttons); d.syncToolbar(); }
     d.imageItems.forEach((b) => { b.hidden = false; });
     d.ok = true;
@@ -1213,7 +1597,8 @@ async function renderOne(d) {
     else applyView(d);
   } catch (e) {
     const box = el('div', { class: 'err' }, T.renderFail);
-    box.append(el('pre', {}, String(e.message || e)));
+    errors.set(d.i, String(e.message || e));
+    box.append(el('pre', {}, String(e.message || e)), reportButton(d.i));
     d.canvas.replaceChildren(box);
     d.buttons.forEach((b) => b.remove());
     d.imageItems.forEach((b) => { b.hidden = true; });
@@ -1346,11 +1731,12 @@ if (multi) {
 } else {
   tocBtn.disabled = true;
 }
-document.body.append(nav, actions, toast);
+document.body.append(nav, actions, selbar, toast);
 
 // 切換到第 k 張圖：顯示該圖、把它的說明移入說明視窗，並同步網址的 #id。
 function show(k, updateHash = true) {
   popovers.forEach((p) => p.set(false));
+  clearSelection();
   if (!sections.length) return;
   current = (k + sections.length) % sections.length;
   const section = sections[current];
@@ -1407,18 +1793,36 @@ if (!navigator.maxTouchPoints) {
   document.addEventListener('gestureend', () => { base = null; });
 }
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !nativePopover) {
+  const popOpen = popovers.some((p) => p.isOpen());
+  if (e.key === 'Escape' && !nativePopover && popOpen) {
     popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
     return;
   }
+  // Esc：有選取的節點時先取消選取（彈出選單開著時交給選單處理）。
+  if (e.key === 'Escape' && selected && !popOpen) {
+    const n = selected.node;
+    clearSelection();
+    if (selbar.contains(e.target)) n.el.focus({ preventScroll: true });
+    return;
+  }
   if (e.altKey || e.ctrlKey || e.metaKey) return;
+  // ?：展開說明視窗並捲到操作提示；在原始碼、輸入框與選單內不攔截。
+  if (e.key === '?' && !e.target.closest?.('pre, input, textarea, select, .pop')) {
+    e.preventDefault();
+    showInfo(true);
+    hint.scrollIntoView({ block: 'nearest' });
+    hint.classList.remove('flash');
+    void hint.offsetWidth;
+    hint.classList.add('flash');
+    return;
+  }
   // 整頁就是畫布：焦點在頁面本身時，方向鍵與 +／−／0／1 作用在目前這張圖，和畫布取得焦點時一致。
-  // 切換圖：PageUp／PageDown（頁面、畫布、目錄上），以及目錄內的 ←／→。原始碼、工具列與面板內的按鍵不攔截。
+  // 切換圖：PageUp／PageDown（頁面、畫布與節點、目錄上），以及目錄內的 ←／→。原始碼、工具列與面板內的按鍵不攔截。
   const t = e.target;
   const page = t === document.body || t === document.documentElement;
   const inNav = Boolean(t.closest?.('#nav'));
   const paging = e.key === 'PageUp' || e.key === 'PageDown';
-  if (multi && (paging ? page || inNav || t.classList?.contains('canvas') : inNav && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) {
+  if (multi && (paging ? page || inNav || Boolean(t.closest?.('.canvas')) : inNav && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) {
     e.preventDefault();
     show(current + (e.key === 'ArrowLeft' || e.key === 'PageUp' ? -1 : 1));
     return;
@@ -1462,9 +1866,9 @@ await renderAll();
 badCount += diagrams.filter((d) => !d.ok).length;
 
 if (badCount) {
-  setStatus('error', T.some(diagrams.filter((d) => d.ok).length, badCount));
-} else if (!(await elkIsActive(mermaid))) {
-  setStatus('warn', T.noElk);
+  setStatus('error', T.some(diagrams.filter((d) => d.ok).length, badCount), reportButton(null));
+} else if (!(elkOk = await elkIsActive(mermaid))) {
+  setStatus('warn', T.noElk, reportButton(null));
 }
 </script>
 </body>
