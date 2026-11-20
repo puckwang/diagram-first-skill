@@ -25,7 +25,9 @@
   - 右上：說明視窗開關、⚙ 設定（模式、方向、Theme，存在 localStorage）、全螢幕（瀏覽器不支援時不顯示）。
   - 說明視窗：預設收合成左上小卡（目前這張圖的標題與一句話結論）；展開後顯示頁面標題、摘要、圖例與原始碼；
     展開狀態存在 localStorage。
-  - 下方工具列：縮放、全圖（符合視窗）、個別方向；⋯ 選單內有下載 SVG／PNG／JPEG／WebP、複製圖片與原始碼。
+  - 下方工具列：縮放、全圖（符合視窗）、個別方向；⋯ 選單內有大小（1x／2x／4x／最大，存在 localStorage）、
+    下載 PNG／JPEG／WebP／PDF（點陣，解析度依大小）／SVG、列印／向量 PDF（只印目前這張圖）、複製圖片與原始碼。
+    點陣輸出超過瀏覽器 canvas 上限時自動縮小並提示實際像素。
   方向只影響 flowchart、state、class、ER、requirement；「自動」依視窗方向，橫向時轉為水平、直向時轉為垂直。
   自動符合大小最多放大到 150%，並避開小卡或寬螢幕上展開的說明視窗（取其右側或下方較大的區域）。
   個別方向選單（跟隨頁面／垂直／水平）只在本次瀏覽有效，不存 localStorage。
@@ -43,7 +45,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oCuCKcvd0i70YDNtw5z1ftCdJ6pEmBDmu6LR6zdCo4s=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-P3RT61O/DTAvhTX3Ack/1slP+xE3AUn9c3u27qvDuVQ=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -161,7 +163,12 @@
     .menu button { display: block; width: 100%; text-align: start; font: 14px var(--font); color: var(--control-text); background: transparent;
                    border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
     .menu button:hover, .menu button:focus-visible { background: var(--control); }
-    .menu button[hidden] { display: none; }
+    .menu button[hidden], .menu .sizes[hidden] { display: none; }
+    /* 匯出大小：倍率或最大，下方顯示這張圖實際輸出的像素。 */
+    .menu .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 6px 8px; margin: 0 0 4px; border-bottom: 1px solid var(--border); }
+    .menu .sizes .size-label { flex: 1 0 100%; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .menu .sizes button { display: inline-block; width: auto; flex: 1; text-align: center; padding: 4px 6px; background: var(--control); }
+    .menu .sizes button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--text); font-weight: 600; }
     .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
              margin: 0; padding: 6px 14px; font-size: 13px; }
     /* 提示區域保持在無障礙樹中，沒有內容時只在視覺上隱藏，讓螢幕閱讀器穩定讀出。 */
@@ -206,6 +213,14 @@
     .canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }
     #info .expand, #info .hint { display: none; }
     section.diagram { break-inside: avoid; }
+    /* 列印／向量 PDF：只印目前這張圖，頁面大小由程式依圖設定（@page），不帶標題與說明。 */
+    html.print-one body { margin: 0; }
+    html.print-one .page { padding: 0; }
+    html.print-one :is(header, #info, #status, section.diagram:not(.active)) { display: none !important; }
+    html.print-one section.diagram { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+    html.print-one section.diagram > :not(.canvas) { display: none !important; }
+    html.print-one .canvas { padding: 0; border-radius: 0; overflow: visible; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    html.print-one .canvas svg { max-height: 100vh !important; margin: 0 auto; }
   }
 </style>
 </head>
@@ -235,7 +250,9 @@
 const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.esm.min.mjs';
 const THEMES = ['redux-color', 'redux-dark-color', 'redux', 'redux-dark', 'default', 'dark', 'neo', 'neo-dark', 'forest', 'neutral'];
 const AUTO_THEME = { light: 'redux-color', dark: 'redux-dark-color' };
-const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction', info: 'diagram-first:info' };
+const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction', info: 'diagram-first:info', size: 'diagram-first:export-size' };
+// 匯出點陣圖的大小：倍率或最大。side、area 為保守的 canvas 上限（Chrome 單邊 16384px）；實際配置失敗時再自動縮小。
+const EXPORT = { sizes: ['1', '2', '4', 'max'], side: 16384, area: 64e6 };
 const ZOOM = { min: 0.1, max: 8, step: 1.25, fitMax: 1.5 };
 // 平移時圖至少留在可見區內的像素；拖曳超過門檻才算拖曳，點擊圖內連結不受影響。
 const PAN = { keep: 48, threshold: 4, key: 40 };
@@ -249,7 +266,8 @@ const I18N = {
         info: '說明', close: '收合', expand: '展開說明',
         hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原。',
         hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
-        transparent: 'PNG（透明背景）', copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
+        transparent: 'PNG（透明背景）', printPdf: '列印／向量 PDF', size: '大小', sizeMax: '最大',
+        pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `已達瀏覽器上限，輸出 ${w}×${h} px`, copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
         renderFail: 'Render 失敗：', some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。請把錯誤訊息回報給 Agent。`,
         noElk: 'ELK 排版未生效，圖形以預設的 dagre 排版顯示。請回報給 Agent。' },
@@ -261,7 +279,8 @@ const I18N = {
         info: 'Notes', close: 'Collapse', expand: 'Show notes',
         hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset.',
         hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
-        transparent: 'PNG (transparent)', copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
+        transparent: 'PNG (transparent)', printPdf: 'Print / vector PDF', size: 'Size', sizeMax: 'Max',
+        pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `Browser limit reached, exported ${w}×${h} px`, copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
         renderFail: 'Render failed:', some: (ok, bad) => `${ok} succeeded, ${bad} failed. Please report the error to the agent.`,
         noElk: 'ELK layout is not active; diagrams fell back to dagre. Please report this to the agent.' },
@@ -273,7 +292,8 @@ const I18N = {
         info: '説明', close: '折りたたむ', expand: '説明を開く',
         hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。',
         hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
-        transparent: 'PNG（透過）', copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
+        transparent: 'PNG（透過）', printPdf: '印刷／ベクター PDF', size: 'サイズ', sizeMax: '最大',
+        pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `ブラウザの上限に達したため ${w}×${h} px で書き出しました`, copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
         renderFail: '描画に失敗しました：', some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。エラーをエージェントに報告してください。`,
         noElk: 'ELK レイアウトが有効になっていません（dagre で表示）。エージェントに報告してください。' },
@@ -729,26 +749,58 @@ function viewKey(d, e) {
   e.preventDefault();
 }
 
-// 把 SVG 轉成點陣圖。含 foreignObject 的 SVG 在部分瀏覽器會污染 canvas，此時改用純 SVG 文字標籤重新 render。
+let exportSize = load(STORE.size, EXPORT.sizes, '2');
+
+// 依選擇的大小算出輸出像素（w、h 為圖的 viewBox 尺寸）；超過 canvas 上限時等比縮小。
+function exportDims(w, h) {
+  const want = exportSize === 'max' ? Infinity : Number(exportSize);
+  const s = Math.min(want, EXPORT.side / w, EXPORT.side / h, Math.sqrt(EXPORT.area / (w * h)));
+  return { w: Math.max(1, Math.round(w * s)), h: Math.max(1, Math.round(h * s)), capped: s < want };
+}
+
+// 配置 canvas；部分瀏覽器（例如 iOS Safari）的上限更低，超過時 getContext 失敗或畫不上去，每次縮小 25% 重試。
+function makeCanvas(w, h) {
+  for (let k = 0; k < 16; k++) {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const g = c.getContext('2d');
+    if (g) {
+      g.fillRect(w - 1, h - 1, 1, 1);
+      if (g.getImageData(w - 1, h - 1, 1, 1).data[3] === 255) {
+        g.clearRect(w - 1, h - 1, 1, 1);
+        return { c, g, shrunk: k > 0 };
+      }
+    }
+    c.width = c.height = 0;
+    w = Math.max(1, Math.floor(w * 0.75));
+    h = Math.max(1, Math.floor(h * 0.75));
+  }
+  throw new Error('canvas');
+}
+
+// 把 SVG 轉成點陣圖，回傳 { blob, width, height, capped }。SVG 以目標尺寸繪製，放大時仍是向量品質。
+// 含 foreignObject 的 SVG 在部分瀏覽器會污染 canvas，此時改用純 SVG 文字標籤重新 render。
 async function rasterize(svgText, type, background) {
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
   const root = doc.documentElement;
   const vb = (root.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
-  if (vb.length !== 4 || !vb[2]) throw new Error('no viewBox');
-  root.setAttribute('width', vb[2]);
-  root.setAttribute('height', vb[3]);
+  if (vb.length !== 4 || !vb[2] || !vb[3]) throw new Error('no viewBox');
+  const want = exportDims(vb[2], vb[3]);
+  // SVG 本身就以輸出尺寸宣告，瀏覽器直接以該解析度繪製，不會先畫小圖再放大。
+  root.setAttribute('width', want.w);
+  root.setAttribute('height', want.h);
   root.removeAttribute('style');
   const img = new Image();
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(root));
   await img.decode();
-  const ratio = 2;
-  const c = document.createElement('canvas');
-  c.width = Math.ceil(vb[2] * ratio);
-  c.height = Math.ceil(vb[3] * ratio);
-  const g = c.getContext('2d');
+  const { c, g, shrunk } = makeCanvas(want.w, want.h);
   if (background) { g.fillStyle = background; g.fillRect(0, 0, c.width, c.height); }
   g.drawImage(img, 0, 0, c.width, c.height);
-  return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), type, 0.92));
+  const blob = await new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), type, 0.92));
+  const out = { blob, width: c.width, height: c.height, capped: want.capped || shrunk };
+  c.width = c.height = 0;
+  return out;
 }
 async function exportImage(d, type, transparent) {
   // 淺色匯出用純白，不帶畫布的米白底；深色沿用深色畫布色。
@@ -771,14 +823,67 @@ async function exportImage(d, type, transparent) {
     }
   }
 }
+
+// 把 JPEG 包成單頁 PDF（不需外部函式庫）：頁面大小等於圖，CSS px 以 0.75 換成 pt，單邊不超過 PDF 上限 14400pt。
+async function jpegToPdf(r, viewW, viewH) {
+  const jpg = new Uint8Array(await r.blob.arrayBuffer());
+  const k = Math.min(0.75, 14400 / viewW, 14400 / viewH);
+  const W = (viewW * k).toFixed(2);
+  const H = (viewH * k).toFixed(2);
+  const enc = new TextEncoder();
+  const parts = [];
+  const offsets = [];
+  let len = 0;
+  const push = (x) => {
+    const b = typeof x === 'string' ? enc.encode(x) : x;
+    parts.push(b);
+    len += b.length;
+  };
+  const obj = (n, dict, stream) => {
+    offsets[n] = len;
+    push(`${n} 0 obj\n${dict}\n`);
+    if (stream) { push('stream\n'); push(stream); push('\nendstream\n'); }
+    push('endobj\n');
+  };
+  const content = enc.encode(`q ${W} 0 0 ${H} 0 0 cm /Im0 Do Q`);
+  push('%PDF-1.4\n');
+  push(new Uint8Array([37, 226, 227, 207, 211, 10]));
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+  obj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
+  obj(4, `<< /Type /XObject /Subtype /Image /Width ${r.width} /Height ${r.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>`, jpg);
+  obj(5, `<< /Length ${content.length} >>`, content);
+  const xref = len;
+  const rows = offsets.slice(1).map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('');
+  push(`xref\n0 6\n0000000000 65535 f \n${rows}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts, { type: 'application/pdf' });
+}
+
+// 列印／向量 PDF：只印目前這張圖，頁面大小設成圖的尺寸，在列印對話框選「另存為 PDF」即可得到向量 PDF。
+function printOne(d) {
+  const v = viewBox(d);
+  if (!v) return;
+  const pageStyle = el('style', {}, `@page { size: ${Math.ceil(v.w) + 2}px ${Math.ceil(v.h) + 2}px; margin: 0; }`);
+  document.head.append(pageStyle);
+  document.documentElement.classList.add('print-one');
+  const done = () => {
+    pageStyle.remove();
+    document.documentElement.classList.remove('print-one');
+    removeEventListener('afterprint', done);
+  };
+  addEventListener('afterprint', done);
+  print();
+}
+
 function saveBlob(blob, name) {
   const a = el('a', { href: URL.createObjectURL(blob), download: name });
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 const probe = document.createElement('canvas');
-const FORMATS = [['svg', 'SVG'], ['png', 'PNG'], ['png-transparent', null], ['jpeg', 'JPEG']];
+const FORMATS = [['png', 'PNG'], ['png-transparent', null], ['jpeg', 'JPEG']];
 if (probe.toDataURL('image/webp').startsWith('data:image/webp')) FORMATS.push(['webp', 'WebP']);
+FORMATS.push(['pdf', 'PDF'], ['svg', 'SVG']);
 
 // 工具列只佔一個 Tab 停留點，以方向鍵在按鈕間移動；瀏覽器支援 focusgroup 時交給瀏覽器處理。
 function rovingToolbar(bar) {
@@ -868,7 +973,7 @@ if (!nativePopover) {
 
 // 下拉選單：開啟時聚焦第一項，↑／↓／Home／End 移動，Tab 離開時關閉。
 function menuKeys(menu, p) {
-  const items = () => [...menu.querySelectorAll('[role="menuitem"]')].filter((x) => !x.hidden);
+  const items = () => [...menu.querySelectorAll('[role^="menuitem"]')].filter((x) => !x.closest('[hidden]'));
   menu.addEventListener('keydown', (e) => {
     const list = items();
     const k = list.indexOf(document.activeElement);
@@ -953,7 +1058,7 @@ for (const [i, section] of sections.entries()) {
   toolbar.append(moreBtn);
   document.body.append(menu);
   let focusFirst = () => {};
-  const more = popover(moreBtn, menu, 'up', () => focusFirst());
+  const more = popover(moreBtn, menu, 'up', () => { syncSizes(); focusFirst(); });
   focusFirst = menuKeys(menu, more);
   const menuItem = (label, run) => {
     const b = el('button', { type: 'button', role: 'menuitem', tabindex: '-1' }, label);
@@ -990,14 +1095,23 @@ for (const [i, section] of sections.entries()) {
 
   const d = { i, section, source, canvas, details, toolbar, ok: false, svg: '', scale: 1, tx: 0, ty: 0,
               direction: 'page', fit: true, syncToolbar };
+  // 輸出尺寸超過瀏覽器上限而縮小時，提示實際像素。
+  const report = (r) => { if (r.capped) notify(T.capped(r.width, r.height)); };
   const download = async (v) => {
     const name = `diagram-${i + 1}`;
     try {
       if (v === 'svg') saveBlob(new Blob([d.svg], { type: 'image/svg+xml' }), `${name}.svg`);
-      else {
+      else if (v === 'pdf') {
+        const vb = viewBox(d);
+        const r = await exportImage(d, 'image/jpeg', false);
+        saveBlob(await jpegToPdf(r, vb.w, vb.h), `${name}.pdf`);
+        report(r);
+      } else {
         const type = v === 'png-transparent' ? 'image/png' : `image/${v}`;
         const ext = v === 'jpeg' ? 'jpg' : v === 'png-transparent' ? 'png' : v;
-        saveBlob(await exportImage(d, type, v === 'png-transparent'), `${name}.${ext}`);
+        const r = await exportImage(d, type, v === 'png-transparent');
+        saveBlob(r.blob, `${name}.${ext}`);
+        report(r);
       }
     } catch {
       notify(T.exportFail);
@@ -1005,15 +1119,29 @@ for (const [i, section] of sections.entries()) {
   };
   const copyImage = async () => {
     try {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': exportImage(d, 'image/png', false) })]);
-      notify(T.copied);
+      let r = null;
+      const png = exportImage(d, 'image/png', false).then((x) => { r = x; return x.blob; });
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+      notify(r && r.capped ? T.capped(r.width, r.height) : T.copied);
     } catch {
       notify(T.copyFail);
     }
   };
+  // 大小：倍率或最大，所有圖共用並記在 localStorage；點選不關閉選單，下方顯示這張圖的輸出像素。
+  const sizes = el('div', { class: 'sizes', role: 'group' });
+  d.sizeLabel = el('span', { class: 'size-label', 'aria-hidden': 'true' });
+  sizes.append(d.sizeLabel, ...EXPORT.sizes.map((v) => {
+    const b = el('button', { type: 'button', role: 'menuitemradio', tabindex: '-1', 'data-size': v }, v === 'max' ? T.sizeMax : `${v}x`);
+    b.addEventListener('click', () => {
+      exportSize = v;
+      save(STORE.size, v);
+      syncSizes();
+    });
+    return b;
+  }));
   // 圖片相關項目放在原始碼之前；render 失敗時隱藏。
-  d.imageItems = [...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
-                  menuItem(T.copyImage, copyImage)];
+  d.imageItems = [sizes, ...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
+                  menuItem(T.printPdf, () => printOne(d)), menuItem(T.copyImage, copyImage)];
   menu.prepend(...d.imageItems);
   d.imageItems.forEach((b) => { b.hidden = true; });
   const zoom = el('div', { class: 'zoom', role: 'group' });
@@ -1041,6 +1169,19 @@ for (const [i, section] of sections.entries()) {
   }
   bindGestures(d);
   diagrams.push(d);
+}
+
+// 同步所有選單的大小選擇，並更新每張圖的輸出像素說明。
+function syncSizes() {
+  document.querySelectorAll('[data-size]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.size === exportSize)));
+  diagrams.forEach((d) => {
+    const v = d.ok && viewBox(d);
+    if (!v || !d.sizeLabel) return;
+    const o = exportDims(v.w, v.h);
+    const text = T.pixels(o.w, o.h);
+    d.sizeLabel.textContent = `${T.size} · ${text}`;
+    d.sizeLabel.parentElement.setAttribute('aria-label', `${T.size} ${text}`);
+  });
 }
 
 // 每張圖的方向：「跟隨頁面」時用頁首的方向設定。

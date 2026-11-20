@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Add an export size choice (1x / 2x / 4x / Max); exports that exceed the browser limit shrink automatically and report the actual pixels
+- Add PDF download (high-resolution raster) and Print / vector PDF (current diagram only, page sized to the diagram)
 ### Changed
 - Change the HTML page to an infinite canvas: drag to pan at any zoom level with mouse, pen or touch, pan with two-finger trackpad scroll, pinch to zoom, and show a subtle dot grid that follows pan and zoom
 - Change the notes window to start collapsed as a small card at top left with the current diagram's title and caption; expand it for the full notes. Everywhere outside the card can be dragged
