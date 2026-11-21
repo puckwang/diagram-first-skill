@@ -33,7 +33,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-3AMj8vK0D6nT9K9X3VCxfjlf61wicii0JI7lyEcb9us=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0qhgVMbJt2mYeEsA6EkMzeDTHipNqF/jKEpzqVoBEIo=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -851,7 +851,14 @@ async function renderExportNow(d, themeName, htmlLabels) {
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: themeName, fontFamily: font,
 themeVariables: { fontFamily: font }, ...(htmlLabels ? {} : { htmlLabels: false, flowchart: { htmlLabels: false } }) });
 try {
-const { svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, withDirection(d.source, dirOf(d)));
+const source = withDirection(d.source, dirOf(d));
+let svg;
+try {
+({ svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, source));
+} catch (e) {
+if (source === d.source) throw e;
+({ svg } = await mermaid.render(`export-${d.i}-${Date.now()}-src`, d.source));
+}
 const box = document.createElement('div');
 box.innerHTML = svg;
 return new XMLSerializer().serializeToString(box.querySelector('svg'));
@@ -879,7 +886,10 @@ return dark ? getComputedStyle(document.documentElement).getPropertyValue('--can
 const measureCtx = document.createElement('canvas').getContext('2d');
 function wrapText(text, css, width) {
 measureCtx.font = css;
-const seg = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(lang, { granularity: 'word' }) : null;
+let seg = null;
+try { seg = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(lang, { granularity: 'word' }) : null; } catch {
+try { seg = new Intl.Segmenter(undefined, { granularity: 'word' }); } catch {}
+}
 const parts = seg ? [...seg.segment(text)].map((x) => x.segment) : [...text];
 const lines = [];
 let line = '';
@@ -944,7 +954,7 @@ return new XMLSerializer().serializeToString(root);
 async function exportSvg(d, transparent, htmlLabels = true) {
 const t = exportTheme(d);
 const base = t.rerender || !htmlLabels ? await renderExport(d, t.rerender || currentTheme(), htmlLabels) : d.svg;
-const inked = exportInk === 'on' ? withInk(d, base) : base;
+const inked = exportInk === 'on' ? withInk(d, base, t.dark) : base;
 if (exportLayout !== 'card') return { svg: inked, dark: t.dark };
 const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
 const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
@@ -1168,8 +1178,8 @@ box.append(el('summary', {}, items ? `${T.legend} (${items})` : T.legend), legen
 note.append(box);
 }
 const annList = section.querySelector('ol.annotations');
-const anns = annList ? [...annList.querySelectorAll(':scope > li')].map((li, k) => ({ n: k + 1, node: li.dataset.node || null, text: li.textContent.trim(), li }))
-.filter((a) => a.text) : [];
+const anns = annList ? [...annList.querySelectorAll(':scope > li')].map((li) => ({ node: li.dataset.node || null, text: li.textContent.trim() }))
+.filter((a) => a.text).map((a, k) => ({ ...a, n: k + 1 })) : [];
 if (annList) {
 annList.remove();
 if (anns.length) {
@@ -1357,7 +1367,8 @@ used.add(g);
 const raw = typeof n.label === 'string' && !/[<>]/.test(n.label) && n.label !== 'undefined' ? n.label : '';
 const shown = (g.querySelector('.nodeLabel, .label, text')?.textContent || g.textContent || '').replace(/\s+/g, ' ').trim();
 const label = /^(stateStart|stateEnd)$/.test(n.shape) ? (n.shape === 'stateStart' ? '[*] start' : '[*] end') : shown || raw || String(n.id);
-nodes.set(n.id, { id: n.id, el: g, label, out: [], in: [] });
+const src = n.nodeId ?? String(n.id).match(/^entity-(.+)-\d+$/)?.[1] ?? n.id;
+nodes.set(n.id, { id: n.id, src: String(src), el: g, label, out: [], in: [] });
 }
 const edgeEls = new Map();
 svg.querySelectorAll('[data-id]').forEach((x) => {
@@ -1379,7 +1390,7 @@ b.in.push(edge);
 count++;
 }
 if (nodes.size < 2 || !count) return;
-d.graph = { nodes, byEl: new Map([...nodes.values()].map((n) => [n.el, n])) };
+d.graph = { nodes, byEl: new Map([...nodes.values()].map((n) => [n.el, n])), bySrc: new Map([...nodes.values()].map((n) => [n.src, n])) };
 let first = true;
 for (const n of nodes.values()) {
 const { ups, downs } = reach(n);
@@ -1393,6 +1404,8 @@ n.el.setAttribute('aria-label', T.nodeAria(n.label, ups.size, downs.size));
 function placeAnnotations(d) {
 const svg = d.canvas.querySelector('svg');
 if (!svg || !d.anns.length) return;
+d.annPending = !d.canvas.clientWidth;
+svg.querySelector(':scope > g.ann-layer')?.remove();
 const SVGNS = 'http://www.w3.org/2000/svg';
 const vb = svg.viewBox.baseVal;
 const box = svg.getBoundingClientRect();
@@ -1402,13 +1415,13 @@ layer.setAttribute('class', 'ann-layer');
 layer.setAttribute('aria-hidden', 'true');
 const stack = new Map();
 d.anns.forEach((a) => {
-a.target = a.node !== null ? d.graph?.nodes.get(a.node) || null : null;
+a.target = a.node !== null ? d.graph?.bySrc.get(a.node) || d.graph?.nodes.get(a.node) || null : null;
 a.pos = null;
 if (a.item) {
 a.item.classList.toggle('linked', Boolean(a.target));
 a.item.title = a.node !== null ? T.annItem(a.n, a.node) : '';
 }
-if (!a.target) return;
+if (!a.target || d.annPending) return;
 const r = a.target.el.getBoundingClientRect();
 const count = stack.get(a.target) || 0;
 stack.set(a.target, count + 1);
@@ -1434,7 +1447,9 @@ layer.append(g);
 svg.append(layer);
 d.graph?.nodes.forEach((n) => {
 const texts = annsOf(d, n).map((a) => a.text);
-if (texts.length) n.el.setAttribute('aria-label', n.el.getAttribute('aria-label') + T.annAria(texts.join('；')));
+if (!texts.length || n.el.dataset.annAria) return;
+n.el.dataset.annAria = '1';
+n.el.setAttribute('aria-label', n.el.getAttribute('aria-label') + T.annAria(texts.join('；')));
 });
 }
 const annsOf = (d, node) => d.anns.filter((a) => a.target === node);
@@ -1444,6 +1459,10 @@ if (!placed.length) return svgText;
 const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
 const root = doc.documentElement;
 const SVGNS = 'http://www.w3.org/2000/svg';
+const layer = doc.createElementNS(SVGNS, 'g');
+const map = viewMap(d, root);
+if (map) layer.setAttribute('transform', map);
+root.append(layer);
 placed.forEach((a) => {
 const g = doc.createElementNS(SVGNS, 'g');
 g.setAttribute('transform', `translate(${a.pos.x} ${a.pos.y})`);
@@ -1453,7 +1472,7 @@ const t = doc.createElementNS(SVGNS, 'text');
 [['text-anchor', 'middle'], ['dy', '0.35em'], ['fill', '#FFFFFF'], ['font-size', '11'], ['font-weight', '700'], ['font-family', font]].forEach(([k, v]) => t.setAttribute(k, v));
 t.textContent = String(a.n);
 g.append(c, t);
-root.append(g);
+layer.append(g);
 });
 return new XMLSerializer().serializeToString(root);
 }
@@ -1469,7 +1488,11 @@ let penOn = false;
 let tool = TOOLS[0];
 let stroke = null;
 let spaceDown = false;
-const layoutKey = (d) => { const v = dirOf(d); return v === 'auto' ? (landscape.matches ? 'horizontal' : 'vertical') : v; };
+const layoutKey = (d) => {
+if (!isDirected(d.source)) return 'fixed';
+const v = dirOf(d);
+return v === 'auto' ? (landscape.matches ? 'horizontal' : 'vertical') : v;
+};
 function inkOf(d) {
 d.ink ||= new Map();
 const k = layoutKey(d);
@@ -1506,9 +1529,10 @@ p += `Q${x} ${y} ${(x + nx) / 2} ${(y + ny) / 2}`;
 const [lx, ly] = pts[pts.length - 1];
 return `${p}L${lx} ${ly}`;
 }
-function strokeEl(s, doc = document) {
+function strokeEl(s, doc = document, dark = null) {
 const el = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
-[['d', pathData(s.pts)], ['fill', 'none'], ['stroke', s.color], ['stroke-width', s.width], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]
+const color = s.color || tokenColor('--text', dark ?? s.d.canvas.classList.contains('dark'));
+[['d', pathData(s.pts)], ['fill', 'none'], ['stroke', color], ['stroke-width', s.width], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]
 .forEach(([k, v]) => el.setAttribute(k, v));
 if (s.opacity) el.setAttribute('stroke-opacity', s.opacity);
 return el;
@@ -1526,17 +1550,22 @@ if (tool.id === 'eraser') {
 stroke = { d, id: e.pointerId, erase: true, touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
 eraseAt(d, e);
 } else {
-const color = tool.color || tokenColor('--text', d.canvas.classList.contains('dark'));
-const s = { pts: [toSvg(d, e)], color, width: Math.round((tool.width / d.scale) * 100) / 100, opacity: tool.opacity };
+const s = { d, pts: [toSvg(d, e)], color: tool.color, width: Math.round((tool.width / d.scale) * 100) / 100, opacity: tool.opacity };
 s.el = strokeEl(s);
 if (tool.id === 'laser') s.el.setAttribute('class', 'laser');
-inkLayer(d).append(s.el);
-stroke = { d, id: e.pointerId, s, laser: tool.id === 'laser', touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+const lazy = !penOn;
+if (!lazy) inkLayer(d).append(s.el);
+stroke = { d, id: e.pointerId, s, lazy, start: { x: e.clientX, y: e.clientY }, laser: tool.id === 'laser', touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
 }
 const moveInk = (ev) => {
 if (!stroke || ev.pointerId !== stroke.id) return;
 stroke.last = { x: ev.clientX, y: ev.clientY };
 if (stroke.erase) { eraseAt(d, ev); return; }
+if (stroke.lazy) {
+if (Math.hypot(ev.clientX - stroke.start.x, ev.clientY - stroke.start.y) < PAN.threshold) return;
+stroke.lazy = false;
+inkLayer(d).append(stroke.s.el);
+}
 const evs = ev.getCoalescedEvents?.() || [ev];
 evs.forEach((x) => {
 const pt = toSvg(d, x);
@@ -1552,7 +1581,7 @@ removeEventListener('pointerup', up);
 removeEventListener('pointercancel', up);
 const done = stroke;
 stroke = null;
-if (done.erase) return;
+if (done.erase || done.lazy) return;
 if (done.laser) {
 setTimeout(() => {
 if (matchMedia('(prefers-reduced-motion: reduce)').matches) { done.s.el.remove(); return; }
@@ -1615,12 +1644,21 @@ drawInk(d);
 syncSizes();
 notify(T.inkCleared);
 }
-function withInk(d, svgText) {
+function viewMap(d, root) {
+const a = svgSize(d.svg);
+const ob = (d.svg.match(/viewBox="([^"]+)"/)?.[1] || '0 0 1 1').split(/[\s,]+/).map(Number);
+const nb = (root.getAttribute('viewBox') || '0 0 1 1').split(/[\s,]+/).map(Number);
+if (ob.every((v, k) => Math.abs(v - nb[k]) < 0.5)) return '';
+return `translate(${nb[0]} ${nb[1]}) scale(${nb[2] / a.w} ${nb[3] / a.h}) translate(${-ob[0]} ${-ob[1]})`;
+}
+function withInk(d, svgText, dark) {
 const strokes = inkOf(d).strokes;
 if (!strokes.length) return svgText;
 const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
 const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
-strokes.forEach((s) => g.append(strokeEl(s, doc)));
+const map = viewMap(d, doc.documentElement);
+if (map) g.setAttribute('transform', map);
+strokes.forEach((s) => g.append(strokeEl(s, doc, dark)));
 doc.documentElement.append(g);
 return new XMLSerializer().serializeToString(doc.documentElement);
 }
@@ -1728,7 +1766,7 @@ const shown = uniq.slice(0, 8).map((n) => n.label).join('、');
 return uniq.length > 8 ? `${shown} ${T.andMore(uniq.length - 8)}` : shown;
 };
 const k = sections.indexOf(d.section) + 1;
-const id = /^\d+$/.test(String(node.id)) ? '' : node.id;
+const id = /^\d+$/.test(node.src) ? '' : node.src;
 const texts = annsOf(d, node).map((a) => a.text);
 return T.nodeRef(k, sections.length, d.section.dataset.title, id, node.label,
 names(node.in.map((e) => e.a)), names(node.out.map((e) => e.b)), r.ups.size, r.downs.size) + (texts.length ? T.annRef(texts.join('；')) : '');
@@ -2052,7 +2090,11 @@ if (multi) tocBtn.append(el('span', {}, `${current + 1}/${sections.length} ▾`)
 links.forEach((a, x) => a.setAttribute('aria-current', String(x === section)));
 if (updateHash && location.hash !== `#${section.id}`) history.replaceState(null, '', `#${section.id}`);
 const d = diagrams.find((x) => x.section === section);
-if (d && d.ok) requestAnimationFrame(() => (d.fit ? fitScreen(d) : applyView(d)));
+if (d && d.ok) requestAnimationFrame(() => {
+if (d.annPending) placeAnnotations(d);
+if (d.fit) fitScreen(d);
+else applyView(d);
+});
 }
 const fromHash = () => {
 let hash = location.hash;
@@ -2170,7 +2212,7 @@ setStatus('error', T.some(diagrams.filter((d) => d.ok).length, badCount), report
 } else if (!elkOk) {
 setStatus('warn', T.noElk, reportButton(null));
 } else {
-const missing = diagrams.flatMap((d) => d.anns.filter((a) => a.node !== null && !a.target).map((a) => `${d.section.dataset.title} #${a.n}（${a.node}）`));
+const missing = diagrams.filter((d) => d.graph).flatMap((d) => d.anns.filter((a) => a.node !== null && !d.graph.bySrc.has(a.node) && !d.graph.nodes.has(a.node)).map((a) => `${d.section.dataset.title} #${a.n}（${a.node}）`));
 if (missing.length) setStatus('warn', T.annMissing(missing.join('、')), reportButton(null));
 }
 </script>

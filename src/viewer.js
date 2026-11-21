@@ -679,7 +679,15 @@ async function renderExportNow(d, themeName, htmlLabels) {
   mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: themeName, fontFamily: font,
     themeVariables: { fontFamily: font }, ...(htmlLabels ? {} : { htmlLabels: false, flowchart: { htmlLabels: false } }) });
   try {
-    const { svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, withDirection(d.source, dirOf(d)));
+    // 與畫面相同：改寫方向後無法 render 時，退回原始碼。
+    const source = withDirection(d.source, dirOf(d));
+    let svg;
+    try {
+      ({ svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, source));
+    } catch (e) {
+      if (source === d.source) throw e;
+      ({ svg } = await mermaid.render(`export-${d.i}-${Date.now()}-src`, d.source));
+    }
     // 與 d.svg 相同，經由 DOM 序列化成合法的 XML。
     const box = document.createElement('div');
     box.innerHTML = svg;
@@ -715,7 +723,11 @@ function exportBackground(dark) {
 const measureCtx = document.createElement('canvas').getContext('2d');
 function wrapText(text, css, width) {
   measureCtx.font = css;
-  const seg = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(lang, { granularity: 'word' }) : null;
+  // lang 不是合法語言標籤（例如佔位符沒替換）時 Segmenter 會丟錯，改用預設語系或逐字。
+  let seg = null;
+  try { seg = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(lang, { granularity: 'word' }) : null; } catch {
+    try { seg = new Intl.Segmenter(undefined, { granularity: 'word' }); } catch {}
+  }
   const parts = seg ? [...seg.segment(text)].map((x) => x.segment) : [...text];
   const lines = [];
   let line = '';
@@ -788,7 +800,7 @@ function cardSvg(svgText, title, caption, background, dark, footnotes = []) {
 async function exportSvg(d, transparent, htmlLabels = true) {
   const t = exportTheme(d);
   const base = t.rerender || !htmlLabels ? await renderExport(d, t.rerender || currentTheme(), htmlLabels) : d.svg;
-  const inked = exportInk === 'on' ? withInk(d, base) : base;
+  const inked = exportInk === 'on' ? withInk(d, base, t.dark) : base;
   if (exportLayout !== 'card') return { svg: inked, dark: t.dark };
   const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
   const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
@@ -1040,8 +1052,8 @@ for (const [i, section] of sections.entries()) {
   }
   // Agent 註解：<ol class="annotations"><li data-node="節點 id">文字</li></ol>，移到說明視窗，依序編號。
   const annList = section.querySelector('ol.annotations');
-  const anns = annList ? [...annList.querySelectorAll(':scope > li')].map((li, k) => ({ n: k + 1, node: li.dataset.node || null, text: li.textContent.trim(), li }))
-    .filter((a) => a.text) : [];
+  const anns = annList ? [...annList.querySelectorAll(':scope > li')].map((li) => ({ node: li.dataset.node || null, text: li.textContent.trim() }))
+    .filter((a) => a.text).map((a, k) => ({ ...a, n: k + 1 })) : [];
   if (annList) {
     annList.remove();
     if (anns.length) {
@@ -1243,7 +1255,9 @@ async function indexGraph(d, source) {
     const raw = typeof n.label === 'string' && !/[<>]/.test(n.label) && n.label !== 'undefined' ? n.label : '';
     const shown = (g.querySelector('.nodeLabel, .label, text')?.textContent || g.textContent || '').replace(/\s+/g, ' ').trim();
     const label = /^(stateStart|stateEnd)$/.test(n.shape) ? (n.shape === 'stateStart' ? '[*] start' : '[*] end') : shown || raw || String(n.id);
-    nodes.set(n.id, { id: n.id, el: g, label, out: [], in: [] });
+    // 原始碼裡的 id：mindmap 在 nodeId，ER 的 id 是 entity-名稱-流水號；其他圖種就是 id。註解與節點引用都用它。
+    const src = n.nodeId ?? String(n.id).match(/^entity-(.+)-\d+$/)?.[1] ?? n.id;
+    nodes.set(n.id, { id: n.id, src: String(src), el: g, label, out: [], in: [] });
   }
   const edgeEls = new Map();
   svg.querySelectorAll('[data-id]').forEach((x) => {
@@ -1265,7 +1279,7 @@ async function indexGraph(d, source) {
     count++;
   }
   if (nodes.size < 2 || !count) return;
-  d.graph = { nodes, byEl: new Map([...nodes.values()].map((n) => [n.el, n])) };
+  d.graph = { nodes, byEl: new Map([...nodes.values()].map((n) => [n.el, n])), bySrc: new Map([...nodes.values()].map((n) => [n.src, n])) };
   // 節點用 roving tabindex：整張圖只有一個 Tab 停留點，節點之間用 [ ]、Alt＋方向鍵移動。
   let first = true;
   for (const n of nodes.values()) {
@@ -1283,6 +1297,9 @@ async function indexGraph(d, source) {
 function placeAnnotations(d) {
   const svg = d.canvas.querySelector('svg');
   if (!svg || !d.anns.length) return;
+  // 未顯示的圖（display: none）量不到節點位置；先記下，切換到這張圖時再放。
+  d.annPending = !d.canvas.clientWidth;
+  svg.querySelector(':scope > g.ann-layer')?.remove();
   const SVGNS = 'http://www.w3.org/2000/svg';
   const vb = svg.viewBox.baseVal;
   const box = svg.getBoundingClientRect();
@@ -1292,13 +1309,13 @@ function placeAnnotations(d) {
   layer.setAttribute('aria-hidden', 'true');
   const stack = new Map();
   d.anns.forEach((a) => {
-    a.target = a.node !== null ? d.graph?.nodes.get(a.node) || null : null;
+    a.target = a.node !== null ? d.graph?.bySrc.get(a.node) || d.graph?.nodes.get(a.node) || null : null;
     a.pos = null;
     if (a.item) {
       a.item.classList.toggle('linked', Boolean(a.target));
       a.item.title = a.node !== null ? T.annItem(a.n, a.node) : '';
     }
-    if (!a.target) return;
+    if (!a.target || d.annPending) return;
     const r = a.target.el.getBoundingClientRect();
     const count = stack.get(a.target) || 0;
     stack.set(a.target, count + 1);
@@ -1323,10 +1340,12 @@ function placeAnnotations(d) {
     layer.append(g);
   });
   svg.append(layer);
-  // 有註解的節點：無障礙名稱附上註解全文。
+  // 有註解的節點：無障礙名稱附上註解全文（只加一次）。
   d.graph?.nodes.forEach((n) => {
     const texts = annsOf(d, n).map((a) => a.text);
-    if (texts.length) n.el.setAttribute('aria-label', n.el.getAttribute('aria-label') + T.annAria(texts.join('；')));
+    if (!texts.length || n.el.dataset.annAria) return;
+    n.el.dataset.annAria = '1';
+    n.el.setAttribute('aria-label', n.el.getAttribute('aria-label') + T.annAria(texts.join('；')));
   });
 }
 const annsOf = (d, node) => d.anns.filter((a) => a.target === node);
@@ -1337,6 +1356,10 @@ function exportAnnotations(d, svgText) {
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
   const root = doc.documentElement;
   const SVGNS = 'http://www.w3.org/2000/svg';
+  const layer = doc.createElementNS(SVGNS, 'g');
+  const map = viewMap(d, root);
+  if (map) layer.setAttribute('transform', map);
+  root.append(layer);
   placed.forEach((a) => {
     const g = doc.createElementNS(SVGNS, 'g');
     g.setAttribute('transform', `translate(${a.pos.x} ${a.pos.y})`);
@@ -1346,7 +1369,7 @@ function exportAnnotations(d, svgText) {
     [['text-anchor', 'middle'], ['dy', '0.35em'], ['fill', '#FFFFFF'], ['font-size', '11'], ['font-weight', '700'], ['font-family', font]].forEach(([k, v]) => t.setAttribute(k, v));
     t.textContent = String(a.n);
     g.append(c, t);
-    root.append(g);
+    layer.append(g);
   });
   return new XMLSerializer().serializeToString(root);
 }
@@ -1365,7 +1388,12 @@ let penOn = false;
 let tool = TOOLS[0];
 let stroke = null;
 let spaceDown = false;
-const layoutKey = (d) => { const v = dirOf(d); return v === 'auto' ? (landscape.matches ? 'horizontal' : 'vertical') : v; };
+// 方向不影響排版的圖種（sequence、gantt 等）只有一組筆跡。
+const layoutKey = (d) => {
+  if (!isDirected(d.source)) return 'fixed';
+  const v = dirOf(d);
+  return v === 'auto' ? (landscape.matches ? 'horizontal' : 'vertical') : v;
+};
 function inkOf(d) {
   d.ink ||= new Map();
   const k = layoutKey(d);
@@ -1404,9 +1432,11 @@ function pathData(pts) {
   const [lx, ly] = pts[pts.length - 1];
   return `${p}L${lx} ${ly}`;
 }
-function strokeEl(s, doc = document) {
+// dark 指定深淺色：黑筆（跟隨前景色）在深色畫布或深色匯出時改用淺色前景。
+function strokeEl(s, doc = document, dark = null) {
   const el = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
-  [['d', pathData(s.pts)], ['fill', 'none'], ['stroke', s.color], ['stroke-width', s.width], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]
+  const color = s.color || tokenColor('--text', dark ?? s.d.canvas.classList.contains('dark'));
+  [['d', pathData(s.pts)], ['fill', 'none'], ['stroke', color], ['stroke-width', s.width], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]
     .forEach(([k, v]) => el.setAttribute(k, v));
   if (s.opacity) el.setAttribute('stroke-opacity', s.opacity);
   return el;
@@ -1416,6 +1446,7 @@ function drawInk(d) {
   if (!g) return;
   g.replaceChildren();
   inkOf(d).strokes.forEach((s) => { s.el = strokeEl(s); g.append(s.el); });
+  // 畫面重繪（例如換 Theme）後黑筆顏色跟著深淺色更新。
 }
 function startStroke(d, e) {
   const c = d.canvas;
@@ -1425,17 +1456,23 @@ function startStroke(d, e) {
     eraseAt(d, e);
   } else {
     // 線寬以「畫下當時的螢幕像素」換算成圖的座標，之後跟著圖一起縮放。
-    const color = tool.color || tokenColor('--text', d.canvas.classList.contains('dark'));
-    const s = { pts: [toSvg(d, e)], color, width: Math.round((tool.width / d.scale) * 100) / 100, opacity: tool.opacity };
+    const s = { d, pts: [toSvg(d, e)], color: tool.color, width: Math.round((tool.width / d.scale) * 100) / 100, opacity: tool.opacity };
     s.el = strokeEl(s);
     if (tool.id === 'laser') s.el.setAttribute('class', 'laser');
-    inkLayer(d).append(s.el);
-    stroke = { d, id: e.pointerId, s, laser: tool.id === 'laser', touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+    // 不在畫筆模式時的觸控筆：移動超過門檻才開始畫，單純點一下（例如點節點）不留下墨點。
+    const lazy = !penOn;
+    if (!lazy) inkLayer(d).append(s.el);
+    stroke = { d, id: e.pointerId, s, lazy, start: { x: e.clientX, y: e.clientY }, laser: tool.id === 'laser', touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
   }
   const moveInk = (ev) => {
     if (!stroke || ev.pointerId !== stroke.id) return;
     stroke.last = { x: ev.clientX, y: ev.clientY };
     if (stroke.erase) { eraseAt(d, ev); return; }
+    if (stroke.lazy) {
+      if (Math.hypot(ev.clientX - stroke.start.x, ev.clientY - stroke.start.y) < PAN.threshold) return;
+      stroke.lazy = false;
+      inkLayer(d).append(stroke.s.el);
+    }
     const evs = ev.getCoalescedEvents?.() || [ev];
     evs.forEach((x) => {
       const pt = toSvg(d, x);
@@ -1452,7 +1489,7 @@ function startStroke(d, e) {
     removeEventListener('pointercancel', up);
     const done = stroke;
     stroke = null;
-    if (done.erase) return;
+    if (done.erase || done.lazy) return;
     if (done.laser) {
       // 雷射筆：約 1.5 秒後淡出，不留下筆跡；偏好減少動態時直接消失。
       setTimeout(() => {
@@ -1517,13 +1554,23 @@ function clearInk(d) {
   syncSizes();
   notify(T.inkCleared);
 }
-// 匯出：把目前排版的筆跡加進匯出的 SVG（雷射筆不包含）。
-function withInk(d, svgText) {
+// 匯出用的 SVG 若重新 render（換配色或改用純 SVG 標籤），viewBox 可能和畫面不同；筆跡與徽章依兩者的 viewBox 等比對應過去。
+function viewMap(d, root) {
+  const a = svgSize(d.svg);
+  const ob = (d.svg.match(/viewBox="([^"]+)"/)?.[1] || '0 0 1 1').split(/[\s,]+/).map(Number);
+  const nb = (root.getAttribute('viewBox') || '0 0 1 1').split(/[\s,]+/).map(Number);
+  if (ob.every((v, k) => Math.abs(v - nb[k]) < 0.5)) return '';
+  return `translate(${nb[0]} ${nb[1]}) scale(${nb[2] / a.w} ${nb[3] / a.h}) translate(${-ob[0]} ${-ob[1]})`;
+}
+// 匯出：把目前排版的筆跡加進匯出的 SVG（雷射筆不包含）；黑筆依匯出配色決定深淺。
+function withInk(d, svgText, dark) {
   const strokes = inkOf(d).strokes;
   if (!strokes.length) return svgText;
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
   const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
-  strokes.forEach((s) => g.append(strokeEl(s, doc)));
+  const map = viewMap(d, doc.documentElement);
+  if (map) g.setAttribute('transform', map);
+  strokes.forEach((s) => g.append(strokeEl(s, doc, dark)));
   doc.documentElement.append(g);
   return new XMLSerializer().serializeToString(doc.documentElement);
 }
@@ -1648,7 +1695,7 @@ function nodeRef(d, node) {
   };
   const k = sections.indexOf(d.section) + 1;
   // mindmap 等圖種的 id 是自動流水號，對定位沒有幫助，省略。
-  const id = /^\d+$/.test(String(node.id)) ? '' : node.id;
+  const id = /^\d+$/.test(node.src) ? '' : node.src;
   const texts = annsOf(d, node).map((a) => a.text);
   return T.nodeRef(k, sections.length, d.section.dataset.title, id, node.label,
     names(node.in.map((e) => e.a)), names(node.out.map((e) => e.b)), r.ups.size, r.downs.size) + (texts.length ? T.annRef(texts.join('；')) : '');
@@ -2009,7 +2056,11 @@ function show(k, updateHash = true) {
   links.forEach((a, x) => a.setAttribute('aria-current', String(x === section)));
   if (updateHash && location.hash !== `#${section.id}`) history.replaceState(null, '', `#${section.id}`);
   const d = diagrams.find((x) => x.section === section);
-  if (d && d.ok) requestAnimationFrame(() => (d.fit ? fitScreen(d) : applyView(d)));
+  if (d && d.ok) requestAnimationFrame(() => {
+    if (d.annPending) placeAnnotations(d);
+    if (d.fit) fitScreen(d);
+    else applyView(d);
+  });
 }
 const fromHash = () => {
   let hash = location.hash;
@@ -2144,6 +2195,7 @@ if (badCount) {
 } else if (!elkOk) {
   setStatus('warn', T.noElk, reportButton(null));
 } else {
-  const missing = diagrams.flatMap((d) => d.anns.filter((a) => a.node !== null && !a.target).map((a) => `${d.section.dataset.title} #${a.n}（${a.node}）`));
+  // 只在有節點資料的圖種提示；sequence 等圖種的註解本來就只列在說明視窗。
+  const missing = diagrams.filter((d) => d.graph).flatMap((d) => d.anns.filter((a) => a.node !== null && !d.graph.bySrc.has(a.node) && !d.graph.nodes.has(a.node)).map((a) => `${d.section.dataset.title} #${a.n}（${a.node}）`));
   if (missing.length) setStatus('warn', T.annMissing(missing.join('、')), reportButton(null));
 }
