@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
+- Add a pen: press ✎ or P for pen, highlighter, laser pointer, eraser, undo and clear; a stylus draws without switching modes; ink follows pan and zoom, can be included in exports and printing, and is not saved
 - Add agent notes (`{{NOTES}}`): numbered badges next to nodes, full text in the selection bar, a list in the notes window and footnotes in card exports; the status bar warns when a note's node is missing
 - Add the project version and a GitHub link at the bottom of the notes window, and include the diagram-first version in issue reports
 - Add `src/` sources and `scripts/build-template.mjs`: the template is generated with the CSP hash computed automatically, and CI checks they stay in sync; the template shrinks from about 108 KB to about 85 KB

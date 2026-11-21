@@ -33,7 +33,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-sOpHw6Ow3ZYEagJictfIv3ZZ1EFb4KWg8Yt2ixJBk5g=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-3AMj8vK0D6nT9K9X3VCxfjlf61wicii0JI7lyEcb9us=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -212,6 +212,30 @@ html.app .canvas svg .ann-badge text { fill: #FFFFFF; font: 700 11px var(--font)
 #selbar { flex-wrap: wrap; }
 #selbar .sel-note { flex: 1 0 100%; display: flex; flex-direction: column; padding: 0 8px 4px 0; color: var(--muted); white-space: normal; }
 #selbar .sel-note[hidden] { display: none; }
+#penbar { position: fixed; right: max(12px, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); z-index: 30;
+display: flex; flex-direction: column; gap: 4px; padding: 4px; }
+#penbar[hidden] { display: none; }
+@media (max-width: 599px) {
+#penbar { flex-direction: row; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px);
+max-width: calc(100vw - 24px); overflow-x: auto; }
+#penbar .sep { width: 1px; height: auto; margin: 4px 2px; }
+html.pen-on #selbar { display: none; }
+html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 96px); }
+}
+#penbar button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
+#penbar .sep { height: 1px; margin: 2px 4px; background: var(--border); }
+#penbar .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
+#penbar [data-tool="red"] .swatch { background: #E5484D; }
+#penbar [data-tool="blue"] .swatch { background: #0969DA; }
+#penbar [data-tool="ink"] .swatch { background: var(--text); }
+#penbar [data-tool="hl"] .swatch { background: #FFD33D; border-radius: 3px; width: 16px; }
+#penbar [data-tool="laser"] .swatch { background: #FF3B30; box-shadow: 0 0 6px 2px #FF3B30; width: 8px; height: 8px; }
+#penbar [data-tool="eraser"] .swatch { background: transparent; border: 2px solid var(--muted); border-radius: 3px; width: 14px; height: 10px; }
+html.pen-on .canvas.ready, html.pen-on .canvas.ready svg g.node { cursor: crosshair; }
+html.app .canvas svg g.ink { pointer-events: none; }
+html.erasing.pen-on .canvas.ready { cursor: cell; }
+html.app .canvas svg g.ink path.laser { filter: drop-shadow(0 0 4px #FF3B30); transition: opacity .4s; }
+html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
 #info .credit { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 #info .credit a { color: inherit; }
 #info.card .credit { display: none; }
@@ -225,7 +249,7 @@ html.app .canvas svg .ann-badge text { fill: #FFFFFF; font: 700 11px var(--font)
 }
 @media print {
 #info .notes, .notes h3 { display: none; }
-.toolbar, .float, .pop, .close, #selbar { display: none !important; }
+.toolbar, .float, .pop, .close, #selbar, #penbar { display: none !important; }
 .canvas svg.hl :is(g.node, [data-hl-edge], g.cluster) { opacity: 1 !important; filter: none !important; }
 .canvas { background-image: none !important; }
 .canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }
@@ -290,12 +314,17 @@ report: '複製給 Claude', reportAll: '複製全部問題給 Claude', reportMen
 reportTitle: '內容含原始碼與瀏覽器版本', reportCopied: '已複製，貼回對話給 Claude 即可',
 reportHead: '[diagram-first 問題回報]', reportPage: '頁面', reportDiagram: (k, n, title) => `第 ${k}/${n} 張〈${title}〉`, reportFig: '圖',
 reportState: '狀態', reportOk: 'render 成功', reportEnv: '環境', reportView: '檢視', reportSource: '原始碼', reportNote: '問題描述：',
+pen: '畫筆', penTools: '畫筆工具', penRed: '紅筆', penBlue: '藍筆', penInk: '黑筆', highlighter: '螢光筆', laser: '雷射筆',
+eraser: '橡皮擦', undo: '復原', clearInk: '清除這張圖的筆跡', exitPen: '離開畫筆',
+penOn: '畫筆模式：拖曳畫線，Space＋拖曳或滑鼠中鍵平移，Esc 離開。筆跡不會保存，可用匯出帶走。',
+penOnTouch: '畫筆模式：單指畫線、兩指平移縮放，再按 ✎ 離開。筆跡不會保存，可用匯出帶走。', penOff: '已離開畫筆模式',
+inkCleared: '已清除筆跡，可按復原', inkLabel: '筆跡', inkOn: '含', inkOff: '不含', inkLeave: '筆跡不會保存，確定離開？',
 annTitle: '註解', annMissing: (list) => `${list} 找不到對應的節點，只列在說明視窗。可複製問題回報，貼回對話給 Claude。`,
 annItem: (n, node) => `註解 ${n}（節點 ${node}）`, annAria: (texts) => `，註解：${texts}`, annRef: (texts) => `；註解：${texts}`,
 madeWith: '由', madeWithAfter: '產生', repoLink: '在 GitHub 查看 diagram-first（另開視窗）',
 layout: '版面', layoutPlain: '只有圖', layoutCard: '卡片', palette: '配色', paletteFollow: '同畫面',
-hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原；點節點看上下游。',
-hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。點節點或從畫布按 Tab 進入節點看上下游，節點間用 [ ] 或 Alt＋方向鍵移動，Enter 鎖定、Esc 取消；按 ? 開啟這段說明。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
+hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原；點節點看上下游；按 ✎ 用手指畫，觸控筆可直接畫。',
+hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。點節點或從畫布按 Tab 進入節點看上下游，節點間用 [ ] 或 Alt＋方向鍵移動，Enter 鎖定、Esc 取消；按 P 或 ✎ 使用畫筆（觸控筆可直接畫）；按 ? 開啟這段說明。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
 transparent: 'PNG（透明背景）', printPdf: '列印／向量 PDF', printTitle: '只印圖本身，不套用版面與配色', size: '大小', sizeMax: '最大',
 pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `已達瀏覽器上限，輸出 ${w}×${h} px`, copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
 loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
@@ -315,12 +344,17 @@ report: 'Copy for Claude', reportAll: 'Copy all issues for Claude', reportMenu: 
 reportTitle: 'Includes the source and browser version', reportCopied: 'Copied. Paste it into the chat with Claude',
 reportHead: '[diagram-first issue report]', reportPage: 'Page', reportDiagram: (k, n, title) => `${k}/${n} "${title}"`, reportFig: 'Diagram',
 reportState: 'Status', reportOk: 'rendered', reportEnv: 'Environment', reportView: 'View', reportSource: 'Source', reportNote: 'What looks wrong:',
+pen: 'Pen', penTools: 'Pen tools', penRed: 'Red pen', penBlue: 'Blue pen', penInk: 'Black pen', highlighter: 'Highlighter', laser: 'Laser pointer',
+eraser: 'Eraser', undo: 'Undo', clearInk: 'Clear the ink on this diagram', exitPen: 'Exit pen',
+penOn: 'Pen mode: drag to draw, Space + drag or middle-click to pan, Esc to exit. Ink is not saved; export to keep it.',
+penOnTouch: 'Pen mode: draw with one finger, pan and zoom with two, tap ✎ again to exit. Ink is not saved; export to keep it.', penOff: 'Left pen mode',
+inkCleared: 'Ink cleared. Undo to restore it', inkLabel: 'Ink', inkOn: 'Include', inkOff: 'Exclude', inkLeave: 'Ink is not saved. Leave anyway?',
 annTitle: 'Notes', annMissing: (list) => `${list}: no matching node, listed in the notes window only. Copy the issue report and paste it into the chat with Claude.`,
 annItem: (n, node) => `Note ${n} (node ${node})`, annAria: (texts) => `, notes: ${texts}`, annRef: (texts) => `; notes: ${texts}`,
 madeWith: 'Made with', madeWithAfter: '', repoLink: 'View diagram-first on GitHub (opens in a new window)',
 layout: 'Layout', layoutPlain: 'Diagram only', layoutCard: 'Card', palette: 'Colors', paletteFollow: 'As shown',
-hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset; tap a node to trace its upstream and downstream.',
-hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams. Hover or click a node, or Tab from the canvas into the nodes, to trace its upstream and downstream; move between nodes with [ ] or Alt + arrow keys; Enter locks, Esc clears; press ? to open this help.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
+hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset; tap a node to trace its upstream and downstream; tap ✎ to draw with a finger, or draw directly with a stylus.',
+hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams. Hover or click a node, or Tab from the canvas into the nodes, to trace its upstream and downstream; move between nodes with [ ] or Alt + arrow keys; Enter locks, Esc clears; press P or ✎ to draw (a stylus draws directly); press ? to open this help.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
 transparent: 'PNG (transparent)', printPdf: 'Print / vector PDF', printTitle: 'Prints the diagram only; layout and colors are not applied', size: 'Size', sizeMax: 'Max',
 pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `Browser limit reached, exported ${w}×${h} px`, copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
 loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
@@ -340,12 +374,17 @@ report: 'Claude 用にコピー', reportAll: 'すべての問題を Claude 用�
 reportTitle: 'ソースとブラウザのバージョンを含みます', reportCopied: 'コピーしました。Claude との会話に貼り付けてください',
 reportHead: '[diagram-first 問題レポート]', reportPage: 'ページ', reportDiagram: (k, n, title) => `${k}/${n}〈${title}〉`, reportFig: '図',
 reportState: '状態', reportOk: '描画成功', reportEnv: '環境', reportView: '表示', reportSource: 'ソース', reportNote: '問題の説明：',
+pen: 'ペン', penTools: 'ペンツール', penRed: '赤ペン', penBlue: '青ペン', penInk: '黒ペン', highlighter: '蛍光ペン', laser: 'レーザーポインター',
+eraser: '消しゴム', undo: '元に戻す', clearInk: 'この図の描き込みを消去', exitPen: 'ペンを終了',
+penOn: 'ペンモード：ドラッグで描画、Space＋ドラッグか中ボタンで移動、Esc で終了。描き込みは保存されないため、残すには書き出してください。',
+penOnTouch: 'ペンモード：1 本指で描画、2 本指で移動と拡大縮小、もう一度 ✎ で終了。描き込みは保存されないため、残すには書き出してください。', penOff: 'ペンモードを終了しました',
+inkCleared: '描き込みを消去しました。元に戻せます', inkLabel: '描き込み', inkOn: '含める', inkOff: '含めない', inkLeave: '描き込みは保存されません。移動しますか？',
 annTitle: '注釈', annMissing: (list) => `${list} に対応するノードがないため、説明ウィンドウにのみ表示しています。問題レポートをコピーして Claude との会話に貼り付けてください。`,
 annItem: (n, node) => `注釈 ${n}（ノード ${node}）`, annAria: (texts) => `、注釈：${texts}`, annRef: (texts) => `；注釈：${texts}`,
 madeWith: '', madeWithAfter: 'で作成', repoLink: 'GitHub で diagram-first を見る（新しいウィンドウ）',
 layout: 'レイアウト', layoutPlain: '図のみ', layoutCard: 'カード', palette: '配色', paletteFollow: '表示どおり',
-hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。ノードをタップすると上流と下流を表示。',
-hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。ノードにポインターを置く・クリック・キャンバスから Tab で上流と下流を表示、ノード間は [ ] か Alt＋矢印キーで移動、Enter で固定、Esc で解除。? でこの説明を開く。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
+hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。ノードをタップすると上流と下流を表示。✎ で指で描画、スタイラスはそのまま描画。',
+hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。ノードにポインターを置く・クリック・キャンバスから Tab で上流と下流を表示、ノード間は [ ] か Alt＋矢印キーで移動、Enter で固定、Esc で解除。P か ✎ でペン（スタイラスはそのまま描画）。? でこの説明を開く。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
 transparent: 'PNG（透過）', printPdf: '印刷／ベクター PDF', printTitle: '図のみを印刷し、レイアウトと配色は適用しません', size: 'サイズ', sizeMax: '最大',
 pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `ブラウザの上限に達したため ${w}×${h} px で書き出しました`, copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
 loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
@@ -652,7 +691,19 @@ f('pointerup', release);
 f('pointercancel', release);
 };
 c.addEventListener('pointerdown', (e) => {
-if (!d.ok || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('.err')) return;
+if (stroke && e.pointerType === 'touch' && stroke.touch) {
+const first = stroke;
+cancelStroke(d);
+listen(true);
+pointers.set(first.id, first.last);
+} else if (!pointers.size && !stroke && d.ok && wantsInk(e)) {
+e.preventDefault();
+startStroke(d, e);
+return;
+}
+const middle = penOn && e.pointerType === 'mouse' && e.button === 1;
+if (!d.ok || (e.pointerType === 'mouse' && e.button !== 0 && !middle) || e.target.closest('.err')) return;
+if (middle) e.preventDefault();
 if (!pointers.size) listen(true);
 pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 if (pointers.size === 1) startDrag(e);
@@ -738,6 +789,7 @@ e.preventDefault();
 let exportSize = load(STORE.size, EXPORT.sizes, '2');
 let exportLayout = load(STORE.layout, ['plain', 'card'], 'plain');
 let exportPalette = load(STORE.palette, ['follow', 'light', 'dark'], 'follow');
+let exportInk = 'on';
 function svgSize(svgText) {
 const m = svgText.match(/viewBox="[^"]*?([\d.]+)[\s,]+([\d.]+)"/);
 return m ? { w: Number(m[1]), h: Number(m[2]) } : { w: 1, h: 1 };
@@ -892,10 +944,11 @@ return new XMLSerializer().serializeToString(root);
 async function exportSvg(d, transparent, htmlLabels = true) {
 const t = exportTheme(d);
 const base = t.rerender || !htmlLabels ? await renderExport(d, t.rerender || currentTheme(), htmlLabels) : d.svg;
-if (exportLayout !== 'card') return { svg: base, dark: t.dark };
+const inked = exportInk === 'on' ? withInk(d, base) : base;
+if (exportLayout !== 'card') return { svg: inked, dark: t.dark };
 const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
 const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
-return { svg: cardSvg(exportAnnotations(d, base), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
+return { svg: cardSvg(exportAnnotations(d, inked), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
 }
 async function exportImage(d, type, transparent) {
 const first = await exportSvg(d, transparent);
@@ -1224,6 +1277,9 @@ sizeRow.prepend(d.sizeLabel);
 opts.append(sizeRow,
 optRow('layout', T.layout, [['plain', T.layoutPlain], ['card', T.layoutCard]]),
 optRow('palette', T.palette, [['follow', T.paletteFollow], ['light', T.light], ['dark', T.dark]]));
+d.inkRow = optRow('ink', T.inkLabel, [['on', T.inkOn], ['off', T.inkOff]]);
+d.inkRow.hidden = true;
+opts.append(d.inkRow);
 d.imageItems = [opts, ...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
 Object.assign(menuItem(T.printPdf, () => printOne(d)), { title: T.printTitle }), menuItem(T.copyImage, copyImage)];
 menu.append(reportItem);
@@ -1239,7 +1295,9 @@ inBtn.addEventListener('click', () => setZoom(d, currentScale(d) * ZOOM.step));
 d.level.addEventListener('click', () => setZoom(d, 1));
 resetBtn.addEventListener('click', () => fitScreen(d));
 zoom.append(outBtn, d.level, inBtn);
-d.buttons = [zoom, resetBtn];
+const penBtn = el('button', { type: 'button', class: 'pen-btn', 'aria-label': T.pen, title: `${T.pen} (P)`, 'aria-pressed': 'false' }, '✎');
+penBtn.addEventListener('click', () => setPen(!penOn));
+d.buttons = [zoom, resetBtn, penBtn];
 if (isDirected(source)) {
 const dirSelect = el('select', { 'aria-label': T.direction, title: T.direction });
 [['page', T.followPage], ['vertical', T.vertical], ['horizontal', T.horizontal]]
@@ -1266,6 +1324,7 @@ function setExportOpt(key, v) {
 if (key === 'size') { exportSize = v; save(STORE.size, v); }
 if (key === 'layout') { exportLayout = v; save(STORE.layout, v); }
 if (key === 'palette') { exportPalette = v; save(STORE.palette, v); }
+if (key === 'ink') exportInk = v;
 syncSizes();
 }
 async function indexGraph(d, source) {
@@ -1398,6 +1457,204 @@ root.append(g);
 });
 return new XMLSerializer().serializeToString(root);
 }
+const TOOLS = [
+{ id: 'red', label: 'penRed', color: '#E5484D', width: 3 },
+{ id: 'blue', label: 'penBlue', color: '#0969DA', width: 3 },
+{ id: 'ink', label: 'penInk', color: null, width: 3 },
+{ id: 'hl', label: 'highlighter', color: '#FFD33D', width: 16, opacity: 0.4 },
+{ id: 'laser', label: 'laser', color: '#FF3B30', width: 4 },
+{ id: 'eraser', label: 'eraser' },
+];
+let penOn = false;
+let tool = TOOLS[0];
+let stroke = null;
+let spaceDown = false;
+const layoutKey = (d) => { const v = dirOf(d); return v === 'auto' ? (landscape.matches ? 'horizontal' : 'vertical') : v; };
+function inkOf(d) {
+d.ink ||= new Map();
+const k = layoutKey(d);
+if (!d.ink.has(k)) d.ink.set(k, { strokes: [], history: [] });
+return d.ink.get(k);
+}
+const hasInk = () => diagrams.some((d) => d.ink && [...d.ink.values()].some((x) => x.strokes.length));
+const wantsInk = (e) => !spaceDown && (e.pointerType === 'pen' ? e.button === 0 : penOn && (e.pointerType !== 'mouse' || e.button === 0));
+function inkLayer(d) {
+const svg = d.canvas.querySelector('svg');
+let g = svg?.querySelector(':scope > g.ink');
+if (svg && !g) {
+g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+g.setAttribute('class', 'ink');
+g.setAttribute('aria-hidden', 'true');
+svg.append(g);
+}
+return g;
+}
+function toSvg(d, e) {
+const svg = d.canvas.querySelector('svg');
+const m = svg.getScreenCTM()?.inverse();
+const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(m);
+return [Math.round(pt.x * 10) / 10, Math.round(pt.y * 10) / 10];
+}
+function pathData(pts) {
+if (pts.length === 1) return `M${pts[0][0]} ${pts[0][1]}l0.01 0`;
+let p = `M${pts[0][0]} ${pts[0][1]}`;
+for (let k = 1; k < pts.length - 1; k++) {
+const [x, y] = pts[k];
+const [nx, ny] = pts[k + 1];
+p += `Q${x} ${y} ${(x + nx) / 2} ${(y + ny) / 2}`;
+}
+const [lx, ly] = pts[pts.length - 1];
+return `${p}L${lx} ${ly}`;
+}
+function strokeEl(s, doc = document) {
+const el = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
+[['d', pathData(s.pts)], ['fill', 'none'], ['stroke', s.color], ['stroke-width', s.width], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]
+.forEach(([k, v]) => el.setAttribute(k, v));
+if (s.opacity) el.setAttribute('stroke-opacity', s.opacity);
+return el;
+}
+function drawInk(d) {
+const g = inkLayer(d);
+if (!g) return;
+g.replaceChildren();
+inkOf(d).strokes.forEach((s) => { s.el = strokeEl(s); g.append(s.el); });
+}
+function startStroke(d, e) {
+const c = d.canvas;
+try { c.setPointerCapture(e.pointerId); } catch {}
+if (tool.id === 'eraser') {
+stroke = { d, id: e.pointerId, erase: true, touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+eraseAt(d, e);
+} else {
+const color = tool.color || tokenColor('--text', d.canvas.classList.contains('dark'));
+const s = { pts: [toSvg(d, e)], color, width: Math.round((tool.width / d.scale) * 100) / 100, opacity: tool.opacity };
+s.el = strokeEl(s);
+if (tool.id === 'laser') s.el.setAttribute('class', 'laser');
+inkLayer(d).append(s.el);
+stroke = { d, id: e.pointerId, s, laser: tool.id === 'laser', touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+}
+const moveInk = (ev) => {
+if (!stroke || ev.pointerId !== stroke.id) return;
+stroke.last = { x: ev.clientX, y: ev.clientY };
+if (stroke.erase) { eraseAt(d, ev); return; }
+const evs = ev.getCoalescedEvents?.() || [ev];
+evs.forEach((x) => {
+const pt = toSvg(d, x);
+const prev = stroke.s.pts[stroke.s.pts.length - 1];
+if (Math.hypot(pt[0] - prev[0], pt[1] - prev[1]) * d.scale >= 2) stroke.s.pts.push(pt);
+});
+stroke.s.el.setAttribute('d', pathData(stroke.s.pts));
+};
+const up = (ev) => {
+if (!stroke || ev.pointerId !== stroke.id) return;
+removeEventListener('pointermove', moveInk);
+removeEventListener('pointerup', up);
+removeEventListener('pointercancel', up);
+const done = stroke;
+stroke = null;
+if (done.erase) return;
+if (done.laser) {
+setTimeout(() => {
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) { done.s.el.remove(); return; }
+done.s.el.classList.add('fade');
+setTimeout(() => done.s.el.remove(), 400);
+}, 1500);
+return;
+}
+const ink = inkOf(d);
+ink.strokes.push(done.s);
+ink.history.push({ add: done.s });
+syncSizes();
+};
+stroke.cleanup = () => { removeEventListener('pointermove', moveInk); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
+addEventListener('pointermove', moveInk);
+addEventListener('pointerup', up);
+addEventListener('pointercancel', up);
+}
+function cancelStroke() {
+if (!stroke) return;
+stroke.cleanup();
+stroke.s?.el.remove();
+stroke = null;
+}
+function eraseAt(d, e) {
+const ink = inkOf(d);
+const [px, py] = toSvg(d, e);
+const near = (s) => {
+const r = Math.max(s.width / 2, 10 / d.scale);
+return s.pts.some(([x, y], k) => {
+const [ax, ay] = k ? s.pts[k - 1] : [x, y];
+const dx = x - ax;
+const dy = y - ay;
+const t = dx || dy ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))) : 0;
+return Math.hypot(px - (ax + t * dx), py - (ay + t * dy)) <= r;
+});
+};
+const k = ink.strokes.findLastIndex(near);
+if (k < 0) return;
+const [s] = ink.strokes.splice(k, 1);
+s.el.remove();
+ink.history.push({ erase: s, at: k });
+syncSizes();
+}
+function undoInk(d) {
+const ink = inkOf(d);
+const h = ink.history.pop();
+if (!h) return;
+if (h.add) ink.strokes.splice(ink.strokes.indexOf(h.add), 1);
+if (h.erase) ink.strokes.splice(h.at, 0, h.erase);
+if (h.clear) ink.strokes.push(...h.clear);
+drawInk(d);
+syncSizes();
+}
+function clearInk(d) {
+const ink = inkOf(d);
+if (!ink.strokes.length) return;
+ink.history.push({ clear: ink.strokes.splice(0) });
+drawInk(d);
+syncSizes();
+notify(T.inkCleared);
+}
+function withInk(d, svgText) {
+const strokes = inkOf(d).strokes;
+if (!strokes.length) return svgText;
+const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
+strokes.forEach((s) => g.append(strokeEl(s, doc)));
+doc.documentElement.append(g);
+return new XMLSerializer().serializeToString(doc.documentElement);
+}
+const penbar = el('div', { id: 'penbar', class: 'float', role: 'toolbar', 'aria-label': T.penTools, hidden: '' });
+const toolBtns = TOOLS.map((t) => {
+const b = el('button', { type: 'button', 'aria-label': T[t.label], title: T[t.label], 'aria-pressed': String(t === tool), 'data-tool': t.id });
+b.append(el('span', { class: 'swatch', 'aria-hidden': 'true' }));
+b.addEventListener('click', () => {
+tool = t;
+toolBtns.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+document.documentElement.classList.toggle('erasing', t.id === 'eraser');
+});
+return b;
+});
+const curDiagram = () => diagrams.find((x) => x.section === sections[current]);
+const undoBtn = el('button', { type: 'button', 'aria-label': T.undo, title: `${T.undo} (⌘/Ctrl+Z)` }, '↶');
+undoBtn.addEventListener('click', () => { const d = curDiagram(); if (d) undoInk(d); });
+const clearBtn = el('button', { type: 'button', 'aria-label': T.clearInk, title: T.clearInk }, '🗑');
+clearBtn.addEventListener('click', () => { const d = curDiagram(); if (d) clearInk(d); });
+const exitBtn = el('button', { type: 'button', 'aria-label': T.exitPen, title: `${T.exitPen} (Esc)` }, '×');
+exitBtn.addEventListener('click', () => setPen(false));
+penbar.append(...toolBtns, el('span', { class: 'sep', 'aria-hidden': 'true' }), undoBtn, clearBtn, exitBtn);
+function setPen(on) {
+penOn = on;
+penbar.hidden = !on;
+document.documentElement.classList.toggle('pen-on', on);
+document.querySelectorAll('.pen-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
+if (on) diagrams.forEach((d) => { if (!selected || selected.d !== d) highlight(d, null); });
+else cancelStroke();
+notify(on ? (matchMedia('(any-pointer: fine)').matches ? T.penOn : T.penOnTouch) : T.penOff);
+}
+addEventListener('beforeunload', (e) => { if (hasInk()) { e.preventDefault(); e.returnValue = T.inkLeave; } });
+addEventListener('keyup', (e) => { if (e.key === ' ') spaceDown = false; });
+addEventListener('blur', () => { spaceDown = false; });
 function reach(node) {
 const walk = (dir) => {
 const seen = new Set();
@@ -1493,7 +1750,7 @@ n?.el.focus({ preventScroll: true });
 function bindNodes(d) {
 const c = d.canvas;
 const nodeOf = (t) => d.graph?.byEl.get(t.closest?.('g.node'));
-const preview = (n) => { if (!selected || selected.d !== d) highlight(d, n); };
+const preview = (n) => { if (!penOn && (!selected || selected.d !== d)) highlight(d, n); };
 const focused = () => (document.activeElement?.matches?.(':focus-visible') ? nodeOf(document.activeElement) : null);
 c.addEventListener('pointerover', (e) => { if (e.pointerType === 'mouse') { const n = nodeOf(e.target); if (n) preview(n); } });
 c.addEventListener('pointerout', (e) => {
@@ -1501,7 +1758,7 @@ if (e.pointerType !== 'mouse' || !nodeOf(e.target) || nodeOf(e.relatedTarget || 
 preview(focused() || null);
 });
 c.addEventListener('click', (e) => {
-if (c.classList.contains('dragging') || !d.graph) return;
+if (c.classList.contains('dragging') || !d.graph || penOn) return;
 if (e.target.closest?.('a')) return;
 const badge = e.target.closest?.('.ann-badge');
 const n = badge ? d.anns.find((a) => String(a.n) === badge.dataset.ann)?.target : nodeOf(e.target);
@@ -1590,7 +1847,8 @@ b.addEventListener('click', () => copyReport(i));
 return b;
 }
 function syncSizes() {
-const cur = { size: exportSize, layout: exportLayout, palette: exportPalette };
+const cur = { size: exportSize, layout: exportLayout, palette: exportPalette, ink: exportInk };
+diagrams.forEach((d) => { if (d.inkRow) d.inkRow.hidden = !inkOf(d).strokes.length; });
 document.querySelectorAll('[data-opt]').forEach((b) => b.setAttribute('aria-checked', String(cur[b.dataset.opt] === b.dataset.value)));
 diagrams.filter((d) => d.section === sections[current]).forEach((d) => {
 if (!d.ok || !d.sizeLabel || !viewBox(d)) return;
@@ -1632,6 +1890,7 @@ const keep = selected?.d === d ? selected.node.id : null;
 clearSelection(d);
 await indexGraph(d, source);
 placeAnnotations(d);
+drawInk(d);
 const again = keep !== null && d.graph?.nodes.get(keep);
 if (again) select(d, again, true);
 const back = d.graph?.nodes.get(focusId ?? keep);
@@ -1774,7 +2033,7 @@ nav.append(prevBtn, nextBtn);
 } else {
 tocBtn.disabled = true;
 }
-document.body.append(nav, actions, selbar, toast, selLive);
+document.body.append(nav, actions, selbar, penbar, toast, selLive);
 function show(k, updateHash = true) {
 popovers.forEach((p) => p.set(false));
 clearSelection();
@@ -1832,6 +2091,20 @@ const popOpen = popovers.some((p) => p.isOpen());
 if (e.key === 'Escape' && !nativePopover && popOpen) {
 popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
 return;
+}
+if (e.key === 'Escape' && penOn && !popOpen) { setPen(false); return; }
+const typing = e.target.closest?.('pre, input, textarea, select, .pop');
+if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !typing) {
+const d = curDiagram();
+if (d && inkOf(d).history.length) { e.preventDefault(); undoInk(d); return; }
+}
+if (e.key === ' ' && penOn && !typing) {
+spaceDown = true;
+if (!e.target.closest?.('button')) { e.preventDefault(); return; }
+}
+if ((e.key === 'p' || e.key === 'P') && !e.altKey && !e.ctrlKey && !e.metaKey && !typing) {
+const d = curDiagram();
+if (d && d.ok) { e.preventDefault(); setPen(!penOn); return; }
 }
 if (e.key === 'Escape' && selected && !popOpen) {
 const n = selected.node;

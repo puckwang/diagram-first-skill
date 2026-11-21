@@ -13,6 +13,8 @@
 // - 節點：flowchart、state、class、ER、requirement、mindmap 可滑鼠移入、點擊或 Tab 到節點，高亮所有上下游並淡化其他元素；
 //   點擊或 Enter 鎖定、Esc 或點空白處取消；鎖定時下方浮動列可「複製引用」（圖名、節點、上下游）貼回對話。
 //   其他圖種（例如 sequence）沒有節點資料，不啟用。
+// - 畫筆：✎ 或 P 進入；筆、螢光筆、雷射筆、橡皮擦、復原、清除；觸控筆不必切換即可畫；筆跡在記憶體、依排版分組，可帶進匯出。
+// - Agent 註解（ol.annotations）：節點旁編號徽章、浮動列顯示全文、說明視窗清單、卡片匯出腳註。
 // - 錯誤訊息與狀態列旁有「複製給 Claude」，帶出錯誤、圖名、原始碼與環境資訊；按 ? 開啟說明視窗的操作提示。
 // 方向只影響 flowchart、state、class、ER、requirement；「自動」依視窗方向，橫向時轉為水平、直向時轉為垂直。
 // 自動符合大小最多放大到 150%，並避開小卡或寬螢幕上展開的說明視窗（取其右側或下方較大的區域）。
@@ -51,12 +53,17 @@ const I18N = {
         reportTitle: '內容含原始碼與瀏覽器版本', reportCopied: '已複製，貼回對話給 Claude 即可',
         reportHead: '[diagram-first 問題回報]', reportPage: '頁面', reportDiagram: (k, n, title) => `第 ${k}/${n} 張〈${title}〉`, reportFig: '圖',
         reportState: '狀態', reportOk: 'render 成功', reportEnv: '環境', reportView: '檢視', reportSource: '原始碼', reportNote: '問題描述：',
+        pen: '畫筆', penTools: '畫筆工具', penRed: '紅筆', penBlue: '藍筆', penInk: '黑筆', highlighter: '螢光筆', laser: '雷射筆',
+        eraser: '橡皮擦', undo: '復原', clearInk: '清除這張圖的筆跡', exitPen: '離開畫筆',
+        penOn: '畫筆模式：拖曳畫線，Space＋拖曳或滑鼠中鍵平移，Esc 離開。筆跡不會保存，可用匯出帶走。',
+        penOnTouch: '畫筆模式：單指畫線、兩指平移縮放，再按 ✎ 離開。筆跡不會保存，可用匯出帶走。', penOff: '已離開畫筆模式',
+        inkCleared: '已清除筆跡，可按復原', inkLabel: '筆跡', inkOn: '含', inkOff: '不含', inkLeave: '筆跡不會保存，確定離開？',
         annTitle: '註解', annMissing: (list) => `${list} 找不到對應的節點，只列在說明視窗。可複製問題回報，貼回對話給 Claude。`,
         annItem: (n, node) => `註解 ${n}（節點 ${node}）`, annAria: (texts) => `，註解：${texts}`, annRef: (texts) => `；註解：${texts}`,
         madeWith: '由', madeWithAfter: '產生', repoLink: '在 GitHub 查看 diagram-first（另開視窗）',
         layout: '版面', layoutPlain: '只有圖', layoutCard: '卡片', palette: '配色', paletteFollow: '同畫面',
-        hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原；點節點看上下游。',
-        hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。點節點或從畫布按 Tab 進入節點看上下游，節點間用 [ ] 或 Alt＋方向鍵移動，Enter 鎖定、Esc 取消；按 ? 開啟這段說明。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
+        hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原；點節點看上下游；按 ✎ 用手指畫，觸控筆可直接畫。',
+        hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。點節點或從畫布按 Tab 進入節點看上下游，節點間用 [ ] 或 Alt＋方向鍵移動，Enter 鎖定、Esc 取消；按 P 或 ✎ 使用畫筆（觸控筆可直接畫）；按 ? 開啟這段說明。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
         transparent: 'PNG（透明背景）', printPdf: '列印／向量 PDF', printTitle: '只印圖本身，不套用版面與配色', size: '大小', sizeMax: '最大',
         pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `已達瀏覽器上限，輸出 ${w}×${h} px`, copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
         loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
@@ -76,12 +83,17 @@ const I18N = {
         reportTitle: 'Includes the source and browser version', reportCopied: 'Copied. Paste it into the chat with Claude',
         reportHead: '[diagram-first issue report]', reportPage: 'Page', reportDiagram: (k, n, title) => `${k}/${n} "${title}"`, reportFig: 'Diagram',
         reportState: 'Status', reportOk: 'rendered', reportEnv: 'Environment', reportView: 'View', reportSource: 'Source', reportNote: 'What looks wrong:',
+        pen: 'Pen', penTools: 'Pen tools', penRed: 'Red pen', penBlue: 'Blue pen', penInk: 'Black pen', highlighter: 'Highlighter', laser: 'Laser pointer',
+        eraser: 'Eraser', undo: 'Undo', clearInk: 'Clear the ink on this diagram', exitPen: 'Exit pen',
+        penOn: 'Pen mode: drag to draw, Space + drag or middle-click to pan, Esc to exit. Ink is not saved; export to keep it.',
+        penOnTouch: 'Pen mode: draw with one finger, pan and zoom with two, tap ✎ again to exit. Ink is not saved; export to keep it.', penOff: 'Left pen mode',
+        inkCleared: 'Ink cleared. Undo to restore it', inkLabel: 'Ink', inkOn: 'Include', inkOff: 'Exclude', inkLeave: 'Ink is not saved. Leave anyway?',
         annTitle: 'Notes', annMissing: (list) => `${list}: no matching node, listed in the notes window only. Copy the issue report and paste it into the chat with Claude.`,
         annItem: (n, node) => `Note ${n} (node ${node})`, annAria: (texts) => `, notes: ${texts}`, annRef: (texts) => `; notes: ${texts}`,
         madeWith: 'Made with', madeWithAfter: '', repoLink: 'View diagram-first on GitHub (opens in a new window)',
         layout: 'Layout', layoutPlain: 'Diagram only', layoutCard: 'Card', palette: 'Colors', paletteFollow: 'As shown',
-        hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset; tap a node to trace its upstream and downstream.',
-        hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams. Hover or click a node, or Tab from the canvas into the nodes, to trace its upstream and downstream; move between nodes with [ ] or Alt + arrow keys; Enter locks, Esc clears; press ? to open this help.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
+        hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset; tap a node to trace its upstream and downstream; tap ✎ to draw with a finger, or draw directly with a stylus.',
+        hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams. Hover or click a node, or Tab from the canvas into the nodes, to trace its upstream and downstream; move between nodes with [ ] or Alt + arrow keys; Enter locks, Esc clears; press P or ✎ to draw (a stylus draws directly); press ? to open this help.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
         transparent: 'PNG (transparent)', printPdf: 'Print / vector PDF', printTitle: 'Prints the diagram only; layout and colors are not applied', size: 'Size', sizeMax: 'Max',
         pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `Browser limit reached, exported ${w}×${h} px`, copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
         loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
@@ -101,12 +113,17 @@ const I18N = {
         reportTitle: 'ソースとブラウザのバージョンを含みます', reportCopied: 'コピーしました。Claude との会話に貼り付けてください',
         reportHead: '[diagram-first 問題レポート]', reportPage: 'ページ', reportDiagram: (k, n, title) => `${k}/${n}〈${title}〉`, reportFig: '図',
         reportState: '状態', reportOk: '描画成功', reportEnv: '環境', reportView: '表示', reportSource: 'ソース', reportNote: '問題の説明：',
+        pen: 'ペン', penTools: 'ペンツール', penRed: '赤ペン', penBlue: '青ペン', penInk: '黒ペン', highlighter: '蛍光ペン', laser: 'レーザーポインター',
+        eraser: '消しゴム', undo: '元に戻す', clearInk: 'この図の描き込みを消去', exitPen: 'ペンを終了',
+        penOn: 'ペンモード：ドラッグで描画、Space＋ドラッグか中ボタンで移動、Esc で終了。描き込みは保存されないため、残すには書き出してください。',
+        penOnTouch: 'ペンモード：1 本指で描画、2 本指で移動と拡大縮小、もう一度 ✎ で終了。描き込みは保存されないため、残すには書き出してください。', penOff: 'ペンモードを終了しました',
+        inkCleared: '描き込みを消去しました。元に戻せます', inkLabel: '描き込み', inkOn: '含める', inkOff: '含めない', inkLeave: '描き込みは保存されません。移動しますか？',
         annTitle: '注釈', annMissing: (list) => `${list} に対応するノードがないため、説明ウィンドウにのみ表示しています。問題レポートをコピーして Claude との会話に貼り付けてください。`,
         annItem: (n, node) => `注釈 ${n}（ノード ${node}）`, annAria: (texts) => `、注釈：${texts}`, annRef: (texts) => `；注釈：${texts}`,
         madeWith: '', madeWithAfter: 'で作成', repoLink: 'GitHub で diagram-first を見る（新しいウィンドウ）',
         layout: 'レイアウト', layoutPlain: '図のみ', layoutCard: 'カード', palette: '配色', paletteFollow: '表示どおり',
-        hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。ノードをタップすると上流と下流を表示。',
-        hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。ノードにポインターを置く・クリック・キャンバスから Tab で上流と下流を表示、ノード間は [ ] か Alt＋矢印キーで移動、Enter で固定、Esc で解除。? でこの説明を開く。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
+        hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。ノードをタップすると上流と下流を表示。✎ で指で描画、スタイラスはそのまま描画。',
+        hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。ノードにポインターを置く・クリック・キャンバスから Tab で上流と下流を表示、ノード間は [ ] か Alt＋矢印キーで移動、Enter で固定、Esc で解除。P か ✎ でペン（スタイラスはそのまま描画）。? でこの説明を開く。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
         transparent: 'PNG（透過）', printPdf: '印刷／ベクター PDF', printTitle: '図のみを印刷し、レイアウトと配色は適用しません', size: 'サイズ', sizeMax: '最大',
         pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `ブラウザの上限に達したため ${w}×${h} px で書き出しました`, copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
         loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
@@ -475,7 +492,21 @@ function bindGestures(d) {
     f('pointercancel', release);
   };
   c.addEventListener('pointerdown', (e) => {
-    if (!d.ok || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('.err')) return;
+    // 畫筆：第二指落下時取消進行中的筆劃，改為兩指捏合。
+    if (stroke && e.pointerType === 'touch' && stroke.touch) {
+      const first = stroke;
+      cancelStroke(d);
+      listen(true);
+      pointers.set(first.id, first.last);
+    } else if (!pointers.size && !stroke && d.ok && wantsInk(e)) {
+      e.preventDefault();
+      startStroke(d, e);
+      return;
+    }
+    // 畫筆模式下滑鼠中鍵也可平移。
+    const middle = penOn && e.pointerType === 'mouse' && e.button === 1;
+    if (!d.ok || (e.pointerType === 'mouse' && e.button !== 0 && !middle) || e.target.closest('.err')) return;
+    if (middle) e.preventDefault();
     if (!pointers.size) listen(true);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) startDrag(e);
@@ -572,6 +603,8 @@ let exportSize = load(STORE.size, EXPORT.sizes, '2');
 // 版面：只有圖或卡片（加上標題與一句話結論）；配色：跟隨畫面，或固定匯出淺色／深色（必要時以對應 Theme 重新 render）。
 let exportLayout = load(STORE.layout, ['plain', 'card'], 'plain');
 let exportPalette = load(STORE.palette, ['follow', 'light', 'dark'], 'follow');
+// 匯出是否帶上畫筆筆跡（只在有筆跡時顯示這個選項）；只在本次瀏覽有效。
+let exportInk = 'on';
 
 // 讀出 SVG 字串的 viewBox 尺寸。
 function svgSize(svgText) {
@@ -755,10 +788,11 @@ function cardSvg(svgText, title, caption, background, dark, footnotes = []) {
 async function exportSvg(d, transparent, htmlLabels = true) {
   const t = exportTheme(d);
   const base = t.rerender || !htmlLabels ? await renderExport(d, t.rerender || currentTheme(), htmlLabels) : d.svg;
-  if (exportLayout !== 'card') return { svg: base, dark: t.dark };
+  const inked = exportInk === 'on' ? withInk(d, base) : base;
+  if (exportLayout !== 'card') return { svg: inked, dark: t.dark };
   const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
   const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
-  return { svg: cardSvg(exportAnnotations(d, base), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
+  return { svg: cardSvg(exportAnnotations(d, inked), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
 }
 
 async function exportImage(d, type, transparent) {
@@ -1122,6 +1156,9 @@ for (const [i, section] of sections.entries()) {
   opts.append(sizeRow,
     optRow('layout', T.layout, [['plain', T.layoutPlain], ['card', T.layoutCard]]),
     optRow('palette', T.palette, [['follow', T.paletteFollow], ['light', T.light], ['dark', T.dark]]));
+  d.inkRow = optRow('ink', T.inkLabel, [['on', T.inkOn], ['off', T.inkOff]]);
+  d.inkRow.hidden = true;
+  opts.append(d.inkRow);
   // 圖片相關項目放在原始碼之前；render 失敗時隱藏。
   d.imageItems = [opts, ...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
                   Object.assign(menuItem(T.printPdf, () => printOne(d)), { title: T.printTitle }), menuItem(T.copyImage, copyImage)];
@@ -1139,7 +1176,9 @@ for (const [i, section] of sections.entries()) {
   d.level.addEventListener('click', () => setZoom(d, 1));
   resetBtn.addEventListener('click', () => fitScreen(d));
   zoom.append(outBtn, d.level, inBtn);
-  d.buttons = [zoom, resetBtn];
+  const penBtn = el('button', { type: 'button', class: 'pen-btn', 'aria-label': T.pen, title: `${T.pen} (P)`, 'aria-pressed': 'false' }, '✎');
+  penBtn.addEventListener('click', () => setPen(!penOn));
+  d.buttons = [zoom, resetBtn, penBtn];
   if (isDirected(source)) {
     const dirSelect = el('select', { 'aria-label': T.direction, title: T.direction });
     [['page', T.followPage], ['vertical', T.vertical], ['horizontal', T.horizontal]]
@@ -1169,6 +1208,7 @@ function setExportOpt(key, v) {
   if (key === 'size') { exportSize = v; save(STORE.size, v); }
   if (key === 'layout') { exportLayout = v; save(STORE.layout, v); }
   if (key === 'palette') { exportPalette = v; save(STORE.palette, v); }
+  if (key === 'ink') exportInk = v;
   syncSizes();
 }
 // ---- 節點索引：由 Mermaid 的 diagram 資料取得節點與連線，對應到 SVG 元素。解析不到時整個高亮功能不出現（例如 sequence）。----
@@ -1311,6 +1351,217 @@ function exportAnnotations(d, svgText) {
   return new XMLSerializer().serializeToString(root);
 }
 
+// ---- 畫筆：暫時的白板筆跡。畫在圖的 SVG 座標上（跟著平移縮放），只存在記憶體，不保存；可帶進匯出與列印。----
+// 筆跡依「圖＋實際方向」分組：切換方向會重新排版，筆跡先藏起來，切回原方向再出現；換 Theme 時保留。
+const TOOLS = [
+  { id: 'red', label: 'penRed', color: '#E5484D', width: 3 },
+  { id: 'blue', label: 'penBlue', color: '#0969DA', width: 3 },
+  { id: 'ink', label: 'penInk', color: null, width: 3 },
+  { id: 'hl', label: 'highlighter', color: '#FFD33D', width: 16, opacity: 0.4 },
+  { id: 'laser', label: 'laser', color: '#FF3B30', width: 4 },
+  { id: 'eraser', label: 'eraser' },
+];
+let penOn = false;
+let tool = TOOLS[0];
+let stroke = null;
+let spaceDown = false;
+const layoutKey = (d) => { const v = dirOf(d); return v === 'auto' ? (landscape.matches ? 'horizontal' : 'vertical') : v; };
+function inkOf(d) {
+  d.ink ||= new Map();
+  const k = layoutKey(d);
+  if (!d.ink.has(k)) d.ink.set(k, { strokes: [], history: [] });
+  return d.ink.get(k);
+}
+const hasInk = () => diagrams.some((d) => d.ink && [...d.ink.values()].some((x) => x.strokes.length));
+// 畫筆模式中，或觸控筆（不必切模式）按下時畫線；按住 Space 時改為平移。
+const wantsInk = (e) => !spaceDown && (e.pointerType === 'pen' ? e.button === 0 : penOn && (e.pointerType !== 'mouse' || e.button === 0));
+function inkLayer(d) {
+  const svg = d.canvas.querySelector('svg');
+  let g = svg?.querySelector(':scope > g.ink');
+  if (svg && !g) {
+    g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'ink');
+    g.setAttribute('aria-hidden', 'true');
+    svg.append(g);
+  }
+  return g;
+}
+function toSvg(d, e) {
+  const svg = d.canvas.querySelector('svg');
+  const m = svg.getScreenCTM()?.inverse();
+  const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(m);
+  return [Math.round(pt.x * 10) / 10, Math.round(pt.y * 10) / 10];
+}
+// 以中點的二次曲線連接各點，畫出平滑的線。
+function pathData(pts) {
+  if (pts.length === 1) return `M${pts[0][0]} ${pts[0][1]}l0.01 0`;
+  let p = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let k = 1; k < pts.length - 1; k++) {
+    const [x, y] = pts[k];
+    const [nx, ny] = pts[k + 1];
+    p += `Q${x} ${y} ${(x + nx) / 2} ${(y + ny) / 2}`;
+  }
+  const [lx, ly] = pts[pts.length - 1];
+  return `${p}L${lx} ${ly}`;
+}
+function strokeEl(s, doc = document) {
+  const el = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
+  [['d', pathData(s.pts)], ['fill', 'none'], ['stroke', s.color], ['stroke-width', s.width], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]
+    .forEach(([k, v]) => el.setAttribute(k, v));
+  if (s.opacity) el.setAttribute('stroke-opacity', s.opacity);
+  return el;
+}
+function drawInk(d) {
+  const g = inkLayer(d);
+  if (!g) return;
+  g.replaceChildren();
+  inkOf(d).strokes.forEach((s) => { s.el = strokeEl(s); g.append(s.el); });
+}
+function startStroke(d, e) {
+  const c = d.canvas;
+  try { c.setPointerCapture(e.pointerId); } catch {}
+  if (tool.id === 'eraser') {
+    stroke = { d, id: e.pointerId, erase: true, touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+    eraseAt(d, e);
+  } else {
+    // 線寬以「畫下當時的螢幕像素」換算成圖的座標，之後跟著圖一起縮放。
+    const color = tool.color || tokenColor('--text', d.canvas.classList.contains('dark'));
+    const s = { pts: [toSvg(d, e)], color, width: Math.round((tool.width / d.scale) * 100) / 100, opacity: tool.opacity };
+    s.el = strokeEl(s);
+    if (tool.id === 'laser') s.el.setAttribute('class', 'laser');
+    inkLayer(d).append(s.el);
+    stroke = { d, id: e.pointerId, s, laser: tool.id === 'laser', touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+  }
+  const moveInk = (ev) => {
+    if (!stroke || ev.pointerId !== stroke.id) return;
+    stroke.last = { x: ev.clientX, y: ev.clientY };
+    if (stroke.erase) { eraseAt(d, ev); return; }
+    const evs = ev.getCoalescedEvents?.() || [ev];
+    evs.forEach((x) => {
+      const pt = toSvg(d, x);
+      const prev = stroke.s.pts[stroke.s.pts.length - 1];
+      // 太近的點略過，減少路徑長度。
+      if (Math.hypot(pt[0] - prev[0], pt[1] - prev[1]) * d.scale >= 2) stroke.s.pts.push(pt);
+    });
+    stroke.s.el.setAttribute('d', pathData(stroke.s.pts));
+  };
+  const up = (ev) => {
+    if (!stroke || ev.pointerId !== stroke.id) return;
+    removeEventListener('pointermove', moveInk);
+    removeEventListener('pointerup', up);
+    removeEventListener('pointercancel', up);
+    const done = stroke;
+    stroke = null;
+    if (done.erase) return;
+    if (done.laser) {
+      // 雷射筆：約 1.5 秒後淡出，不留下筆跡；偏好減少動態時直接消失。
+      setTimeout(() => {
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) { done.s.el.remove(); return; }
+        done.s.el.classList.add('fade');
+        setTimeout(() => done.s.el.remove(), 400);
+      }, 1500);
+      return;
+    }
+    const ink = inkOf(d);
+    ink.strokes.push(done.s);
+    ink.history.push({ add: done.s });
+    syncSizes();
+  };
+  stroke.cleanup = () => { removeEventListener('pointermove', moveInk); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
+  addEventListener('pointermove', moveInk);
+  addEventListener('pointerup', up);
+  addEventListener('pointercancel', up);
+}
+function cancelStroke() {
+  if (!stroke) return;
+  stroke.cleanup();
+  stroke.s?.el.remove();
+  stroke = null;
+}
+// 橡皮擦：以整條筆劃為單位，指標經過（約 10px 內）就刪除，可復原。以點到折線的距離判斷，不必剛好點中細線。
+function eraseAt(d, e) {
+  const ink = inkOf(d);
+  const [px, py] = toSvg(d, e);
+  const near = (s) => {
+    const r = Math.max(s.width / 2, 10 / d.scale);
+    return s.pts.some(([x, y], k) => {
+      const [ax, ay] = k ? s.pts[k - 1] : [x, y];
+      const dx = x - ax;
+      const dy = y - ay;
+      const t = dx || dy ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))) : 0;
+      return Math.hypot(px - (ax + t * dx), py - (ay + t * dy)) <= r;
+    });
+  };
+  const k = ink.strokes.findLastIndex(near);
+  if (k < 0) return;
+  const [s] = ink.strokes.splice(k, 1);
+  s.el.remove();
+  ink.history.push({ erase: s, at: k });
+  syncSizes();
+}
+function undoInk(d) {
+  const ink = inkOf(d);
+  const h = ink.history.pop();
+  if (!h) return;
+  if (h.add) ink.strokes.splice(ink.strokes.indexOf(h.add), 1);
+  if (h.erase) ink.strokes.splice(h.at, 0, h.erase);
+  if (h.clear) ink.strokes.push(...h.clear);
+  drawInk(d);
+  syncSizes();
+}
+function clearInk(d) {
+  const ink = inkOf(d);
+  if (!ink.strokes.length) return;
+  ink.history.push({ clear: ink.strokes.splice(0) });
+  drawInk(d);
+  syncSizes();
+  notify(T.inkCleared);
+}
+// 匯出：把目前排版的筆跡加進匯出的 SVG（雷射筆不包含）。
+function withInk(d, svgText) {
+  const strokes = inkOf(d).strokes;
+  if (!strokes.length) return svgText;
+  const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+  const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
+  strokes.forEach((s) => g.append(strokeEl(s, doc)));
+  doc.documentElement.append(g);
+  return new XMLSerializer().serializeToString(doc.documentElement);
+}
+
+// 畫筆工具列：固定在右側，畫筆模式時顯示。
+const penbar = el('div', { id: 'penbar', class: 'float', role: 'toolbar', 'aria-label': T.penTools, hidden: '' });
+const toolBtns = TOOLS.map((t) => {
+  const b = el('button', { type: 'button', 'aria-label': T[t.label], title: T[t.label], 'aria-pressed': String(t === tool), 'data-tool': t.id });
+  b.append(el('span', { class: 'swatch', 'aria-hidden': 'true' }));
+  b.addEventListener('click', () => {
+    tool = t;
+    toolBtns.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    document.documentElement.classList.toggle('erasing', t.id === 'eraser');
+  });
+  return b;
+});
+const curDiagram = () => diagrams.find((x) => x.section === sections[current]);
+const undoBtn = el('button', { type: 'button', 'aria-label': T.undo, title: `${T.undo} (⌘/Ctrl+Z)` }, '↶');
+undoBtn.addEventListener('click', () => { const d = curDiagram(); if (d) undoInk(d); });
+const clearBtn = el('button', { type: 'button', 'aria-label': T.clearInk, title: T.clearInk }, '🗑');
+clearBtn.addEventListener('click', () => { const d = curDiagram(); if (d) clearInk(d); });
+const exitBtn = el('button', { type: 'button', 'aria-label': T.exitPen, title: `${T.exitPen} (Esc)` }, '×');
+exitBtn.addEventListener('click', () => setPen(false));
+penbar.append(...toolBtns, el('span', { class: 'sep', 'aria-hidden': 'true' }), undoBtn, clearBtn, exitBtn);
+function setPen(on) {
+  penOn = on;
+  penbar.hidden = !on;
+  document.documentElement.classList.toggle('pen-on', on);
+  document.querySelectorAll('.pen-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
+  if (on) diagrams.forEach((d) => { if (!selected || selected.d !== d) highlight(d, null); });
+  else cancelStroke();
+  notify(on ? (matchMedia('(any-pointer: fine)').matches ? T.penOn : T.penOnTouch) : T.penOff);
+}
+// 有筆跡時離開頁面先提醒（筆跡只在記憶體）。
+addEventListener('beforeunload', (e) => { if (hasInk()) { e.preventDefault(); e.returnValue = T.inkLeave; } });
+addEventListener('keyup', (e) => { if (e.key === ' ') spaceDown = false; });
+addEventListener('blur', () => { spaceDown = false; });
+
 // 上游與下游：沿連線方向往前、往後走訪所有可到達的節點（含間接）。
 function reach(node) {
   const walk = (dir) => {
@@ -1421,7 +1672,7 @@ selClear.addEventListener('click', () => {
 function bindNodes(d) {
   const c = d.canvas;
   const nodeOf = (t) => d.graph?.byEl.get(t.closest?.('g.node'));
-  const preview = (n) => { if (!selected || selected.d !== d) highlight(d, n); };
+  const preview = (n) => { if (!penOn && (!selected || selected.d !== d)) highlight(d, n); };
   // 滑鼠離開節點時，若鍵盤焦點仍在某個節點上，回到該節點的預覽。
   const focused = () => (document.activeElement?.matches?.(':focus-visible') ? nodeOf(document.activeElement) : null);
   c.addEventListener('pointerover', (e) => { if (e.pointerType === 'mouse') { const n = nodeOf(e.target); if (n) preview(n); } });
@@ -1430,7 +1681,7 @@ function bindNodes(d) {
     preview(focused() || null);
   });
   c.addEventListener('click', (e) => {
-    if (c.classList.contains('dragging') || !d.graph) return;
+    if (c.classList.contains('dragging') || !d.graph || penOn) return;
     // 帶連結的節點交給連結本身，不同時鎖定。
     if (e.target.closest?.('a')) return;
     const badge = e.target.closest?.('.ann-badge');
@@ -1532,7 +1783,8 @@ function reportButton(i) {
 
 // 同步所有選單的匯出選項，並更新每張圖的輸出像素說明（卡片版面依實際卡片尺寸計算）。
 function syncSizes() {
-  const cur = { size: exportSize, layout: exportLayout, palette: exportPalette };
+  const cur = { size: exportSize, layout: exportLayout, palette: exportPalette, ink: exportInk };
+  diagrams.forEach((d) => { if (d.inkRow) d.inkRow.hidden = !inkOf(d).strokes.length; });
   document.querySelectorAll('[data-opt]').forEach((b) => b.setAttribute('aria-checked', String(cur[b.dataset.opt] === b.dataset.value)));
   // 只更新目前這張圖（選單只會在目前這張圖上開啟）。
   diagrams.filter((d) => d.section === sections[current]).forEach((d) => {
@@ -1581,6 +1833,7 @@ async function renderOneNow(d) {
     clearSelection(d);
     await indexGraph(d, source);
     placeAnnotations(d);
+    drawInk(d);
     const again = keep !== null && d.graph?.nodes.get(keep);
     if (again) select(d, again, true);
     // 原本聚焦的節點被重繪移除了：把 roving tabindex 與焦點放回同 id 的節點。
@@ -1733,7 +1986,7 @@ if (multi) {
 } else {
   tocBtn.disabled = true;
 }
-document.body.append(nav, actions, selbar, toast, selLive);
+document.body.append(nav, actions, selbar, penbar, toast, selLive);
 
 // 切換到第 k 張圖：顯示該圖、把它的說明移入說明視窗，並同步網址的 #id。
 function show(k, updateHash = true) {
@@ -1799,6 +2052,23 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !nativePopover && popOpen) {
     popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
     return;
+  }
+  // Esc：先離開畫筆模式，再取消選取。
+  if (e.key === 'Escape' && penOn && !popOpen) { setPen(false); return; }
+  const typing = e.target.closest?.('pre, input, textarea, select, .pop');
+  // ⌘／Ctrl＋Z：復原目前這張圖的筆跡。
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !typing) {
+    const d = curDiagram();
+    if (d && inkOf(d).history.length) { e.preventDefault(); undoInk(d); return; }
+  }
+  // 畫筆模式按住 Space 時拖曳改為平移；焦點在按鈕上時不攔截，讓按鈕照常以 Space 操作。
+  if (e.key === ' ' && penOn && !typing) {
+    spaceDown = true;
+    if (!e.target.closest?.('button')) { e.preventDefault(); return; }
+  }
+  if ((e.key === 'p' || e.key === 'P') && !e.altKey && !e.ctrlKey && !e.metaKey && !typing) {
+    const d = curDiagram();
+    if (d && d.ok) { e.preventDefault(); setPen(!penOn); return; }
   }
   // Esc：有選取的節點時先取消選取（彈出選單開著時交給選單處理）。
   if (e.key === 'Escape' && selected && !popOpen) {

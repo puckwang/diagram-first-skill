@@ -188,6 +188,32 @@
     #selbar { flex-wrap: wrap; }
     #selbar .sel-note { flex: 1 0 100%; display: flex; flex-direction: column; padding: 0 8px 4px 0; color: var(--muted); white-space: normal; }
     #selbar .sel-note[hidden] { display: none; }
+    /* 畫筆：右側工具列、畫筆模式的游標、筆跡層（平常不攔截指標，橡皮擦時才可點中筆劃）。 */
+    #penbar { position: fixed; right: max(12px, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); z-index: 30;
+              display: flex; flex-direction: column; gap: 4px; padding: 4px; }
+    #penbar[hidden] { display: none; }
+    /* 窄螢幕：改為橫排在下方工具列上方，放不下時可橫向捲動。 */
+    @media (max-width: 599px) {
+      #penbar { flex-direction: row; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px);
+                max-width: calc(100vw - 24px); overflow-x: auto; }
+      #penbar .sep { width: 1px; height: auto; margin: 4px 2px; }
+      html.pen-on #selbar { display: none; }
+      html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 96px); }
+    }
+    #penbar button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
+    #penbar .sep { height: 1px; margin: 2px 4px; background: var(--border); }
+    #penbar .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
+    #penbar [data-tool="red"] .swatch { background: #E5484D; }
+    #penbar [data-tool="blue"] .swatch { background: #0969DA; }
+    #penbar [data-tool="ink"] .swatch { background: var(--text); }
+    #penbar [data-tool="hl"] .swatch { background: #FFD33D; border-radius: 3px; width: 16px; }
+    #penbar [data-tool="laser"] .swatch { background: #FF3B30; box-shadow: 0 0 6px 2px #FF3B30; width: 8px; height: 8px; }
+    #penbar [data-tool="eraser"] .swatch { background: transparent; border: 2px solid var(--muted); border-radius: 3px; width: 14px; height: 10px; }
+    html.pen-on .canvas.ready, html.pen-on .canvas.ready svg g.node { cursor: crosshair; }
+    html.app .canvas svg g.ink { pointer-events: none; }
+    html.erasing.pen-on .canvas.ready { cursor: cell; }
+    html.app .canvas svg g.ink path.laser { filter: drop-shadow(0 0 4px #FF3B30); transition: opacity .4s; }
+    html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
     #info .credit { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
     #info .credit a { color: inherit; }
     #info.card .credit { display: none; }
@@ -201,7 +227,7 @@
   }
   @media print {
     #info .notes, .notes h3 { display: none; }
-    .toolbar, .float, .pop, .close, #selbar { display: none !important; }
+    .toolbar, .float, .pop, .close, #selbar, #penbar { display: none !important; }
     .canvas svg.hl :is(g.node, [data-hl-edge], g.cluster) { opacity: 1 !important; filter: none !important; }
     .canvas { background-image: none !important; }
     .canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }
