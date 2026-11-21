@@ -30,6 +30,8 @@ const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direct
 // 匯出點陣圖的大小：倍率或最大。side、area 為保守的 canvas 上限（Chrome 單邊 16384px）；實際配置失敗時再自動縮小。
 const EXPORT = { sizes: ['1', '2', '4', 'max'], side: 16384, area: 64e6 };
 const MERMAID_VERSION = '12.1.0';
+// 本專案的版本與網址；版本由 build 從 .claude-plugin/plugin.json 帶入。
+const APP = { version: '__APP_VERSION__', repo: 'https://github.com/puckwang/diagram-first-skill' };
 const ZOOM = { min: 0.1, max: 8, step: 1.25, fitMax: 1.5 };
 // 平移時圖至少留在可見區內的像素；拖曳超過門檻才算拖曳，點擊圖內連結不受影響。
 const PAN = { keep: 48, threshold: 4, key: 40 };
@@ -44,11 +46,14 @@ const I18N = {
         nodeAria: (label, up, down) => `${label}，上游 ${up} 個、下游 ${down} 個`, upstream: '上游', downstream: '下游', none: '無',
         selInfo: (label, up, down) => `「${label}」上游 ${up}・下游 ${down}`, copyRef: '複製引用', clearSel: '取消選取', selected: '已選取節點',
         nodeRef: (k, n, title, id, label, ups, downs, up, down) => `第 ${k}/${n} 張圖〈${title}〉的節點${id ? ` ${id}` : ''}「${label}」（直接上游：${ups}；直接下游：${downs}；全部上游 ${up} 個、下游 ${down} 個）`,
-        more: (n) => `等 ${n} 個`,
+        andMore: (n) => `等 ${n} 個`,
         report: '複製給 Claude', reportAll: '複製全部問題給 Claude', reportMenu: '複製問題回報給 Claude',
         reportTitle: '內容含原始碼與瀏覽器版本', reportCopied: '已複製，貼回對話給 Claude 即可',
         reportHead: '[diagram-first 問題回報]', reportPage: '頁面', reportDiagram: (k, n, title) => `第 ${k}/${n} 張〈${title}〉`, reportFig: '圖',
         reportState: '狀態', reportOk: 'render 成功', reportEnv: '環境', reportView: '檢視', reportSource: '原始碼', reportNote: '問題描述：',
+        annTitle: '註解', annMissing: (list) => `${list} 找不到對應的節點，只列在說明視窗。可複製問題回報，貼回對話給 Claude。`,
+        annItem: (n, node) => `註解 ${n}（節點 ${node}）`, annAria: (texts) => `，註解：${texts}`, annRef: (texts) => `；註解：${texts}`,
+        madeWith: '由', madeWithAfter: '產生', repoLink: '在 GitHub 查看 diagram-first（另開視窗）',
         layout: '版面', layoutPlain: '只有圖', layoutCard: '卡片', palette: '配色', paletteFollow: '同畫面',
         hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原；點節點看上下游。',
         hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。點節點或從畫布按 Tab 進入節點看上下游，節點間用 [ ] 或 Alt＋方向鍵移動，Enter 鎖定、Esc 取消；按 ? 開啟這段說明。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
@@ -66,11 +71,14 @@ const I18N = {
         nodeAria: (label, up, down) => `${label}, ${up} upstream, ${down} downstream`, upstream: 'Upstream', downstream: 'Downstream', none: 'none',
         selInfo: (label, up, down) => `"${label}" ${up} upstream · ${down} downstream`, copyRef: 'Copy reference', clearSel: 'Clear selection', selected: 'Selected node',
         nodeRef: (k, n, title, id, label, ups, downs, up, down) => `Node ${id ? `${id} ` : ''}"${label}" in diagram ${k}/${n} "${title}" (direct upstream: ${ups}; direct downstream: ${downs}; ${up} upstream and ${down} downstream in total)`,
-        more: (n) => `and ${n} more`,
+        andMore: (n) => `and ${n} more`,
         report: 'Copy for Claude', reportAll: 'Copy all issues for Claude', reportMenu: 'Copy issue report for Claude',
         reportTitle: 'Includes the source and browser version', reportCopied: 'Copied. Paste it into the chat with Claude',
         reportHead: '[diagram-first issue report]', reportPage: 'Page', reportDiagram: (k, n, title) => `${k}/${n} "${title}"`, reportFig: 'Diagram',
         reportState: 'Status', reportOk: 'rendered', reportEnv: 'Environment', reportView: 'View', reportSource: 'Source', reportNote: 'What looks wrong:',
+        annTitle: 'Notes', annMissing: (list) => `${list}: no matching node, listed in the notes window only. Copy the issue report and paste it into the chat with Claude.`,
+        annItem: (n, node) => `Note ${n} (node ${node})`, annAria: (texts) => `, notes: ${texts}`, annRef: (texts) => `; notes: ${texts}`,
+        madeWith: 'Made with', madeWithAfter: '', repoLink: 'View diagram-first on GitHub (opens in a new window)',
         layout: 'Layout', layoutPlain: 'Diagram only', layoutCard: 'Card', palette: 'Colors', paletteFollow: 'As shown',
         hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset; tap a node to trace its upstream and downstream.',
         hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams. Hover or click a node, or Tab from the canvas into the nodes, to trace its upstream and downstream; move between nodes with [ ] or Alt + arrow keys; Enter locks, Esc clears; press ? to open this help.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
@@ -88,11 +96,14 @@ const I18N = {
         nodeAria: (label, up, down) => `${label}、上流 ${up} 件、下流 ${down} 件`, upstream: '上流', downstream: '下流', none: 'なし',
         selInfo: (label, up, down) => `「${label}」上流 ${up}・下流 ${down}`, copyRef: '参照をコピー', clearSel: '選択を解除', selected: '選択中のノード',
         nodeRef: (k, n, title, id, label, ups, downs, up, down) => `図 ${k}/${n}〈${title}〉のノード${id ? ` ${id}` : ''}「${label}」（直接の上流：${ups}；直接の下流：${downs}；上流 ${up} 件・下流 ${down} 件）`,
-        more: (n) => `ほか ${n} 件`,
+        andMore: (n) => `ほか ${n} 件`,
         report: 'Claude 用にコピー', reportAll: 'すべての問題を Claude 用にコピー', reportMenu: '問題レポートを Claude 用にコピー',
         reportTitle: 'ソースとブラウザのバージョンを含みます', reportCopied: 'コピーしました。Claude との会話に貼り付けてください',
         reportHead: '[diagram-first 問題レポート]', reportPage: 'ページ', reportDiagram: (k, n, title) => `${k}/${n}〈${title}〉`, reportFig: '図',
         reportState: '状態', reportOk: '描画成功', reportEnv: '環境', reportView: '表示', reportSource: 'ソース', reportNote: '問題の説明：',
+        annTitle: '注釈', annMissing: (list) => `${list} に対応するノードがないため、説明ウィンドウにのみ表示しています。問題レポートをコピーして Claude との会話に貼り付けてください。`,
+        annItem: (n, node) => `注釈 ${n}（ノード ${node}）`, annAria: (texts) => `、注釈：${texts}`, annRef: (texts) => `；注釈：${texts}`,
+        madeWith: '', madeWithAfter: 'で作成', repoLink: 'GitHub で diagram-first を見る（新しいウィンドウ）',
         layout: 'レイアウト', layoutPlain: '図のみ', layoutCard: 'カード', palette: '配色', paletteFollow: '表示どおり',
         hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。ノードをタップすると上流と下流を表示。',
         hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。ノードにポインターを置く・クリック・キャンバスから Tab で上流と下流を表示、ノード間は [ ] か Alt＋矢印キーで移動、Enter で固定、Esc で解除。? でこの説明を開く。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
@@ -689,7 +700,7 @@ function wrapText(text, css, width) {
 }
 
 // 卡片版面：只計算尺寸與斷行，不碰 DOM，供選單顯示輸出像素。
-function cardLayout(w, h, title, caption) {
+function cardLayout(w, h, title, caption, footnotes = []) {
   const pad = 32;
   const W = Math.max(w, 480);
   const titleCss = `600 22px ${font}`;
@@ -697,16 +708,20 @@ function cardLayout(w, h, title, caption) {
   const titleLines = title ? wrapText(title, titleCss, W) : [];
   const capLines = caption ? wrapText(caption, capCss, W) : [];
   const head = titleLines.length * 30 + (capLines.length ? 6 + capLines.length * 22 : 0) + (titleLines.length || capLines.length ? 20 : 0);
-  return { pad, W, titleCss, capCss, titleLines, capLines, head, TW: W + pad * 2, TH: pad + head + h + pad };
+  // 圖下方的註解（腳註式，依編號），每條可斷成多行。
+  const footCss = `14px ${font}`;
+  const footLines = footnotes.flatMap((t) => wrapText(t, footCss, W));
+  const foot = footLines.length ? 16 + footLines.length * 20 : 0;
+  return { pad, W, titleCss, capCss, titleLines, capLines, head, footCss, footLines, foot, TW: W + pad * 2, TH: pad + head + h + foot + pad };
 }
 
 // 卡片：在圖的上方加上標題與一句話結論，整體仍是一份 SVG，點陣、PDF、SVG 下載共用。文字顏色取自畫面的 token。
-function cardSvg(svgText, title, caption, background, dark) {
+function cardSvg(svgText, title, caption, background, dark, footnotes = []) {
   const SVGNS = 'http://www.w3.org/2000/svg';
   const inner = new DOMParser().parseFromString(svgText, 'image/svg+xml').documentElement;
   const vb = (inner.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
   if (vb.length !== 4 || !vb[2] || !vb[3]) return svgText;
-  const { pad, W, titleCss, capCss, titleLines, capLines, head, TW, TH } = cardLayout(vb[2], vb[3], title, caption);
+  const { pad, W, titleCss, capCss, titleLines, capLines, head, footCss, footLines, TW, TH } = cardLayout(vb[2], vb[3], title, caption, footnotes);
   const doc = document.implementation.createDocument(SVGNS, 'svg', null);
   const root = doc.documentElement;
   [['viewBox', `0 0 ${TW} ${TH}`], ['width', TW], ['height', TH]].forEach(([k, v]) => root.setAttribute(k, v));
@@ -731,6 +746,8 @@ function cardSvg(svgText, title, caption, background, dark) {
   graph.removeAttribute('style');
   [['x', pad + (W - vb[2]) / 2], ['y', pad + head], ['width', vb[2]], ['height', vb[3]]].forEach(([k, v]) => graph.setAttribute(k, v));
   root.append(graph);
+  y = pad + head + vb[3] + 16;
+  text(footLines, footCss, 14, 20, tokenColor('--muted', dark));
   return new XMLSerializer().serializeToString(root);
 }
 
@@ -740,7 +757,8 @@ async function exportSvg(d, transparent, htmlLabels = true) {
   const base = t.rerender || !htmlLabels ? await renderExport(d, t.rerender || currentTheme(), htmlLabels) : d.svg;
   if (exportLayout !== 'card') return { svg: base, dark: t.dark };
   const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
-  return { svg: cardSvg(base, d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark), dark: t.dark };
+  const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
+  return { svg: cardSvg(exportAnnotations(d, base), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
 }
 
 async function exportImage(d, type, transparent) {
@@ -945,6 +963,11 @@ const info = el('aside', { id: 'info', 'aria-label': T.info });
 const closeInfo = el('button', { type: 'button', class: 'close', 'aria-label': T.close, title: T.close }, '×');
 const expandInfo = el('button', { type: 'button', class: 'expand', 'aria-expanded': 'false', 'aria-controls': 'info' }, T.expand);
 info.append(closeInfo);
+// 說明視窗最底部：產生工具與專案連結（另開視窗、不帶 referrer）。
+const credit = el('p', { class: 'credit' });
+const repoA = el('a', { href: APP.repo, target: '_blank', rel: 'noopener noreferrer', 'aria-label': T.repoLink }, `diagram-first v${APP.version} · GitHub`);
+credit.append(...[T.madeWith, repoA, T.madeWithAfter].filter(Boolean).flatMap((x, k) => (k ? [' ', x] : [x])));
+
 // 觸控裝置用精簡版提示，不列出滾輪與鍵盤操作。
 const hint = el('p', { id: 'canvas-hint', class: 'hint' }, matchMedia('(any-pointer: fine)').matches ? T.hint : T.hintTouch);
 const headerEl = document.querySelector('header');
@@ -980,6 +1003,25 @@ for (const [i, section] of sections.entries()) {
     const box = el('details', { class: 'legend-box', open: '' });
     box.append(el('summary', {}, items ? `${T.legend} (${items})` : T.legend), legend);
     note.append(box);
+  }
+  // Agent 註解：<ol class="annotations"><li data-node="節點 id">文字</li></ol>，移到說明視窗，依序編號。
+  const annList = section.querySelector('ol.annotations');
+  const anns = annList ? [...annList.querySelectorAll(':scope > li')].map((li, k) => ({ n: k + 1, node: li.dataset.node || null, text: li.textContent.trim(), li }))
+    .filter((a) => a.text) : [];
+  if (annList) {
+    annList.remove();
+    if (anns.length) {
+      const box = el('div', { class: 'ann-box' });
+      const ol = el('ol', { class: 'ann-list' });
+      anns.forEach((a) => {
+        const li = el('li', { value: String(a.n) });
+        a.item = li;
+        li.append(a.text);
+        ol.append(li);
+      });
+      box.append(el('h4', {}, `${T.annTitle} (${anns.length})`), ol);
+      note.append(box);
+    }
   }
   note.append(details);
 
@@ -1028,7 +1070,7 @@ for (const [i, section] of sections.entries()) {
   }
 
   const d = { i, section, source, canvas, details, toolbar, ok: false, svg: '', scale: 1, tx: 0, ty: 0,
-              direction: 'page', fit: true, syncToolbar };
+              direction: 'page', fit: true, syncToolbar, anns };
   // 輸出尺寸超過瀏覽器上限而縮小時，提示實際像素。
   const report = (r) => { if (r.capped) notify(T.capped(r.width, r.height)); };
   const download = async (v) => {
@@ -1112,6 +1154,14 @@ for (const [i, section] of sections.entries()) {
   }
   bindGestures(d);
   bindNodes(d);
+  // 說明視窗的註解：有對應節點的可點擊，鎖定並帶到該節點。
+  anns.forEach((a) => {
+    a.item?.addEventListener('click', () => {
+      if (!a.target) return;
+      if (selected?.node !== a.target) select(d, a.target);
+      else ensureVisible(d, a.target.el);
+    });
+  });
   diagrams.push(d);
 }
 
@@ -1188,6 +1238,79 @@ async function indexGraph(d, source) {
   }
 }
 
+// 註解徽章：在對應節點右上角畫編號圓點（SVG 座標，跟著圖平移縮放）；說明視窗的註解可點擊定位並鎖定節點。
+// 找不到節點（或圖種沒有節點資料）的註解只列在說明視窗，並記下供狀態列提示。
+function placeAnnotations(d) {
+  const svg = d.canvas.querySelector('svg');
+  if (!svg || !d.anns.length) return;
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const vb = svg.viewBox.baseVal;
+  const box = svg.getBoundingClientRect();
+  const k = box.width ? vb.width / box.width : 1;
+  const layer = document.createElementNS(SVGNS, 'g');
+  layer.setAttribute('class', 'ann-layer');
+  layer.setAttribute('aria-hidden', 'true');
+  const stack = new Map();
+  d.anns.forEach((a) => {
+    a.target = a.node !== null ? d.graph?.nodes.get(a.node) || null : null;
+    a.pos = null;
+    if (a.item) {
+      a.item.classList.toggle('linked', Boolean(a.target));
+      a.item.title = a.node !== null ? T.annItem(a.n, a.node) : '';
+    }
+    if (!a.target) return;
+    const r = a.target.el.getBoundingClientRect();
+    const count = stack.get(a.target) || 0;
+    stack.set(a.target, count + 1);
+    // 一般節點放右上角；菱形等多邊形的外框角落是空白，改放在頂點右側。
+    const poly = a.target.el.querySelector(':scope > polygon, :scope > g > polygon');
+    const sx = poly ? r.left + r.width / 2 + 14 : r.right;
+    const sy = poly ? r.top + 6 : r.top;
+    const x = vb.x + (sx - box.left) * k - count * 18;
+    const y = vb.y + (sy - box.top) * k;
+    a.pos = { x, y };
+    const g = document.createElementNS(SVGNS, 'g');
+    g.setAttribute('class', 'ann-badge');
+    g.setAttribute('transform', `translate(${x} ${y})`);
+    g.dataset.ann = String(a.n);
+    const c = document.createElementNS(SVGNS, 'circle');
+    c.setAttribute('r', '9');
+    const t = document.createElementNS(SVGNS, 'text');
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('dy', '0.35em');
+    t.textContent = String(a.n);
+    g.append(c, t);
+    layer.append(g);
+  });
+  svg.append(layer);
+  // 有註解的節點：無障礙名稱附上註解全文。
+  d.graph?.nodes.forEach((n) => {
+    const texts = annsOf(d, n).map((a) => a.text);
+    if (texts.length) n.el.setAttribute('aria-label', n.el.getAttribute('aria-label') + T.annAria(texts.join('；')));
+  });
+}
+const annsOf = (d, node) => d.anns.filter((a) => a.target === node);
+// 匯出用：把徽章加進匯出的 SVG（只有卡片版面使用），並回傳文字清單。
+function exportAnnotations(d, svgText) {
+  const placed = d.anns.filter((a) => a.pos);
+  if (!placed.length) return svgText;
+  const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+  const root = doc.documentElement;
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  placed.forEach((a) => {
+    const g = doc.createElementNS(SVGNS, 'g');
+    g.setAttribute('transform', `translate(${a.pos.x} ${a.pos.y})`);
+    const c = doc.createElementNS(SVGNS, 'circle');
+    [['r', '9'], ['fill', '#BF8700']].forEach(([k, v]) => c.setAttribute(k, v));
+    const t = doc.createElementNS(SVGNS, 'text');
+    [['text-anchor', 'middle'], ['dy', '0.35em'], ['fill', '#FFFFFF'], ['font-size', '11'], ['font-weight', '700'], ['font-family', font]].forEach(([k, v]) => t.setAttribute(k, v));
+    t.textContent = String(a.n);
+    g.append(c, t);
+    root.append(g);
+  });
+  return new XMLSerializer().serializeToString(root);
+}
+
 // 上游與下游：沿連線方向往前、往後走訪所有可到達的節點（含間接）。
 function reach(node) {
   const walk = (dir) => {
@@ -1227,7 +1350,8 @@ const selbar = el('div', { id: 'selbar', class: 'float', role: 'group', 'aria-la
 const selText = el('span', { class: 'sel-text' });
 const selCopy = el('button', { type: 'button' }, T.copyRef);
 const selClear = el('button', { type: 'button', 'aria-label': T.clearSel, title: `${T.clearSel} (Esc)` }, '×');
-selbar.append(selText, selCopy, selClear);
+const selNote = el('div', { class: 'sel-note', hidden: '' });
+selbar.append(selText, selCopy, selClear, selNote);
 let selected = null;
 const selLive = el('p', { class: 'sr-only', role: 'status' });
 
@@ -1245,6 +1369,10 @@ function select(d, node, quiet = false) {
     // 窄螢幕用精簡文字（↑ 上游、↓ 下游），完整文字留在 title 與螢幕閱讀器的播報。
     selText.replaceChildren(el('span', { class: 'full' }, full), el('span', { class: 'short' }, `${node.label} ↑${r.ups.size} ↓${r.downs.size}`));
     selText.title = full;
+    // 節點有 Agent 註解時，在浮動列第二行顯示全文。
+    const notesHere = annsOf(d, node);
+    selNote.replaceChildren(...notesHere.map((a) => el('span', {}, `${a.n}. ${a.text}`)));
+    selNote.hidden = !notesHere.length;
     // 浮動列剛出現時 live region 常不會被唸出，改用常駐、只給螢幕閱讀器的播報區（畫面上已有浮動列，不再跳提示）。
     if (!quiet) { selLive.textContent = ''; requestAnimationFrame(() => { selLive.textContent = full; }); }
   }
@@ -1265,13 +1393,14 @@ function nodeRef(d, node) {
     const uniq = [...new Set(list)];
     if (!uniq.length) return T.none;
     const shown = uniq.slice(0, 8).map((n) => n.label).join('、');
-    return uniq.length > 8 ? `${shown} ${T.more(uniq.length - 8)}` : shown;
+    return uniq.length > 8 ? `${shown} ${T.andMore(uniq.length - 8)}` : shown;
   };
   const k = sections.indexOf(d.section) + 1;
   // mindmap 等圖種的 id 是自動流水號，對定位沒有幫助，省略。
   const id = /^\d+$/.test(String(node.id)) ? '' : node.id;
+  const texts = annsOf(d, node).map((a) => a.text);
   return T.nodeRef(k, sections.length, d.section.dataset.title, id, node.label,
-    names(node.in.map((e) => e.a)), names(node.out.map((e) => e.b)), r.ups.size, r.downs.size);
+    names(node.in.map((e) => e.a)), names(node.out.map((e) => e.b)), r.ups.size, r.downs.size) + (texts.length ? T.annRef(texts.join('；')) : '');
 }
 selCopy.addEventListener('click', async () => {
   if (!selected) return;
@@ -1304,7 +1433,8 @@ function bindNodes(d) {
     if (c.classList.contains('dragging') || !d.graph) return;
     // 帶連結的節點交給連結本身，不同時鎖定。
     if (e.target.closest?.('a')) return;
-    const n = nodeOf(e.target);
+    const badge = e.target.closest?.('.ann-badge');
+    const n = badge ? d.anns.find((a) => String(a.n) === badge.dataset.ann)?.target : nodeOf(e.target);
     if (n) select(d, n);
     else if (selected?.d === d) clearSelection();
   });
@@ -1382,7 +1512,7 @@ function buildReport(i) {
     const fence = code.includes('```') ? '````' : '```';
     if (src) lines.push(`${T.reportSource}:`, `${fence}mermaid`, code, fence);
   }
-  lines.push('', `${T.reportEnv}: Mermaid ${MERMAID_VERSION}, ELK ${elkOk === null ? '?' : elkOk ? 'on' : 'off'}, ${navigator.userAgent}`);
+  lines.push('', `${T.reportEnv}: diagram-first ${APP.version}, Mermaid ${MERMAID_VERSION}, ELK ${elkOk === null ? '?' : elkOk ? 'on' : 'off'}, ${navigator.userAgent}`);
   if (!errors.size || (i !== null && !errors.has(i))) lines.push('', T.reportNote);
   return lines.join('\n');
 }
@@ -1410,7 +1540,7 @@ function syncSizes() {
     let { w, h } = svgSize(d.svg);
     if (exportLayout === 'card') {
       const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
-      ({ TW: w, TH: h } = cardLayout(w, h, d.section.dataset.title, caption));
+      ({ TW: w, TH: h } = cardLayout(w, h, d.section.dataset.title, caption, d.anns.map((a) => `${a.n}. ${a.text}`)));
     }
     const o = exportDims(w, h);
     const text = T.pixels(o.w, o.h);
@@ -1450,6 +1580,7 @@ async function renderOneNow(d) {
     const keep = selected?.d === d ? selected.node.id : null;
     clearSelection(d);
     await indexGraph(d, source);
+    placeAnnotations(d);
     const again = keep !== null && d.graph?.nodes.get(keep);
     if (again) select(d, again, true);
     // 原本聚焦的節點被重繪移除了：把 roving tabindex 與焦點放回同 id 的節點。
@@ -1613,7 +1744,7 @@ function show(k, updateHash = true) {
   const section = sections[current];
   sections.forEach((x) => x.classList.toggle('active', x === section));
   info.querySelectorAll('.notes').forEach((n) => n.remove());
-  info.append(notes.get(section), hint, expandInfo);
+  info.append(notes.get(section), hint, credit, expandInfo);
   // 標題過長時只截斷標題，張數與 ▾ 保持可見。
   tocBtn.replaceChildren(el('span', { class: 't' }, section.dataset.title));
   if (multi) {
@@ -1742,4 +1873,7 @@ if (badCount) {
   setStatus('error', T.some(diagrams.filter((d) => d.ok).length, badCount), reportButton(null));
 } else if (!elkOk) {
   setStatus('warn', T.noElk, reportButton(null));
+} else {
+  const missing = diagrams.flatMap((d) => d.anns.filter((a) => a.node !== null && !a.target).map((a) => `${d.section.dataset.title} #${a.n}（${a.node}）`));
+  if (missing.length) setStatus('warn', T.annMissing(missing.join('、')), reportButton(null));
 }

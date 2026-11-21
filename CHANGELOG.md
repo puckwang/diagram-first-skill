@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
+- Add agent notes (`{{NOTES}}`): numbered badges next to nodes, full text in the selection bar, a list in the notes window and footnotes in card exports; the status bar warns when a note's node is missing
+- Add the project version and a GitHub link at the bottom of the notes window, and include the diagram-first version in issue reports
 - Add `src/` sources and `scripts/build-template.mjs`: the template is generated with the CSP hash computed automatically, and CI checks they stay in sync; the template shrinks from about 108 KB to about 85 KB
 - Add an export size choice (1x / 2x / 4x / Max); exports that exceed the browser limit shrink automatically and report the actual pixels
 - Add PDF download (high-resolution raster) and Print / vector PDF (current diagram only, page sized to the diagram)

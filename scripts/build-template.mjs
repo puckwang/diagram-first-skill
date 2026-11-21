@@ -105,7 +105,8 @@ function compact(src, opts) {
 }
 
 const css = compact(read('src/viewer.css'), { regex: false });
-const js = compact(read('src/viewer.js'), { regex: true });
+const version = JSON.parse(read('.claude-plugin/plugin.json')).version;
+const js = compact(read('src/viewer.js'), { regex: true }).replace('__APP_VERSION__', version);
 let html = read('src/template.html');
 const put = (marker, value) => {
   if (html.split(marker).length !== 2) throw new Error(`marker ${marker} must appear once`);

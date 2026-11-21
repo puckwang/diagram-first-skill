@@ -13,6 +13,9 @@
      - {{MERMAID_SOURCE}}：Mermaid 原始碼，貼在 <script type="text/plain"> 內，縮排不影響結果
      - {{LEGEND}}：圖例，預設不寫，刪除整個 <div class="legend">；只在有縮寫、代號或非補充不可的節點時加，
        最多 5 條、每條一行（見 references/mermaid-guide.md 2.6）。頁面上預設收合。
+     - {{NOTES}}：註解，預設不寫，刪除整個 <ol class="annotations">；規則見 references/mermaid-guide.md 2.7。
+       每條一個 <li data-node="Mermaid 節點 id">一句話</li>，綁在節點上會顯示編號徽章；不綁節點時省略 data-node。
+       每張圖最多 3 條、每條約 40 字，只寫純文字。
   4. 刪除所有尚未替換的 {{…}} 佔位符與本段註解，完成後再以 grep -n '{{' 確認沒有殘留。
   5. Mermaid 原始碼中不可出現字串 </script，必要時改寫標籤。
 
@@ -56,6 +59,7 @@
 {{MERMAID_SOURCE}}
       </script>
       <div class="legend">{{LEGEND}}</div>
+      <ol class="annotations">{{NOTES}}</ol>
     </section>
 
   </main>

@@ -176,6 +176,21 @@
       #info.card .notes > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; }
       #info.card .expand { margin: 0; flex: none; }
     }
+    /* Agent 註解：說明視窗內的編號清單（有對應節點的可點擊定位）、圖上的編號徽章、浮動列第二行的全文。 */
+    #info .ann-box h4 { font-size: 13px; font-weight: 600; margin: 10px 0 2px; }
+    #info .ann-list { margin: 0; padding-left: 22px; font-size: 14px; }
+    #info .ann-list li.linked { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+    #info.card .ann-box { display: none; }
+    html.app .canvas svg .ann-badge { cursor: pointer; }
+    html.app .canvas svg .ann-badge circle { fill: var(--ann, #BF8700); stroke: var(--canvas-light); stroke-width: 2px; }
+    html.app .canvas.dark svg .ann-badge circle { stroke: var(--canvas-dark); }
+    html.app .canvas svg .ann-badge text { fill: #FFFFFF; font: 700 11px var(--font); pointer-events: none; }
+    #selbar { flex-wrap: wrap; }
+    #selbar .sel-note { flex: 1 0 100%; display: flex; flex-direction: column; padding: 0 8px 4px 0; color: var(--muted); white-space: normal; }
+    #selbar .sel-note[hidden] { display: none; }
+    #info .credit { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+    #info .credit a { color: inherit; }
+    #info.card .credit { display: none; }
     #info .hint { margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
     #info:not(.card) .expand { display: none; }
     #info .expand { margin: 6px 0 0; min-block-size: 28px; font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
@@ -190,7 +205,7 @@
     .canvas svg.hl :is(g.node, [data-hl-edge], g.cluster) { opacity: 1 !important; filter: none !important; }
     .canvas { background-image: none !important; }
     .canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }
-    #info .expand, #info .hint { display: none; }
+    #info .expand, #info .hint, #info .credit { display: none; }
     section.diagram { break-inside: avoid; }
     /* 列印／向量 PDF：只印目前這張圖，頁面大小由程式依圖設定（@page），不帶標題與說明。 */
     html.print-one body { margin: 0; }
