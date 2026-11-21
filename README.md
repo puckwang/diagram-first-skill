@@ -119,7 +119,21 @@ skills/diagram-first/
 
 The repository root also holds `.claude-plugin/plugin.json`, the plugin manifest used for marketplace installs. Its `version` matches the release tag and the latest entry in [CHANGELOG.md](CHANGELOG.md). `docs/images/` holds the screenshots used in this README.
 
-The skill contains no scripts. The only command the agent runs is opening the browser to show the HTML.
+The skill contains no scripts. When it produces HTML, the agent only runs `mkdir`, `cp` and `grep` to copy the template and check placeholders, and opens the browser.
+
+### Changing the HTML template
+
+`templates/diagram.html` is generated; do not edit it directly:
+
+```text
+src/
++-- template.html             Page skeleton and placeholder notes for the agent
++-- viewer.css                Viewer styles (commented)
+`-- viewer.js                 Viewer script (commented)
+scripts/build-template.mjs    Strips comments and indentation, inlines both, computes the CSP sha256
+```
+
+After changing `src/`, run `node scripts/build-template.mjs` (Node 18+, no other dependencies). CI runs it with `--check` to make sure the template matches `src/`.
 
 ## Known limitations
 

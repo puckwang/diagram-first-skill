@@ -117,7 +117,21 @@ skills/diagram-first/
 
 repo 根目錄另有 `.claude-plugin/plugin.json`，是透過 marketplace 安裝時使用的 plugin manifest，其中的 `version` 與 release tag、[CHANGELOG.zh-tw.md](CHANGELOG.zh-tw.md) 最新版本一致。`docs/images/` 放本 README 使用的截圖。
 
-這個 Skill 不包含任何 script。Agent 唯一會執行的指令，是開啟瀏覽器顯示 HTML。
+這個 Skill 不包含任何 script。Agent 產出 HTML 時只會執行 `mkdir`、`cp`、`grep` 複製樣板與檢查佔位符，以及開啟瀏覽器。
+
+### 修改 HTML 樣板
+
+`templates/diagram.html` 由 build 產生，不要直接修改：
+
+```text
+src/
++-- template.html             頁面骨架與給 Agent 的佔位符說明
++-- viewer.css                檢視頁樣式（含註解）
+`-- viewer.js                 檢視頁程式（含註解）
+scripts/build-template.mjs    去除註解與縮排後內嵌，並計算 CSP 的 sha256
+```
+
+改完 `src/` 後執行 `node scripts/build-template.mjs`（Node 18 以上，無其他依賴）。CI 會以 `--check` 確認樣板與 `src/` 一致。
 
 ## 已知限制
 

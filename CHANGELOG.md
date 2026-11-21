@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
+- Add `src/` sources and `scripts/build-template.mjs`: the template is generated with the CSP hash computed automatically, and CI checks they stay in sync; the template shrinks from about 108 KB to about 85 KB
 - Add an export size choice (1x / 2x / 4x / Max); exports that exceed the browser limit shrink automatically and report the actual pixels
 - Add PDF download (high-resolution raster) and Print / vector PDF (current diagram only, page sized to the diagram)
 - Add upstream/downstream highlighting: hover, click or Tab to a node to highlight everything it connects to; lock it to copy a node reference back into the chat
