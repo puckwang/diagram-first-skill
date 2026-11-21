@@ -39,9 +39,11 @@
 
 - 淺色／深色模式與 Mermaid Theme
 - 橫向螢幕自動轉為水平，也可個別切換每張圖的方向
-- 縮放、平移與全螢幕
-- 下載 SVG／PNG／JPEG／WebP，或複製成圖片
-- 單圖檢視：一次一張圖撐滿視窗，用目錄、‹ › 或 ←／→ 切換，按鈕與說明都浮在圖上
+- 無限畫布：任意位置拖曳或觸控板雙指平移，滑鼠滾輪、捏合或 Ctrl／⌘＋滾輪縮放，並支援全螢幕
+- 以 1x／2x／4x／最大尺寸下載 SVG／PNG／JPEG／WebP／PDF，可選只有圖或帶標題與結論的卡片，列印向量 PDF，或複製成圖片
+- 討論時可在圖上畫線（筆、螢光筆、雷射筆），並連同筆跡匯出
+- 點擊或 Tab 到節點即高亮上下游，可複製節點引用或問題回報貼回給 Agent
+- 單圖檢視：一次一張圖撐滿視窗，用目錄、‹ › 或 PageUp／PageDown 切換，按鈕與說明都浮在圖上
 
 ## 三種產出方式
 
@@ -116,7 +118,21 @@ skills/diagram-first/
 
 repo 根目錄另有 `.claude-plugin/plugin.json`，是透過 marketplace 安裝時使用的 plugin manifest，其中的 `version` 與 release tag、[CHANGELOG.zh-tw.md](CHANGELOG.zh-tw.md) 最新版本一致。`docs/images/` 放本 README 使用的截圖。
 
-這個 Skill 不包含任何 script。Agent 唯一會執行的指令，是開啟瀏覽器顯示 HTML。
+這個 Skill 不包含任何 script。Agent 產出 HTML 時只會執行 `mkdir`、`cp`、`grep` 複製樣板與檢查佔位符，以及開啟瀏覽器。
+
+### 修改 HTML 樣板
+
+`templates/diagram.html` 由 build 產生，不要直接修改：
+
+```text
+src/
++-- template.html             頁面骨架與給 Agent 的佔位符說明
++-- viewer.css                檢視頁樣式（含註解）
+`-- viewer.js                 檢視頁程式（含註解）
+scripts/build-template.mjs    去除註解與縮排後內嵌，並計算 CSP 的 sha256
+```
+
+改完 `src/` 後執行 `node scripts/build-template.mjs`（Node 18 以上，無其他依賴）。CI 會以 `--check` 確認樣板與 `src/` 一致。
 
 ## 已知限制
 

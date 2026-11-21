@@ -1,0 +1,72 @@
+<!doctype html>
+<!--
+  diagram-first HTML 樣板
+
+  使用方式（複製本檔後只替換佔位符，不必讀取或改動 <style> 與 <script>；本檔很大，請勿整檔讀取或重寫）：
+  0. cp 本檔到目標路徑，以 grep -n '{{' 找出佔位符所在行，只讀本段註解與 <body> 開頭的佔位符段落。
+  1. 替換 {{LANG}}：使用者語言的 BCP 47 代碼，例如 zh-Hant-TW、en、ja。介面文字會依此切換。
+     只能包含英數字與 -（此處在 CSP 生效之前）。
+  2. 替換 {{TITLE}} 與 {{SUMMARY}}：頁面標題與一句話摘要，使用使用者的語言。
+  3. 每張圖複製一個 <section class="diagram">…</section>，填入：
+     - {{DIAGRAM_TITLE}}：這張圖的標題
+     - {{DIAGRAM_CAPTION}}：一句話結論（約 30 字以內），例如「付款失敗一律釋放庫存」
+     - {{MERMAID_SOURCE}}：Mermaid 原始碼，貼在 <script type="text/plain"> 內，縮排不影響結果
+     - {{LEGEND}}：圖例，預設不寫，刪除整個 <div class="legend">；只在有縮寫、代號或非補充不可的節點時加，
+       最多 5 條、每條一行（見 references/mermaid-guide.md 2.6）。頁面上預設收合。
+     - {{NOTES}}：註解，預設不寫，刪除整個 <ol class="annotations">；規則見 references/mermaid-guide.md 2.7。
+       每條一個 <li data-node="Mermaid 節點 id">一句話</li>，綁在節點上會顯示編號徽章；不綁節點時省略 data-node。
+       每張圖最多 3 條、每條約 40 字，只寫純文字。
+  4. 刪除所有尚未替換的 {{…}} 佔位符與本段註解，完成後再以 grep -n '{{' 確認沒有殘留。
+  5. Mermaid 原始碼中不可出現字串 </script，必要時改寫標籤。
+
+  不要修改 <style>、<script type="module"> 內的程式、版本號與 CSP。本檔由 repo 的 src/ 以 scripts/build-template.mjs 產生。
+  CSP 只允許兩種 script：下方 <script type="module"> 的內容（以 sha256 比對，改動任何字元就無法執行），
+  以及 jsDelivr 上的 mermaid@12.1.0。
+
+  Theme 預設為「自動」：淺色模式用 redux-color，深色模式用 redux-dark-color。
+  Mermaid 原始碼的 front matter 不可指定 theme，否則會蓋過使用者的選擇。
+
+  Mermaid 12.1.0 的完整版內建 ELK，並以 ELK 作為適用圖種的預設排版。
+  不在 initialize 中全域設定 layout：mindmap 等圖種使用自己的排版引擎，全域指定 ELK 會讓它們 render 失敗。
+  需要指定排版時，寫在各圖原始碼開頭的 front matter。
+-->
+<html lang="{{LANG}}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-BUILD' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>{{TITLE}}</title>
+<style>
+/* build:css */
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>{{TITLE}}</h1>
+    <p class="summary">{{SUMMARY}}</p>
+  </header>
+  <div class="controls" id="controls"></div>
+  <div id="status" role="status"></div>
+  <main>
+
+    <section class="diagram">
+      <h2>{{DIAGRAM_TITLE}}</h2>
+      <p class="caption">{{DIAGRAM_CAPTION}}</p>
+      <script type="text/plain" class="mermaid-src">
+{{MERMAID_SOURCE}}
+      </script>
+      <div class="legend">{{LEGEND}}</div>
+      <ol class="annotations">{{NOTES}}</ol>
+    </section>
+
+  </main>
+</div>
+
+<script type="module">
+// build:js
+</script>
+</body>
+</html>

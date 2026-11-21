@@ -41,9 +41,11 @@ The skill's instructions are written in Traditional Chinese (Taiwan). Diagram la
 
 - Light / dark mode and Mermaid themes
 - Horizontal layout on landscape screens, plus a direction switch for each diagram
-- Zoom, pan and fullscreen
-- Download as SVG / PNG / JPEG / WebP, or copy as an image
-- Single-diagram view: one diagram fills the window; switch with the contents menu, ‹ ›, or ←/→, with buttons and notes floating on top
+- Infinite canvas: drag anywhere or scroll with two fingers on a trackpad to pan; mouse wheel, pinch or Ctrl/⌘ + wheel to zoom; plus fullscreen
+- Download as SVG / PNG / JPEG / WebP / PDF at 1x / 2x / 4x / max size, as the diagram alone or a card with title and caption, print a vector PDF, or copy as an image
+- Draw on the diagram while discussing it (pen, highlighter, laser pointer), and export it with the ink
+- Click or Tab to a node to highlight its upstream and downstream, and copy a node reference or an issue report back to the agent
+- Single-diagram view: one diagram fills the window; switch with the contents menu, ‹ ›, or PageUp/PageDown, with buttons and notes floating on top
 
 ## Three output paths
 
@@ -118,7 +120,21 @@ skills/diagram-first/
 
 The repository root also holds `.claude-plugin/plugin.json`, the plugin manifest used for marketplace installs. Its `version` matches the release tag and the latest entry in [CHANGELOG.md](CHANGELOG.md). `docs/images/` holds the screenshots used in this README.
 
-The skill contains no scripts. The only command the agent runs is opening the browser to show the HTML.
+The skill contains no scripts. When it produces HTML, the agent only runs `mkdir`, `cp` and `grep` to copy the template and check placeholders, and opens the browser.
+
+### Changing the HTML template
+
+`templates/diagram.html` is generated; do not edit it directly:
+
+```text
+src/
++-- template.html             Page skeleton and placeholder notes for the agent
++-- viewer.css                Viewer styles (commented)
+`-- viewer.js                 Viewer script (commented)
+scripts/build-template.mjs    Strips comments and indentation, inlines both, computes the CSP sha256
+```
+
+After changing `src/`, run `node scripts/build-template.mjs` (Node 18+, no other dependencies). CI runs it with `--check` to make sure the template matches `src/`.
 
 ## Known limitations
 
