@@ -23,7 +23,6 @@ function scan(src, { regex }) {
   let buf = '';
   let prev = '';
   const flush = (code) => { if (buf) out.push({ text: buf, code }); buf = ''; };
-  const tpl = [];
   const readString = (q) => {
     flush(true);
     let j = i + 1;
@@ -55,7 +54,6 @@ function scan(src, { regex }) {
     i = j + 1;
     prev = '`';
   };
-  void tpl;
   while (i < src.length) {
     const c = src[i];
     const n = src[i + 1];
@@ -107,6 +105,9 @@ function compact(src, opts) {
 const css = compact(read('src/viewer.css'), { regex: false });
 const version = JSON.parse(read('.claude-plugin/plugin.json')).version;
 const js = compact(read('src/viewer.js'), { regex: true }).replace('__APP_VERSION__', version);
+// 壓縮後先編譯一次（不執行）確認語法，避免去註解時誤刪程式而產出無法執行的樣板。
+const AsyncFunction = (async () => {}).constructor;
+try { new AsyncFunction(js); } catch (e) { console.error(`src/viewer.js 壓縮後語法錯誤：${e.message}`); process.exit(1); }
 let html = read('src/template.html');
 const put = (marker, value) => {
   if (html.split(marker).length !== 2) throw new Error(`marker ${marker} must appear once`);

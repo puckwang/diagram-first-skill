@@ -1805,9 +1805,9 @@ function buildReport(i) {
     lines.push(`${T.reportState}: ${errors.get(k) || (d && d.ok ? T.reportOk : '?')}`);
     if (d) lines.push(`${T.reportView}: ${T.direction} ${dirLabel[dirOf(d)] || dirOf(d)}, Theme ${currentTheme()}`);
     const src = section.querySelector('script.mermaid-src');
-    // 原始碼內含 ``` 時改用更長的 fence，避免截斷。
+    // fence 比原始碼內最長的連續反引號多一個，避免截斷。
     const code = src ? dedent(src.textContent) : '';
-    const fence = code.includes('```') ? '````' : '```';
+    const fence = '`'.repeat(Math.max(3, ...(code.match(/`+/g) || []).map((x) => x.length + 1)));
     if (src) lines.push(`${T.reportSource}:`, `${fence}mermaid`, code, fence);
   }
   lines.push('', `${T.reportEnv}: diagram-first ${APP.version}, Mermaid ${MERMAID_VERSION}, ELK ${elkOk === null ? '?' : elkOk ? 'on' : 'off'}, ${navigator.userAgent}`);

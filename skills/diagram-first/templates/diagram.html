@@ -33,7 +33,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0qhgVMbJt2mYeEsA6EkMzeDTHipNqF/jKEpzqVoBEIo=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-GkOIDuyUHAi7bg5HCuw9dz8fLHwkqfjfioJuimS3ZWw=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -1864,7 +1864,7 @@ lines.push(`${T.reportState}: ${errors.get(k) || (d && d.ok ? T.reportOk : '?')}
 if (d) lines.push(`${T.reportView}: ${T.direction} ${dirLabel[dirOf(d)] || dirOf(d)}, Theme ${currentTheme()}`);
 const src = section.querySelector('script.mermaid-src');
 const code = src ? dedent(src.textContent) : '';
-const fence = code.includes('```') ? '````' : '```';
+const fence = '`'.repeat(Math.max(3, ...(code.match(/`+/g) || []).map((x) => x.length + 1)));
 if (src) lines.push(`${T.reportSource}:`, `${fence}mermaid`, code, fence);
 }
 lines.push('', `${T.reportEnv}: diagram-first ${APP.version}, Mermaid ${MERMAID_VERSION}, ELK ${elkOk === null ? '?' : elkOk ? 'on' : 'off'}, ${navigator.userAgent}`);
