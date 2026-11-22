@@ -121,7 +121,7 @@
     .menu .sizes button { display: inline-block; width: auto; flex: 1; text-align: center; padding: 4px 6px; background: var(--control); }
     .menu .sizes button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--text); font-weight: 600; }
     .toast { position: fixed; left: 12px; right: 12px; margin-inline: auto; width: fit-content; bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
-             margin: 0; padding: 6px 14px; font-size: 13px; }
+             margin-block: 0; padding: 6px 14px; font-size: 13px; }
     /* 選取節點時的浮動列：節點名稱、上下游數量、複製引用；出現時提示訊息往上移。 */
     #selbar { position: fixed; left: 12px; right: 12px; margin-inline: auto; width: fit-content; bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 30;
               display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; max-width: calc(100vw - 24px); font-size: 13px; }
