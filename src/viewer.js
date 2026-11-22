@@ -44,7 +44,7 @@ const I18N = {
         direction: '方向', vertical: '垂直', horizontal: '水平',
         zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '全圖', fitTitle: '符合視窗',
         followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
-        info: '說明', close: '收合', expand: '展開說明', annCount: (n) => `${n} 則註解`,
+        info: '說明', close: '收合', expand: '展開說明',
         broken: '頁面結構不完整（樣式或標題沒有正確替換），可能顯示異常。可複製問題回報，貼回對話給 Claude。',
         nodeAria: (label, up, down) => `${label}，上游 ${up} 個、下游 ${down} 個`, upstream: '上游', downstream: '下游', none: '無',
         selInfo: (label, up, down) => `「${label}」上游 ${up}・下游 ${down}`, copyRef: '複製引用', clearSel: '取消選取', selected: '已選取節點',
@@ -76,7 +76,7 @@ const I18N = {
         direction: 'Direction', vertical: 'Vertical', horizontal: 'Horizontal',
         zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Fit', fitTitle: 'Fit to window',
         followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
-        info: 'Notes', close: 'Collapse', expand: 'Show notes', annCount: (n) => `${n} note${n > 1 ? 's' : ''}`,
+        info: 'Notes', close: 'Collapse', expand: 'Show notes',
         broken: 'The page structure is incomplete (styles or title were not replaced correctly) and may look wrong. Copy the issue report and paste it into the chat with Claude.',
         nodeAria: (label, up, down) => `${label}, ${up} upstream, ${down} downstream`, upstream: 'Upstream', downstream: 'Downstream', none: 'none',
         selInfo: (label, up, down) => `"${label}" ${up} upstream · ${down} downstream`, copyRef: 'Copy reference', clearSel: 'Clear selection', selected: 'Selected node',
@@ -108,7 +108,7 @@ const I18N = {
         direction: '方向', vertical: '縦', horizontal: '横',
         zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: '全体', fitTitle: '画面に合わせる',
         followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
-        info: '説明', close: '折りたたむ', expand: '説明を開く', annCount: (n) => `注釈 ${n} 件`,
+        info: '説明', close: '折りたたむ', expand: '説明を開く',
         broken: 'ページの構造が不完全です（スタイルやタイトルが正しく置き換えられていません）。表示が崩れる可能性があります。問題レポートをコピーして Claude との会話に貼り付けてください。',
         nodeAria: (label, up, down) => `${label}、上流 ${up} 件、下流 ${down} 件`, upstream: '上流', downstream: '下流', none: 'なし',
         selInfo: (label, up, down) => `「${label}」上流 ${up}・下流 ${down}`, copyRef: '参照をコピー', clearSel: '選択を解除', selected: '選択中のノード',
@@ -2193,9 +2193,6 @@ function show(k, updateHash = true) {
   sections.forEach((x) => x.classList.toggle('active', x === section));
   info.querySelectorAll('.notes').forEach((n) => n.remove());
   info.append(notes.get(section), hint, credit, expandInfo);
-  // 小卡上顯示這張圖有幾則註解，未展開也知道有內容。
-  const dd = diagrams.find((x) => x.section === section);
-  expandInfo.textContent = dd?.anns.length ? `${T.expand} · ${T.annCount(dd.anns.length)}` : T.expand;
   // 標題過長時只截斷標題，張數與 ▾ 保持可見。
   tocBtn.replaceChildren(el('span', { class: 't' }, section.dataset.title));
   if (multi) {
