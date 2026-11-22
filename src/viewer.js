@@ -57,7 +57,8 @@ const I18N = {
         pen: '畫筆', penTools: '畫筆工具', penRed: '紅筆', penBlue: '藍筆', penInk: '黑筆', highlighter: '螢光筆', laser: '雷射筆',
         eraser: '橡皮擦', undo: '復原', clearInk: '清除這張圖的筆跡', exitPen: '離開畫筆',
         penOn: '畫筆模式：拖曳畫線，Space＋拖曳或滑鼠中鍵平移，Esc 離開。筆跡不會保存，可用匯出帶走。',
-        penOnTouch: '畫筆模式：單指畫線、兩指平移縮放，再按 ✎ 離開。筆跡不會保存，可用匯出帶走。', penOff: '已離開畫筆模式',
+        penOnTouch: '畫筆模式：單指畫線、兩指平移縮放，按 × 離開。筆跡不會保存，可用匯出帶走。',
+        stylusOn: '觸控筆可直接畫，手指照常平移；工具列按 × 收起。', penOff: '已離開畫筆模式',
         inkCleared: '已清除筆跡，可按復原', inkLabel: '筆跡', inkOn: '含', inkOff: '不含', inkLeave: '筆跡不會保存，確定離開？',
         annTitle: '註解', annMissing: (list) => `${list} 找不到對應的節點，只列在說明視窗。可複製問題回報，貼回對話給 Claude。`,
         annItem: (n, node) => `註解 ${n}（節點 ${node}）`, annAria: (texts) => `，註解：${texts}`, annRef: (texts) => `；註解：${texts}`,
@@ -88,7 +89,8 @@ const I18N = {
         pen: 'Pen', penTools: 'Pen tools', penRed: 'Red pen', penBlue: 'Blue pen', penInk: 'Black pen', highlighter: 'Highlighter', laser: 'Laser pointer',
         eraser: 'Eraser', undo: 'Undo', clearInk: 'Clear the ink on this diagram', exitPen: 'Exit pen',
         penOn: 'Pen mode: drag to draw, Space + drag or middle-click to pan, Esc to exit. Ink is not saved; export to keep it.',
-        penOnTouch: 'Pen mode: draw with one finger, pan and zoom with two, tap ✎ again to exit. Ink is not saved; export to keep it.', penOff: 'Left pen mode',
+        penOnTouch: 'Pen mode: draw with one finger, pan and zoom with two, tap × to exit. Ink is not saved; export to keep it.',
+        stylusOn: 'Your stylus draws directly and fingers still pan. Tap × to hide the tools.', penOff: 'Left pen mode',
         inkCleared: 'Ink cleared. Undo to restore it', inkLabel: 'Ink', inkOn: 'Include', inkOff: 'Exclude', inkLeave: 'Ink is not saved. Leave anyway?',
         annTitle: 'Notes', annMissing: (list) => `${list}: no matching node, listed in the notes window only. Copy the issue report and paste it into the chat with Claude.`,
         annItem: (n, node) => `Note ${n} (node ${node})`, annAria: (texts) => `, notes: ${texts}`, annRef: (texts) => `; notes: ${texts}`,
@@ -119,7 +121,8 @@ const I18N = {
         pen: 'ペン', penTools: 'ペンツール', penRed: '赤ペン', penBlue: '青ペン', penInk: '黒ペン', highlighter: '蛍光ペン', laser: 'レーザーポインター',
         eraser: '消しゴム', undo: '元に戻す', clearInk: 'この図の描き込みを消去', exitPen: 'ペンを終了',
         penOn: 'ペンモード：ドラッグで描画、Space＋ドラッグか中ボタンで移動、Esc で終了。描き込みは保存されないため、残すには書き出してください。',
-        penOnTouch: 'ペンモード：1 本指で描画、2 本指で移動と拡大縮小、もう一度 ✎ で終了。描き込みは保存されないため、残すには書き出してください。', penOff: 'ペンモードを終了しました',
+        penOnTouch: 'ペンモード：1 本指で描画、2 本指で移動と拡大縮小、× で終了。描き込みは保存されないため、残すには書き出してください。',
+        stylusOn: 'スタイラスはそのまま描画でき、指では移動できます。× でツールを閉じます。', penOff: 'ペンモードを終了しました',
         inkCleared: '描き込みを消去しました。元に戻せます', inkLabel: '描き込み', inkOn: '含める', inkOff: '含めない', inkLeave: '描き込みは保存されません。移動しますか？',
         annTitle: '注釈', annMissing: (list) => `${list} に対応するノードがないため、説明ウィンドウにのみ表示しています。問題レポートをコピーして Claude との会話に貼り付けてください。`,
         annItem: (n, node) => `注釈 ${n}（ノード ${node}）`, annAria: (texts) => `、注釈：${texts}`, annRef: (texts) => `；注釈：${texts}`,
@@ -140,7 +143,9 @@ const statusEl = document.getElementById('status');
 // 各圖的錯誤訊息（依圖的索引）與 ELK 檢查結果，供「回報給 Claude」使用。
 const errors = new Map();
 let elkOk = null;
+let statusText = '';
 function setStatus(kind, text, extra) {
+  statusText = text;
   statusEl.className = 'show ' + kind;
   statusEl.textContent = text;
   if (extra) statusEl.append(extra);
@@ -891,9 +896,10 @@ if (probe.toDataURL('image/webp').startsWith('data:image/webp')) FORMATS.push(['
 FORMATS.push(['pdf', 'PDF'], ['svg', 'SVG']);
 
 // 工具列只佔一個 Tab 停留點，以方向鍵在按鈕間移動；瀏覽器支援 focusgroup 時交給瀏覽器處理。
-function rovingToolbar(bar) {
-  bar.setAttribute('focusgroup', 'toolbar wrap');
-  if ('focusGroup' in HTMLElement.prototype) return () => {};
+// own 為 true 時一律自行處理方向鍵（例如直排、按鈕分在多個群組的畫筆工具列，原生 focusgroup 不一定涵蓋）。
+function rovingToolbar(bar, own = false) {
+  if (!own) bar.setAttribute('focusgroup', 'toolbar wrap');
+  if (!own && 'focusGroup' in HTMLElement.prototype) return () => {};
   const items = () => [...bar.querySelectorAll('button, select')];
   const sync = (active) => {
     const list = items();
@@ -906,7 +912,9 @@ function rovingToolbar(bar) {
     const k = list.indexOf(e.target);
     if (k < 0) return;
     const rtl = getComputedStyle(bar).direction === 'rtl';
-    const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 }[e.key];
+    // 直排的工具列（例如桌機的畫筆工具列）也接受上下鍵。
+    const vertical = getComputedStyle(bar).flexDirection === 'column';
+    const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, ...(vertical ? { ArrowDown: 1, ArrowUp: -1 } : {}) }[e.key];
     const next = step ? list[(k + step + list.length) % list.length]
       : e.key === 'Home' ? list[0] : e.key === 'End' ? list[list.length - 1] : null;
     if (!next) return;
@@ -1351,7 +1359,7 @@ function placeAnnotations(d) {
     c.setAttribute('r', '9');
     // 透明的較大命中圈，手機上比較好點。
     const hit = document.createElementNS(SVGNS, 'circle');
-    hit.setAttribute('r', '16');
+    hit.setAttribute('r', matchMedia('(pointer: coarse)').matches ? '16' : '11');
     hit.setAttribute('class', 'hit');
     g.append(hit);
     const t = document.createElementNS(SVGNS, 'text');
@@ -1386,7 +1394,7 @@ function exportAnnotations(d, svgText, exportDark = false) {
     const g = doc.createElementNS(SVGNS, 'g');
     g.setAttribute('transform', `translate(${a.pos.x} ${a.pos.y})`);
     const c = doc.createElementNS(SVGNS, 'circle');
-    [['r', '9'], ['fill', exportDark ? '#BF8700' : '#9A6700']].forEach(([k, v]) => c.setAttribute(k, v));
+    [['r', '9'], ['fill', '#9A6700']].forEach(([k, v]) => c.setAttribute(k, v));
     const t = doc.createElementNS(SVGNS, 'text');
     [['text-anchor', 'middle'], ['dy', '0.35em'], ['fill', '#FFFFFF'], ['font-size', '11'], ['font-weight', '700'], ['font-family', font]].forEach(([k, v]) => t.setAttribute(k, v));
     t.textContent = String(a.n);
@@ -1499,7 +1507,8 @@ function strokeEl(s, doc = document, dark = null) {
   const color = s.color || tokenColor('--text', dark ?? s.d.canvas.classList.contains('dark'));
   [['d', pathData(s.pts)], ['fill', 'none'], ['stroke', color], ['stroke-width', s.width], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]
     .forEach(([k, v]) => el.setAttribute(k, v));
-  if (s.opacity) el.setAttribute('stroke-opacity', s.opacity);
+  // 螢光筆在深色背景上透明度提高，顏色才不會變暗沉。
+  if (s.opacity) el.setAttribute('stroke-opacity', (dark ?? s.d.canvas.classList.contains('dark')) ? Math.min(1, s.opacity + 0.15) : s.opacity);
   return el;
 }
 function drawInk(d) {
@@ -1533,6 +1542,7 @@ function startStroke(d, e) {
       if (Math.hypot(ev.clientX - stroke.start.x, ev.clientY - stroke.start.y) < PAN.threshold) return;
       stroke.lazy = false;
       capture();
+      showStylusBar();
       if (!stroke.erase) inkLayer(d).append(stroke.s.el);
     }
     if (stroke.erase) { eraseAt(d, ev); return; }
@@ -1682,25 +1692,44 @@ undoBtn.addEventListener('click', () => { const d = curDiagram(); if (d) undoInk
 const clearBtn = el('button', { type: 'button', 'aria-label': T.clearInk, title: T.clearInk }, '🗑');
 clearBtn.addEventListener('click', () => { const d = curDiagram(); if (d) clearInk(d); });
 const exitBtn = el('button', { type: 'button', 'aria-label': T.exitPen, title: `${T.exitPen} (Esc)` }, '×');
-exitBtn.addEventListener('click', () => setPen(false));
+// × 在畫筆模式離開畫筆；只顯示觸控筆工具列時則收起工具列。
+exitBtn.addEventListener('click', () => { if (penOn) setPen(false); else { stylusBar = false; penbar.hidden = true; } });
 toolGroup.append(...toolBtns);
 const actionGroup = el('div', { class: 'tools' });
 actionGroup.append(undoBtn, clearBtn, exitBtn);
 penbar.append(toolGroup, el('span', { class: 'sep', 'aria-hidden': 'true' }), actionGroup);
 // 與下方工具列相同：整列只佔一個 Tab 停留點，以方向鍵移動。
-rovingToolbar(penbar);
+rovingToolbar(penbar, true);
+// 觸控筆不切模式直接畫時：只顯示畫筆工具列（換色、擦除、復原），不進入畫筆模式，手指照常平移。
+let stylusBar = false;
+function showStylusBar() {
+  if (penOn || stylusBar) return;
+  stylusBar = true;
+  penbar.hidden = false;
+  notify(T.stylusOn);
+}
 function setPen(on) {
   penOn = on;
+  stylusBar = false;
   penbar.hidden = !on;
   document.documentElement.classList.toggle('pen-on', on);
   document.querySelectorAll('.pen-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
   // 進入畫筆模式時取消節點選取（畫筆模式下無法點節點解除），並讓出右側工具列的空間。
-  if (on) { clearSelection(); diagrams.forEach((d) => highlight(d, null)); }
+  // 觸控裝置在畫筆模式無法點節點解除選取，進入時先取消；桌機保留鎖定，方便「鎖定節點再圈畫」。
+  if (on) {
+    if (matchMedia('(pointer: coarse)').matches) clearSelection();
+    diagrams.forEach((d) => { if (!selected || selected.d !== d) highlight(d, null); });
+  }
   else cancelStroke();
-  root.style.setProperty('--pen-w', on && innerWidth >= 600 ? `${penbar.offsetWidth + 12}px` : '0px');
+  syncPenSpace();
   const d = curDiagram();
   if (d?.ok && d.fit) fitScreen(d);
   notify(on ? (matchMedia('(any-pointer: fine)').matches ? T.penOn : T.penOnTouch) : T.penOff);
+}
+// 畫筆工具列佔用的空間：桌機在右側（--pen-w）；窄螢幕畫筆模式收起底部工具列，工具列移到底部（由 measure 計入 --bottom-h）。
+function syncPenSpace() {
+  root.style.setProperty('--pen-w', penOn && innerWidth >= 600 ? `${penbar.offsetWidth + 12}px` : '0px');
+  measure();
 }
 // 有筆跡時離開頁面先提醒（筆跡只在記憶體）。
 addEventListener('beforeunload', (e) => { if (hasInk()) { e.preventDefault(); e.returnValue = T.inkLeave; } });
@@ -2290,11 +2319,12 @@ const measure = () => {
   const toolbars = diagrams.map((d) => d.toolbar).concat([...document.querySelectorAll('section.active .toolbar')]);
   root.style.setProperty('--top-h', `${Math.ceil(Math.max(nav.offsetHeight, actions.offsetHeight))}px`);
   root.style.setProperty('--actions-w', `${Math.ceil(actions.offsetWidth)}px`);
-  root.style.setProperty('--bottom-h', `${Math.ceil(Math.max(0, ...toolbars.map((x) => x.offsetHeight)))}px`);
+  const narrowPen = penOn && innerWidth < 600;
+  root.style.setProperty('--bottom-h', `${Math.ceil(Math.max(0, ...toolbars.map((x) => x.offsetHeight), narrowPen ? penbar.offsetHeight : 0))}px`);
   diagrams.forEach((d) => { if (d.ok && d.fit) fitScreen(d, true); });
 };
 const bars = new ResizeObserver(() => requestAnimationFrame(measure));
-[nav, actions, info, ...document.querySelectorAll('.toolbar')].forEach((x) => bars.observe(x));
+[nav, actions, info, penbar, ...document.querySelectorAll('.toolbar')].forEach((x) => bars.observe(x));
 show(fromHash());
 
 systemDark.addEventListener('change', async () => {
@@ -2307,6 +2337,7 @@ landscape.addEventListener('change', async () => {
 });
 let resizeFrame = 0;
 addEventListener('resize', () => {
+  if (penOn) syncPenSpace();
   cancelAnimationFrame(resizeFrame);
   resizeFrame = requestAnimationFrame(() => diagrams.forEach((d) => {
     if (d.fit) fitScreen(d);
@@ -2330,6 +2361,6 @@ const missing = diagrams.filter((d) => d.graph).flatMap((d) => d.anns.filter((a)
 const broken = !getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || /\{\{/.test(document.title);
 const extra = [broken && T.broken, missing.length && T.annMissing(missing.join('、'))].filter(Boolean);
 if (extra.length) {
-  const prev = statusEl.classList.contains('show') ? statusEl.firstChild?.textContent : '';
+  const prev = statusEl.classList.contains('show') ? statusText : '';
   setStatus(broken || statusEl.classList.contains('error') ? 'error' : 'warn', [prev, ...extra].filter(Boolean).join(' '), reportButton(null));
 }

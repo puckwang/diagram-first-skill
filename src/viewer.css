@@ -11,14 +11,14 @@
     :root:not([data-theme="light"]) {
       --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
       --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
-      --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF; --ann: #BF8700;
+      --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
     --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
-    --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF; --ann: #BF8700;
+    --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -203,7 +203,10 @@
       #penbar .tools { flex-direction: row; justify-content: center; }
       #penbar .sep { display: none; }
       html.pen-on #selbar { display: none; }
-      html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 140px); }
+      /* 窄螢幕畫筆模式收起底部工具列（兩指縮放即可），畫筆工具列移到底部。 */
+      html.pen-on .toolbar { display: none !important; }
+      html.pen-on #penbar { bottom: max(12px, env(safe-area-inset-bottom)); }
+      html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 32px); }
     }
     #penbar button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
     #penbar .sep { height: 1px; margin: 2px 4px; background: var(--border); }
@@ -220,9 +223,6 @@
     html.app .canvas > svg.ink-overlay { overflow: visible; pointer-events: none; }
     html.erasing.pen-on .canvas.ready { cursor: crosshair; }
     html.pen-on.pen-pan .canvas.ready, html.pen-on.pen-pan .canvas.ready svg g.node { cursor: grab; }
-    /* 螢光筆：淺色以 multiply、深色以 screen 疊色，像實體螢光筆不蓋住文字。 */
-    html.app .canvas svg.ink-overlay path[stroke-opacity] { mix-blend-mode: multiply; }
-    html.app .canvas.dark svg.ink-overlay path[stroke-opacity] { mix-blend-mode: screen; }
     html.app .canvas svg g.ink path.laser { filter: drop-shadow(0 0 4px #FF3B30); transition: opacity .4s; }
     html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
     #info .credit { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
