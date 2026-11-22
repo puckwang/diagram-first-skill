@@ -44,7 +44,8 @@ const I18N = {
         direction: '方向', vertical: '垂直', horizontal: '水平',
         zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '全圖', fitTitle: '符合視窗',
         followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
-        info: '說明', close: '收合', expand: '展開說明',
+        info: '說明', close: '收合', expand: '展開說明', annCount: (n) => `${n} 則註解`,
+        broken: '頁面結構不完整（樣式或標題沒有正確替換），可能顯示異常。可複製問題回報，貼回對話給 Claude。',
         nodeAria: (label, up, down) => `${label}，上游 ${up} 個、下游 ${down} 個`, upstream: '上游', downstream: '下游', none: '無',
         selInfo: (label, up, down) => `「${label}」上游 ${up}・下游 ${down}`, copyRef: '複製引用', clearSel: '取消選取', selected: '已選取節點',
         nodeRef: (k, n, title, id, label, ups, downs, up, down) => `第 ${k}/${n} 張圖〈${title}〉的節點${id ? ` ${id}` : ''}「${label}」（直接上游：${ups}；直接下游：${downs}；全部上游 ${up} 個、下游 ${down} 個）`,
@@ -74,7 +75,8 @@ const I18N = {
         direction: 'Direction', vertical: 'Vertical', horizontal: 'Horizontal',
         zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Fit', fitTitle: 'Fit to window',
         followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
-        info: 'Notes', close: 'Collapse', expand: 'Show notes',
+        info: 'Notes', close: 'Collapse', expand: 'Show notes', annCount: (n) => `${n} note${n > 1 ? 's' : ''}`,
+        broken: 'The page structure is incomplete (styles or title were not replaced correctly) and may look wrong. Copy the issue report and paste it into the chat with Claude.',
         nodeAria: (label, up, down) => `${label}, ${up} upstream, ${down} downstream`, upstream: 'Upstream', downstream: 'Downstream', none: 'none',
         selInfo: (label, up, down) => `"${label}" ${up} upstream · ${down} downstream`, copyRef: 'Copy reference', clearSel: 'Clear selection', selected: 'Selected node',
         nodeRef: (k, n, title, id, label, ups, downs, up, down) => `Node ${id ? `${id} ` : ''}"${label}" in diagram ${k}/${n} "${title}" (direct upstream: ${ups}; direct downstream: ${downs}; ${up} upstream and ${down} downstream in total)`,
@@ -104,7 +106,8 @@ const I18N = {
         direction: '方向', vertical: '縦', horizontal: '横',
         zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: '全体', fitTitle: '画面に合わせる',
         followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
-        info: '説明', close: '折りたたむ', expand: '説明を開く',
+        info: '説明', close: '折りたたむ', expand: '説明を開く', annCount: (n) => `注釈 ${n} 件`,
+        broken: 'ページの構造が不完全です（スタイルやタイトルが正しく置き換えられていません）。表示が崩れる可能性があります。問題レポートをコピーして Claude との会話に貼り付けてください。',
         nodeAria: (label, up, down) => `${label}、上流 ${up} 件、下流 ${down} 件`, upstream: '上流', downstream: '下流', none: 'なし',
         selInfo: (label, up, down) => `「${label}」上流 ${up}・下流 ${down}`, copyRef: '参照をコピー', clearSel: '選択を解除', selected: '選択中のノード',
         nodeRef: (k, n, title, id, label, ups, downs, up, down) => `図 ${k}/${n}〈${title}〉のノード${id ? ` ${id}` : ''}「${label}」（直接の上流：${ups}；直接の下流：${downs}；上流 ${up} 件・下流 ${down} 件）`,
@@ -370,7 +373,9 @@ const overlayOpen = () => !info.classList.contains('card') && innerWidth < 900;
 // 可放圖的區域：扣掉上下浮動列；小卡或說明視窗擋到時，另外提供它右側與下方兩塊，由 fitScreen 擇優。
 function fitArea(d) {
   const r = d.canvas.getBoundingClientRect();
-  const full = { left: 16, ...barLimits(d), right: r.width - 16 };
+  // 畫筆模式時右側工具列佔用的寬度要讓出來。
+  const penW = parseFloat(root.style.getPropertyValue('--pen-w')) || 0;
+  const full = { left: 16, ...barLimits(d), right: r.width - 16 - penW };
   const b = info.getBoundingClientRect();
   if (!b.width) return { full, around: [] };
   const box = { left: b.left - r.left, top: b.top - r.top, right: b.right - r.left, bottom: b.bottom - r.top };
@@ -808,7 +813,7 @@ async function exportSvg(d, transparent, htmlLabels = true) {
   if (exportLayout !== 'card') return { svg: ink(base), dark: t.dark };
   const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
   const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
-  return { svg: cardSvg(ink(exportAnnotations(d, base)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
+  return { svg: cardSvg(ink(exportAnnotations(d, base, t.dark)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
 }
 
 async function exportImage(d, type, transparent) {
@@ -999,7 +1004,8 @@ function notify(text) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     toast.textContent = text;
-    toastTimer = setTimeout(() => { toast.textContent = ''; }, 2000);
+    // 停留時間依字數調整，長提示（例如畫筆說明）讀得完。
+    toastTimer = setTimeout(() => { toast.textContent = ''; }, Math.max(2000, [...text].length * 120));
   }, 50);
 }
 
@@ -1016,8 +1022,8 @@ const expandInfo = el('button', { type: 'button', class: 'expand', 'aria-expande
 info.append(closeInfo);
 // 說明視窗最底部：產生工具與專案連結（另開視窗、不帶 referrer）。
 const credit = el('p', { class: 'credit' });
-const repoA = el('a', { href: APP.repo, target: '_blank', rel: 'noopener noreferrer', 'aria-label': T.repoLink }, `diagram-first v${APP.version} · GitHub`);
-credit.append(...[T.madeWith, repoA, T.madeWithAfter].filter(Boolean).flatMap((x, k) => (k ? [' ', x] : [x])));
+const repoA = el('a', { href: APP.repo, target: '_blank', rel: 'noopener noreferrer', 'aria-label': T.repoLink }, 'GitHub');
+credit.append(...[T.madeWith, `diagram-first v${APP.version}`, T.madeWithAfter].filter(Boolean).join(' '), ' · ', repoA);
 
 // 觸控裝置用精簡版提示，不列出滾輪與鍵盤操作。
 const hint = el('p', { id: 'canvas-hint', class: 'hint' }, matchMedia('(any-pointer: fine)').matches ? T.hint : T.hintTouch);
@@ -1067,6 +1073,7 @@ for (const [i, section] of sections.entries()) {
       anns.forEach((a) => {
         const li = el('li', { value: String(a.n) });
         a.item = li;
+        // 有對應節點的項目在放置徽章時會換成按鈕（可用鍵盤操作）；先放純文字。
         li.append(a.text);
         ol.append(li);
       });
@@ -1212,8 +1219,10 @@ for (const [i, section] of sections.entries()) {
   bindNodes(d);
   // 說明視窗的註解：有對應節點的可點擊，鎖定並帶到該節點。
   anns.forEach((a) => {
-    a.item?.addEventListener('click', () => {
-      if (!a.target) return;
+    a.item?.addEventListener('click', (e) => {
+      if (!a.target || !e.target.closest('button')) return;
+      // 窄螢幕展開的說明視窗會蓋住圖，先收合再定位。
+      if (overlayOpen()) showInfo(false);
       if (selected?.node !== a.target) select(d, a.target);
       else ensureVisible(d, a.target.el);
     });
@@ -1318,7 +1327,10 @@ function placeAnnotations(d) {
     a.pos = null;
     if (a.item) {
       a.item.classList.toggle('linked', Boolean(a.target));
-      a.item.title = a.node !== null ? T.annItem(a.n, a.node) : '';
+      if (a.target && !a.item.querySelector('button')) {
+        const b = el('button', { type: 'button', class: 'ann-go', title: T.annItem(a.n, a.node) }, a.text);
+        a.item.replaceChildren(b);
+      } else if (!a.target && a.item.querySelector('button')) a.item.replaceChildren(a.text);
     }
     if (!a.target || d.annPending) return;
     const r = a.target.el.getBoundingClientRect();
@@ -1337,6 +1349,11 @@ function placeAnnotations(d) {
     g.dataset.ann = String(a.n);
     const c = document.createElementNS(SVGNS, 'circle');
     c.setAttribute('r', '9');
+    // 透明的較大命中圈，手機上比較好點。
+    const hit = document.createElementNS(SVGNS, 'circle');
+    hit.setAttribute('r', '16');
+    hit.setAttribute('class', 'hit');
+    g.append(hit);
     const t = document.createElementNS(SVGNS, 'text');
     t.setAttribute('text-anchor', 'middle');
     t.setAttribute('dy', '0.35em');
@@ -1355,7 +1372,7 @@ function placeAnnotations(d) {
 }
 const annsOf = (d, node) => d.anns.filter((a) => a.target === node);
 // 匯出用：把徽章加進匯出的 SVG（只有卡片版面使用），並回傳文字清單。
-function exportAnnotations(d, svgText) {
+function exportAnnotations(d, svgText, exportDark = false) {
   const placed = d.anns.filter((a) => a.pos);
   if (!placed.length) return svgText;
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
@@ -1369,7 +1386,7 @@ function exportAnnotations(d, svgText) {
     const g = doc.createElementNS(SVGNS, 'g');
     g.setAttribute('transform', `translate(${a.pos.x} ${a.pos.y})`);
     const c = doc.createElementNS(SVGNS, 'circle');
-    [['r', '9'], ['fill', '#BF8700']].forEach(([k, v]) => c.setAttribute(k, v));
+    [['r', '9'], ['fill', exportDark ? '#BF8700' : '#9A6700']].forEach(([k, v]) => c.setAttribute(k, v));
     const t = doc.createElementNS(SVGNS, 'text');
     [['text-anchor', 'middle'], ['dy', '0.35em'], ['fill', '#FFFFFF'], ['font-size', '11'], ['font-weight', '700'], ['font-family', font]].forEach(([k, v]) => t.setAttribute(k, v));
     t.textContent = String(a.n);
@@ -1494,29 +1511,31 @@ function drawInk(d) {
 }
 function startStroke(d, e) {
   const c = d.canvas;
-  try { c.setPointerCapture(e.pointerId); } catch {}
+  const capture = () => { try { c.setPointerCapture(e.pointerId); } catch {} };
+  // 不在畫筆模式時的觸控筆：移動超過門檻才開始畫（也才 capture），單純點一下（例如點節點）不留下墨點、點擊照常。
+  const lazy = !penOn;
+  if (!lazy) capture();
   if (tool.id === 'eraser') {
-    stroke = { d, id: e.pointerId, erase: true, touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
-    eraseAt(d, e);
+    stroke = { d, id: e.pointerId, erase: true, lazy, start: { x: e.clientX, y: e.clientY }, touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+    if (!lazy) eraseAt(d, e);
   } else {
     // 線寬以「畫下當時的螢幕像素」換算成圖的座標，之後跟著圖一起縮放。
     const s = { d, pts: [toSvg(d, e)], color: tool.color, width: Math.round((tool.width / d.scale) * 100) / 100, opacity: tool.opacity };
     s.el = strokeEl(s);
     if (tool.id === 'laser') s.el.setAttribute('class', 'laser');
-    // 不在畫筆模式時的觸控筆：移動超過門檻才開始畫，單純點一下（例如點節點）不留下墨點。
-    const lazy = !penOn;
     if (!lazy) inkLayer(d).append(s.el);
     stroke = { d, id: e.pointerId, s, lazy, start: { x: e.clientX, y: e.clientY }, laser: tool.id === 'laser', touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
   }
   const moveInk = (ev) => {
     if (!stroke || ev.pointerId !== stroke.id) return;
     stroke.last = { x: ev.clientX, y: ev.clientY };
-    if (stroke.erase) { eraseAt(d, ev); return; }
     if (stroke.lazy) {
       if (Math.hypot(ev.clientX - stroke.start.x, ev.clientY - stroke.start.y) < PAN.threshold) return;
       stroke.lazy = false;
-      inkLayer(d).append(stroke.s.el);
+      capture();
+      if (!stroke.erase) inkLayer(d).append(stroke.s.el);
     }
+    if (stroke.erase) { eraseAt(d, ev); return; }
     const evs = ev.getCoalescedEvents?.() || [ev];
     evs.forEach((x) => {
       const pt = toSvg(d, x);
@@ -1646,12 +1665,13 @@ function withInk(d, svgText, dark) {
 
 // 畫筆工具列：固定在右側，畫筆模式時顯示。
 const penbar = el('div', { id: 'penbar', class: 'float', role: 'toolbar', 'aria-label': T.penTools, hidden: '' });
+const toolGroup = el('div', { class: 'tools', role: 'radiogroup', 'aria-label': T.penTools });
 const toolBtns = TOOLS.map((t) => {
-  const b = el('button', { type: 'button', 'aria-label': T[t.label], title: T[t.label], 'aria-pressed': String(t === tool), 'data-tool': t.id });
+  const b = el('button', { type: 'button', role: 'radio', 'aria-label': T[t.label], title: T[t.label], 'aria-checked': String(t === tool), 'data-tool': t.id });
   b.append(el('span', { class: 'swatch', 'aria-hidden': 'true' }));
   b.addEventListener('click', () => {
     tool = t;
-    toolBtns.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    toolBtns.forEach((x) => x.setAttribute('aria-checked', String(x === b)));
     document.documentElement.classList.toggle('erasing', t.id === 'eraser');
   });
   return b;
@@ -1663,20 +1683,30 @@ const clearBtn = el('button', { type: 'button', 'aria-label': T.clearInk, title:
 clearBtn.addEventListener('click', () => { const d = curDiagram(); if (d) clearInk(d); });
 const exitBtn = el('button', { type: 'button', 'aria-label': T.exitPen, title: `${T.exitPen} (Esc)` }, '×');
 exitBtn.addEventListener('click', () => setPen(false));
-penbar.append(...toolBtns, el('span', { class: 'sep', 'aria-hidden': 'true' }), undoBtn, clearBtn, exitBtn);
+toolGroup.append(...toolBtns);
+const actionGroup = el('div', { class: 'tools' });
+actionGroup.append(undoBtn, clearBtn, exitBtn);
+penbar.append(toolGroup, el('span', { class: 'sep', 'aria-hidden': 'true' }), actionGroup);
+// 與下方工具列相同：整列只佔一個 Tab 停留點，以方向鍵移動。
+rovingToolbar(penbar);
 function setPen(on) {
   penOn = on;
   penbar.hidden = !on;
   document.documentElement.classList.toggle('pen-on', on);
   document.querySelectorAll('.pen-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
-  if (on) diagrams.forEach((d) => { if (!selected || selected.d !== d) highlight(d, null); });
+  // 進入畫筆模式時取消節點選取（畫筆模式下無法點節點解除），並讓出右側工具列的空間。
+  if (on) { clearSelection(); diagrams.forEach((d) => highlight(d, null)); }
   else cancelStroke();
+  root.style.setProperty('--pen-w', on && innerWidth >= 600 ? `${penbar.offsetWidth + 12}px` : '0px');
+  const d = curDiagram();
+  if (d?.ok && d.fit) fitScreen(d);
   notify(on ? (matchMedia('(any-pointer: fine)').matches ? T.penOn : T.penOnTouch) : T.penOff);
 }
 // 有筆跡時離開頁面先提醒（筆跡只在記憶體）。
 addEventListener('beforeunload', (e) => { if (hasInk()) { e.preventDefault(); e.returnValue = T.inkLeave; } });
-addEventListener('keyup', (e) => { if (e.key === ' ') spaceDown = false; });
-addEventListener('blur', () => { spaceDown = false; });
+const spaceUp = () => { spaceDown = false; document.documentElement.classList.remove('pen-pan'); };
+addEventListener('keyup', (e) => { if (e.key === ' ') spaceUp(); });
+addEventListener('blur', spaceUp);
 
 // 上游與下游：沿連線方向往前、往後走訪所有可到達的節點（含間接）。
 function reach(node) {
@@ -2117,6 +2147,9 @@ function show(k, updateHash = true) {
   sections.forEach((x) => x.classList.toggle('active', x === section));
   info.querySelectorAll('.notes').forEach((n) => n.remove());
   info.append(notes.get(section), hint, credit, expandInfo);
+  // 小卡上顯示這張圖有幾則註解，未展開也知道有內容。
+  const dd = diagrams.find((x) => x.section === section);
+  expandInfo.textContent = dd?.anns.length ? `${T.expand} · ${T.annCount(dd.anns.length)}` : T.expand;
   // 標題過長時只截斷標題，張數與 ▾ 保持可見。
   tocBtn.replaceChildren(el('span', { class: 't' }, section.dataset.title));
   if (multi) {
@@ -2187,6 +2220,7 @@ document.addEventListener('keydown', (e) => {
   // 畫筆模式按住 Space 時拖曳改為平移；焦點在按鈕上時不攔截，讓按鈕照常以 Space 操作。
   if (e.key === ' ' && penOn && !typing) {
     spaceDown = true;
+    document.documentElement.classList.add('pen-pan');
     if (!e.target.closest?.('button')) { e.preventDefault(); return; }
   }
   if ((e.key === 'p' || e.key === 'P') && !e.altKey && !e.ctrlKey && !e.metaKey && !typing) {
@@ -2289,8 +2323,13 @@ if (badCount) {
   setStatus('error', T.some(diagrams.filter((d) => d.ok).length, badCount), reportButton(null));
 } else if (!elkOk) {
   setStatus('warn', T.noElk, reportButton(null));
-} else {
-  // 只在有節點資料的圖種提示；sequence 等圖種的註解本來就只列在說明視窗。
-  const missing = diagrams.filter((d) => d.graph).flatMap((d) => d.anns.filter((a) => a.node !== null && !d.graph.bySrc.has(a.node) && !d.graph.nodes.has(a.node)).map((a) => `${d.section.dataset.title} #${a.n}（${a.node}）`));
-  if (missing.length) setStatus('warn', T.annMissing(missing.join('、')), reportButton(null));
+}
+// 註解找不到節點：只在有節點資料的圖種提示（sequence 等圖種的註解本來就只列在說明視窗），附加在既有狀態之後。
+const missing = diagrams.filter((d) => d.graph).flatMap((d) => d.anns.filter((a) => a.node !== null && !d.graph.bySrc.has(a.node) && !d.graph.nodes.has(a.node)).map((a) => `${d.section.dataset.title} #${a.n}（${a.node}）`));
+// 頁面結構自檢：樣式沒有生效（例如 Agent 刪註解時刪壞了樣式表）或標題留著佔位符。
+const broken = !getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || /\{\{/.test(document.title);
+const extra = [broken && T.broken, missing.length && T.annMissing(missing.join('、'))].filter(Boolean);
+if (extra.length) {
+  const prev = statusEl.classList.contains('show') ? statusEl.firstChild?.textContent : '';
+  setStatus(broken || statusEl.classList.contains('error') ? 'error' : 'warn', [prev, ...extra].filter(Boolean).join(' '), reportButton(null));
 }

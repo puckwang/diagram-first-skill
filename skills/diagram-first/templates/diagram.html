@@ -2,25 +2,25 @@
 <!--
   diagram-first HTML 樣板
 
-  使用方式（複製本檔後只替換佔位符，不必讀取或改動 <style> 與 <script>；本檔很大，請勿整檔讀取或重寫）：
+  使用方式（複製本檔後只替換佔位符，不必讀取或改動樣式表與程式區塊；本檔很大，請勿整檔讀取或重寫）：
   0. cp 本檔到目標路徑，以 grep -n '{{' 找出佔位符所在行，只讀本段註解與 <body> 開頭的佔位符段落。
   1. 替換 {{LANG}}：使用者語言的 BCP 47 代碼，例如 zh-Hant-TW、en、ja。介面文字會依此切換。
      只能包含英數字與 -（此處在 CSP 生效之前）。
   2. 替換 {{TITLE}} 與 {{SUMMARY}}：頁面標題與一句話摘要，使用使用者的語言。
-  3. 每張圖複製一個 <section class="diagram">…</section>，填入：
+  3. 每張圖複製一個 section.diagram 區塊，填入：
      - {{DIAGRAM_TITLE}}：這張圖的標題
      - {{DIAGRAM_CAPTION}}：一句話結論（約 30 字以內），例如「付款失敗一律釋放庫存」
-     - {{MERMAID_SOURCE}}：Mermaid 原始碼，貼在 <script type="text/plain"> 內，縮排不影響結果
-     - {{LEGEND}}：圖例，預設不寫，刪除整個 <div class="legend">；只在有縮寫、代號或非補充不可的節點時加，
+     - {{MERMAID_SOURCE}}：Mermaid 原始碼，貼在 type="text/plain" 的 script 區塊內，縮排不影響結果
+     - {{LEGEND}}：圖例，預設不寫，刪除整個 legend 區塊（div.legend）；只在有縮寫、代號或非補充不可的節點時加，
        最多 5 條、每條一行（見 references/mermaid-guide.md 2.6）。頁面上預設收合。
-     - {{NOTES}}：註解，預設不寫，刪除整個 <ol class="annotations">；規則見 references/mermaid-guide.md 2.7。
-       每條一個 <li data-node="Mermaid 節點 id">一句話</li>，綁在節點上會顯示編號徽章；不綁節點時省略 data-node。
+     - {{NOTES}}：註解，預設不寫，刪除整個註解區塊（ol.annotations）；規則見 references/mermaid-guide.md 2.7。
+       每條一個 li 元素，以 data-node 屬性填 Mermaid 節點 id，內容是一句話，綁在節點上會顯示編號徽章；不綁節點時省略 data-node。
        每張圖最多 3 條、每條約 40 字，只寫純文字。
   4. 刪除所有尚未替換的 {{…}} 佔位符與本段註解，完成後再以 grep -n '{{' 確認沒有殘留。
-  5. Mermaid 原始碼中不可出現字串 </script，必要時改寫標籤。
+  5. Mermaid 原始碼中不可出現 script 的結束標籤，必要時改寫標籤。
 
-  不要修改 <style>、<script type="module"> 內的程式、版本號與 CSP。本檔由 repo 的 src/ 以 scripts/build-template.mjs 產生。
-  CSP 只允許兩種 script：下方 <script type="module"> 的內容（以 sha256 比對，改動任何字元就無法執行），
+  不要修改樣式表、module script 內的程式、版本號與 CSP。本檔由 repo 的 src/ 以 scripts/build-template.mjs 產生。
+  CSP 只允許兩種 script：下方 module script 的內容（以 sha256 比對，改動任何字元就無法執行），
   以及 jsDelivr 上的 mermaid@12.1.0。
 
   Theme 預設為「自動」：淺色模式用 redux-color，深色模式用 redux-dark-color。
@@ -33,7 +33,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-t5TXmGXb0HfipSORQl8E12UXG29U3AGS3PSuLabQAxk=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-si+4FX2Wf0LaWmOZgR1NY3lA1FHMPfSsnrlJD/+MvGU=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -43,7 +43,7 @@
 --bg: #F7F7F8; --surface: #FFFFFF; --text: #1F2328; --muted: #59636E;
 --border: #D1D9E0; --control: #EFF2F5; --control-text: #1F2328; --control-active: #FFFFFF;
 --danger: #A32D2D; --danger-bg: #FCEBEB; --warn: #854F0B; --warn-bg: #FAEEDA;
---canvas-light: #FAFAFA; --canvas-dark: #1B1B1F; --hl: #0969DA;
+--canvas-light: #FAFAFA; --canvas-dark: #1B1B1F; --hl: #0969DA; --ann: #9A6700;
 --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Hiragino Sans", "Noto Sans TC", "Noto Sans JP", "Microsoft JhengHei", sans-serif;
 --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 color-scheme: light;
@@ -52,14 +52,14 @@ color-scheme: light;
 :root:not([data-theme="light"]) {
 --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
 --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
---danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF;
+--danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF; --ann: #BF8700;
 color-scheme: dark;
 }
 }
 :root[data-theme="dark"] {
 --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
 --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
---danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF;
+--danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF; --ann: #BF8700;
 color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -79,6 +79,7 @@ header .summary { color: var(--muted); margin: 0; }
 .toolbar button, .toolbar select, .float button, .controls select {
 font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
 .toolbar button:hover, .float button:hover { opacity: .85; }
+.toolbar button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
 .toolbar .zoom { display: inline-flex; gap: 2px; }
 .toolbar .zoom .level { min-width: 56px; font-variant-numeric: tabular-nums; }
 .segmented { display: inline-flex; background: var(--control); border-radius: 6px; padding: 2px; }
@@ -129,7 +130,7 @@ width: max-content; max-width: min(720px, calc(100% - 32px)); max-height: 60vh; 
 html.app .toolbar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
 margin: 0; padding: 6px; width: max-content; max-width: calc(100vw - 24px); justify-content: center;
 background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
-html.app #status { position: fixed; top: calc(var(--top-h, 48px) + 20px); left: 50%; transform: translateX(-50%); z-index: 40; margin: 0; width: max-content; max-width: calc(100vw - 24px); }
+html.app #status { position: fixed; top: calc(var(--top-h, 48px) + 20px); left: 12px; right: 12px; margin-inline: auto; z-index: 40; width: fit-content; max-width: calc(100vw - 24px); }
 #nav, #actions { position: fixed; top: max(12px, env(safe-area-inset-top)); z-index: 30; display: flex; gap: 4px; align-items: center; padding: 4px; }
 #nav { left: max(12px, env(safe-area-inset-left)); max-width: calc(100vw - var(--actions-w, 150px) - 36px); }
 #actions { right: max(12px, env(safe-area-inset-right)); }
@@ -152,9 +153,9 @@ border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
 .menu .sizes .size-label { flex: 1 0 100%; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .menu .sizes button { display: inline-block; width: auto; flex: 1; text-align: center; padding: 4px 6px; background: var(--control); }
 .menu .sizes button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--text); font-weight: 600; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
+.toast { position: fixed; left: 12px; right: 12px; margin-inline: auto; width: fit-content; bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
 margin: 0; padding: 6px 14px; font-size: 13px; }
-#selbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 30;
+#selbar { position: fixed; left: 12px; right: 12px; margin-inline: auto; width: fit-content; bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 30;
 display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; max-width: calc(100vw - 24px); font-size: 13px; }
 #selbar[hidden] { display: none; }
 #selbar .sel-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -203,26 +204,29 @@ background: var(--surface); border: 1px solid var(--border); border-radius: 10px
 }
 #info .ann-box h4 { font-size: 13px; font-weight: 600; margin: 10px 0 2px; }
 #info .ann-list { margin: 0; padding-left: 22px; font-size: 14px; }
-#info .ann-list li.linked { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 #info.card .ann-box { display: none; }
 html.app .canvas svg .ann-badge { cursor: pointer; }
-html.app .canvas svg .ann-badge circle { fill: var(--ann, #BF8700); stroke: var(--canvas-light); stroke-width: 2px; }
+html.app .canvas svg .ann-badge circle { fill: var(--ann); stroke: var(--canvas-light); stroke-width: 2px; }
+html.app .canvas svg .ann-badge circle.hit { fill: transparent; stroke: none; }
+#info .ann-list .ann-go { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: start; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 html.app .canvas.dark svg .ann-badge circle { stroke: var(--canvas-dark); }
 html.app .canvas svg .ann-badge text { fill: #FFFFFF; font: 700 11px var(--font); pointer-events: none; }
 #selbar { flex-wrap: wrap; }
+#selbar .sel-text { flex: 1 1 auto; }
 #selbar .sel-note { flex: 1 0 100%; display: flex; flex-direction: column; padding: 0 8px 4px 0; color: var(--muted); white-space: normal; }
 #selbar .sel-note[hidden] { display: none; }
 #penbar { position: fixed; right: max(12px, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); z-index: 30;
 display: flex; flex-direction: column; gap: 4px; padding: 4px; }
 #penbar[hidden] { display: none; }
+#penbar .tools { display: flex; flex-direction: inherit; gap: 4px; }
 @media (max-width: 599px) {
-#penbar { flex-direction: row; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px);
-max-width: calc(100vw - 24px); overflow-x: auto; }
-#penbar .sep { width: 1px; height: auto; margin: 4px 2px; }
+#penbar { flex-direction: column; top: auto; right: 12px; left: 12px; margin-inline: auto; width: fit-content; transform: none; bottom: calc(var(--bottom-h, 52px) + 24px); }
+#penbar .tools { flex-direction: row; justify-content: center; }
+#penbar .sep { display: none; }
 html.pen-on #selbar { display: none; }
-html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 96px); }
+html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 140px); }
 }
-#penbar button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
+#penbar button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
 #penbar .sep { height: 1px; margin: 2px 4px; background: var(--border); }
 #penbar .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
 #penbar [data-tool="red"] .swatch { background: #E5484D; }
@@ -234,7 +238,10 @@ html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 96px); }
 html.pen-on .canvas.ready, html.pen-on .canvas.ready svg g.node { cursor: crosshair; }
 html.app .canvas svg g.ink { pointer-events: none; }
 html.app .canvas > svg.ink-overlay { overflow: visible; pointer-events: none; }
-html.erasing.pen-on .canvas.ready { cursor: cell; }
+html.erasing.pen-on .canvas.ready { cursor: crosshair; }
+html.pen-on.pen-pan .canvas.ready, html.pen-on.pen-pan .canvas.ready svg g.node { cursor: grab; }
+html.app .canvas svg.ink-overlay path[stroke-opacity] { mix-blend-mode: multiply; }
+html.app .canvas.dark svg.ink-overlay path[stroke-opacity] { mix-blend-mode: screen; }
 html.app .canvas svg g.ink path.laser { filter: drop-shadow(0 0 4px #FF3B30); transition: opacity .4s; }
 html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
 #info .credit { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
@@ -307,7 +314,8 @@ mode: '模式', theme: 'Theme', auto: '自動', light: '淺色', dark: '深色',
 direction: '方向', vertical: '垂直', horizontal: '水平',
 zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '全圖', fitTitle: '符合視窗',
 followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
-info: '說明', close: '收合', expand: '展開說明',
+info: '說明', close: '收合', expand: '展開說明', annCount: (n) => `${n} 則註解`,
+broken: '頁面結構不完整（樣式或標題沒有正確替換），可能顯示異常。可複製問題回報，貼回對話給 Claude。',
 nodeAria: (label, up, down) => `${label}，上游 ${up} 個、下游 ${down} 個`, upstream: '上游', downstream: '下游', none: '無',
 selInfo: (label, up, down) => `「${label}」上游 ${up}・下游 ${down}`, copyRef: '複製引用', clearSel: '取消選取', selected: '已選取節點',
 nodeRef: (k, n, title, id, label, ups, downs, up, down) => `第 ${k}/${n} 張圖〈${title}〉的節點${id ? ` ${id}` : ''}「${label}」（直接上游：${ups}；直接下游：${downs}；全部上游 ${up} 個、下游 ${down} 個）`,
@@ -337,7 +345,8 @@ mode: 'Mode', theme: 'Theme', auto: 'Auto', light: 'Light', dark: 'Dark',
 direction: 'Direction', vertical: 'Vertical', horizontal: 'Horizontal',
 zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Fit', fitTitle: 'Fit to window',
 followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
-info: 'Notes', close: 'Collapse', expand: 'Show notes',
+info: 'Notes', close: 'Collapse', expand: 'Show notes', annCount: (n) => `${n} note${n > 1 ? 's' : ''}`,
+broken: 'The page structure is incomplete (styles or title were not replaced correctly) and may look wrong. Copy the issue report and paste it into the chat with Claude.',
 nodeAria: (label, up, down) => `${label}, ${up} upstream, ${down} downstream`, upstream: 'Upstream', downstream: 'Downstream', none: 'none',
 selInfo: (label, up, down) => `"${label}" ${up} upstream · ${down} downstream`, copyRef: 'Copy reference', clearSel: 'Clear selection', selected: 'Selected node',
 nodeRef: (k, n, title, id, label, ups, downs, up, down) => `Node ${id ? `${id} ` : ''}"${label}" in diagram ${k}/${n} "${title}" (direct upstream: ${ups}; direct downstream: ${downs}; ${up} upstream and ${down} downstream in total)`,
@@ -367,7 +376,8 @@ mode: 'モード', theme: 'テーマ', auto: '自動', light: 'ライト', dark:
 direction: '方向', vertical: '縦', horizontal: '横',
 zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: '全体', fitTitle: '画面に合わせる',
 followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
-info: '説明', close: '折りたたむ', expand: '説明を開く',
+info: '説明', close: '折りたたむ', expand: '説明を開く', annCount: (n) => `注釈 ${n} 件`,
+broken: 'ページの構造が不完全です（スタイルやタイトルが正しく置き換えられていません）。表示が崩れる可能性があります。問題レポートをコピーして Claude との会話に貼り付けてください。',
 nodeAria: (label, up, down) => `${label}、上流 ${up} 件、下流 ${down} 件`, upstream: '上流', downstream: '下流', none: 'なし',
 selInfo: (label, up, down) => `「${label}」上流 ${up}・下流 ${down}`, copyRef: '参照をコピー', clearSel: '選択を解除', selected: '選択中のノード',
 nodeRef: (k, n, title, id, label, ups, downs, up, down) => `図 ${k}/${n}〈${title}〉のノード${id ? ` ${id}` : ''}「${label}」（直接の上流：${ups}；直接の下流：${downs}；上流 ${up} 件・下流 ${down} 件）`,
@@ -596,7 +606,8 @@ applyView(d);
 const overlayOpen = () => !info.classList.contains('card') && innerWidth < 900;
 function fitArea(d) {
 const r = d.canvas.getBoundingClientRect();
-const full = { left: 16, ...barLimits(d), right: r.width - 16 };
+const penW = parseFloat(root.style.getPropertyValue('--pen-w')) || 0;
+const full = { left: 16, ...barLimits(d), right: r.width - 16 - penW };
 const b = info.getBoundingClientRect();
 if (!b.width) return { full, around: [] };
 const box = { left: b.left - r.left, top: b.top - r.top, right: b.right - r.left, bottom: b.bottom - r.top };
@@ -962,7 +973,7 @@ const ink = (svg) => (exportInk === 'on' ? withInk(d, svg, t.dark) : svg);
 if (exportLayout !== 'card') return { svg: ink(base), dark: t.dark };
 const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
 const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
-return { svg: cardSvg(ink(exportAnnotations(d, base)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
+return { svg: cardSvg(ink(exportAnnotations(d, base, t.dark)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
 }
 async function exportImage(d, type, transparent) {
 const first = await exportSvg(d, transparent);
@@ -1135,7 +1146,7 @@ toast.textContent = '';
 clearTimeout(toastTimer);
 toastTimer = setTimeout(() => {
 toast.textContent = text;
-toastTimer = setTimeout(() => { toast.textContent = ''; }, 2000);
+toastTimer = setTimeout(() => { toast.textContent = ''; }, Math.max(2000, [...text].length * 120));
 }, 50);
 }
 const diagrams = [];
@@ -1148,8 +1159,8 @@ const closeInfo = el('button', { type: 'button', class: 'close', 'aria-label': T
 const expandInfo = el('button', { type: 'button', class: 'expand', 'aria-expanded': 'false', 'aria-controls': 'info' }, T.expand);
 info.append(closeInfo);
 const credit = el('p', { class: 'credit' });
-const repoA = el('a', { href: APP.repo, target: '_blank', rel: 'noopener noreferrer', 'aria-label': T.repoLink }, `diagram-first v${APP.version} · GitHub`);
-credit.append(...[T.madeWith, repoA, T.madeWithAfter].filter(Boolean).flatMap((x, k) => (k ? [' ', x] : [x])));
+const repoA = el('a', { href: APP.repo, target: '_blank', rel: 'noopener noreferrer', 'aria-label': T.repoLink }, 'GitHub');
+credit.append(...[T.madeWith, `diagram-first v${APP.version}`, T.madeWithAfter].filter(Boolean).join(' '), ' · ', repoA);
 const hint = el('p', { id: 'canvas-hint', class: 'hint' }, matchMedia('(any-pointer: fine)').matches ? T.hint : T.hintTouch);
 const headerEl = document.querySelector('header');
 if (headerEl) info.append(headerEl);
@@ -1327,8 +1338,9 @@ d.buttons.push(dirSelect);
 bindGestures(d);
 bindNodes(d);
 anns.forEach((a) => {
-a.item?.addEventListener('click', () => {
-if (!a.target) return;
+a.item?.addEventListener('click', (e) => {
+if (!a.target || !e.target.closest('button')) return;
+if (overlayOpen()) showInfo(false);
 if (selected?.node !== a.target) select(d, a.target);
 else ensureVisible(d, a.target.el);
 });
@@ -1424,7 +1436,10 @@ a.target = a.node !== null ? d.graph?.bySrc.get(a.node) || d.graph?.nodes.get(a.
 a.pos = null;
 if (a.item) {
 a.item.classList.toggle('linked', Boolean(a.target));
-a.item.title = a.node !== null ? T.annItem(a.n, a.node) : '';
+if (a.target && !a.item.querySelector('button')) {
+const b = el('button', { type: 'button', class: 'ann-go', title: T.annItem(a.n, a.node) }, a.text);
+a.item.replaceChildren(b);
+} else if (!a.target && a.item.querySelector('button')) a.item.replaceChildren(a.text);
 }
 if (!a.target || d.annPending) return;
 const r = a.target.el.getBoundingClientRect();
@@ -1442,6 +1457,10 @@ g.setAttribute('transform', `translate(${x} ${y})`);
 g.dataset.ann = String(a.n);
 const c = document.createElementNS(SVGNS, 'circle');
 c.setAttribute('r', '9');
+const hit = document.createElementNS(SVGNS, 'circle');
+hit.setAttribute('r', '16');
+hit.setAttribute('class', 'hit');
+g.append(hit);
 const t = document.createElementNS(SVGNS, 'text');
 t.setAttribute('text-anchor', 'middle');
 t.setAttribute('dy', '0.35em');
@@ -1458,7 +1477,7 @@ n.el.setAttribute('aria-label', n.el.getAttribute('aria-label') + T.annAria(text
 });
 }
 const annsOf = (d, node) => d.anns.filter((a) => a.target === node);
-function exportAnnotations(d, svgText) {
+function exportAnnotations(d, svgText, exportDark = false) {
 const placed = d.anns.filter((a) => a.pos);
 if (!placed.length) return svgText;
 const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
@@ -1472,7 +1491,7 @@ placed.forEach((a) => {
 const g = doc.createElementNS(SVGNS, 'g');
 g.setAttribute('transform', `translate(${a.pos.x} ${a.pos.y})`);
 const c = doc.createElementNS(SVGNS, 'circle');
-[['r', '9'], ['fill', '#BF8700']].forEach(([k, v]) => c.setAttribute(k, v));
+[['r', '9'], ['fill', exportDark ? '#BF8700' : '#9A6700']].forEach(([k, v]) => c.setAttribute(k, v));
 const t = doc.createElementNS(SVGNS, 'text');
 [['text-anchor', 'middle'], ['dy', '0.35em'], ['fill', '#FFFFFF'], ['font-size', '11'], ['font-weight', '700'], ['font-family', font]].forEach(([k, v]) => t.setAttribute(k, v));
 t.textContent = String(a.n);
@@ -1584,27 +1603,29 @@ inkOf(d).strokes.forEach((s) => { s.el = strokeEl(s); g.append(s.el); });
 }
 function startStroke(d, e) {
 const c = d.canvas;
-try { c.setPointerCapture(e.pointerId); } catch {}
+const capture = () => { try { c.setPointerCapture(e.pointerId); } catch {} };
+const lazy = !penOn;
+if (!lazy) capture();
 if (tool.id === 'eraser') {
-stroke = { d, id: e.pointerId, erase: true, touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
-eraseAt(d, e);
+stroke = { d, id: e.pointerId, erase: true, lazy, start: { x: e.clientX, y: e.clientY }, touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+if (!lazy) eraseAt(d, e);
 } else {
 const s = { d, pts: [toSvg(d, e)], color: tool.color, width: Math.round((tool.width / d.scale) * 100) / 100, opacity: tool.opacity };
 s.el = strokeEl(s);
 if (tool.id === 'laser') s.el.setAttribute('class', 'laser');
-const lazy = !penOn;
 if (!lazy) inkLayer(d).append(s.el);
 stroke = { d, id: e.pointerId, s, lazy, start: { x: e.clientX, y: e.clientY }, laser: tool.id === 'laser', touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
 }
 const moveInk = (ev) => {
 if (!stroke || ev.pointerId !== stroke.id) return;
 stroke.last = { x: ev.clientX, y: ev.clientY };
-if (stroke.erase) { eraseAt(d, ev); return; }
 if (stroke.lazy) {
 if (Math.hypot(ev.clientX - stroke.start.x, ev.clientY - stroke.start.y) < PAN.threshold) return;
 stroke.lazy = false;
-inkLayer(d).append(stroke.s.el);
+capture();
+if (!stroke.erase) inkLayer(d).append(stroke.s.el);
 }
+if (stroke.erase) { eraseAt(d, ev); return; }
 const evs = ev.getCoalescedEvents?.() || [ev];
 evs.forEach((x) => {
 const pt = toSvg(d, x);
@@ -1724,12 +1745,13 @@ root.removeAttribute('style');
 return new XMLSerializer().serializeToString(root);
 }
 const penbar = el('div', { id: 'penbar', class: 'float', role: 'toolbar', 'aria-label': T.penTools, hidden: '' });
+const toolGroup = el('div', { class: 'tools', role: 'radiogroup', 'aria-label': T.penTools });
 const toolBtns = TOOLS.map((t) => {
-const b = el('button', { type: 'button', 'aria-label': T[t.label], title: T[t.label], 'aria-pressed': String(t === tool), 'data-tool': t.id });
+const b = el('button', { type: 'button', role: 'radio', 'aria-label': T[t.label], title: T[t.label], 'aria-checked': String(t === tool), 'data-tool': t.id });
 b.append(el('span', { class: 'swatch', 'aria-hidden': 'true' }));
 b.addEventListener('click', () => {
 tool = t;
-toolBtns.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+toolBtns.forEach((x) => x.setAttribute('aria-checked', String(x === b)));
 document.documentElement.classList.toggle('erasing', t.id === 'eraser');
 });
 return b;
@@ -1741,19 +1763,27 @@ const clearBtn = el('button', { type: 'button', 'aria-label': T.clearInk, title:
 clearBtn.addEventListener('click', () => { const d = curDiagram(); if (d) clearInk(d); });
 const exitBtn = el('button', { type: 'button', 'aria-label': T.exitPen, title: `${T.exitPen} (Esc)` }, '×');
 exitBtn.addEventListener('click', () => setPen(false));
-penbar.append(...toolBtns, el('span', { class: 'sep', 'aria-hidden': 'true' }), undoBtn, clearBtn, exitBtn);
+toolGroup.append(...toolBtns);
+const actionGroup = el('div', { class: 'tools' });
+actionGroup.append(undoBtn, clearBtn, exitBtn);
+penbar.append(toolGroup, el('span', { class: 'sep', 'aria-hidden': 'true' }), actionGroup);
+rovingToolbar(penbar);
 function setPen(on) {
 penOn = on;
 penbar.hidden = !on;
 document.documentElement.classList.toggle('pen-on', on);
 document.querySelectorAll('.pen-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
-if (on) diagrams.forEach((d) => { if (!selected || selected.d !== d) highlight(d, null); });
+if (on) { clearSelection(); diagrams.forEach((d) => highlight(d, null)); }
 else cancelStroke();
+root.style.setProperty('--pen-w', on && innerWidth >= 600 ? `${penbar.offsetWidth + 12}px` : '0px');
+const d = curDiagram();
+if (d?.ok && d.fit) fitScreen(d);
 notify(on ? (matchMedia('(any-pointer: fine)').matches ? T.penOn : T.penOnTouch) : T.penOff);
 }
 addEventListener('beforeunload', (e) => { if (hasInk()) { e.preventDefault(); e.returnValue = T.inkLeave; } });
-addEventListener('keyup', (e) => { if (e.key === ' ') spaceDown = false; });
-addEventListener('blur', () => { spaceDown = false; });
+const spaceUp = () => { spaceDown = false; document.documentElement.classList.remove('pen-pan'); };
+addEventListener('keyup', (e) => { if (e.key === ' ') spaceUp(); });
+addEventListener('blur', spaceUp);
 function reach(node) {
 const walk = (dir) => {
 const seen = new Set();
@@ -2144,6 +2174,8 @@ const section = sections[current];
 sections.forEach((x) => x.classList.toggle('active', x === section));
 info.querySelectorAll('.notes').forEach((n) => n.remove());
 info.append(notes.get(section), hint, credit, expandInfo);
+const dd = diagrams.find((x) => x.section === section);
+expandInfo.textContent = dd?.anns.length ? `${T.expand} · ${T.annCount(dd.anns.length)}` : T.expand;
 tocBtn.replaceChildren(el('span', { class: 't' }, section.dataset.title));
 if (multi) {
 tocBtn.prepend(el('span', { 'aria-hidden': 'true' }, '☰'));
@@ -2205,6 +2237,7 @@ if (d && inkOf(d).history.length) { e.preventDefault(); undoInk(d); return; }
 }
 if (e.key === ' ' && penOn && !typing) {
 spaceDown = true;
+document.documentElement.classList.add('pen-pan');
 if (!e.target.closest?.('button')) { e.preventDefault(); return; }
 }
 if ((e.key === 'p' || e.key === 'P') && !e.altKey && !e.ctrlKey && !e.metaKey && !typing) {
@@ -2296,9 +2329,13 @@ if (badCount) {
 setStatus('error', T.some(diagrams.filter((d) => d.ok).length, badCount), reportButton(null));
 } else if (!elkOk) {
 setStatus('warn', T.noElk, reportButton(null));
-} else {
+}
 const missing = diagrams.filter((d) => d.graph).flatMap((d) => d.anns.filter((a) => a.node !== null && !d.graph.bySrc.has(a.node) && !d.graph.nodes.has(a.node)).map((a) => `${d.section.dataset.title} #${a.n}（${a.node}）`));
-if (missing.length) setStatus('warn', T.annMissing(missing.join('、')), reportButton(null));
+const broken = !getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || /\{\{/.test(document.title);
+const extra = [broken && T.broken, missing.length && T.annMissing(missing.join('、'))].filter(Boolean);
+if (extra.length) {
+const prev = statusEl.classList.contains('show') ? statusEl.firstChild?.textContent : '';
+setStatus(broken || statusEl.classList.contains('error') ? 'error' : 'warn', [prev, ...extra].filter(Boolean).join(' '), reportButton(null));
 }
 </script>
 </body>

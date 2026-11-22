@@ -108,6 +108,8 @@ const js = compact(read('src/viewer.js'), { regex: true }).replace('__APP_VERSIO
 // 壓縮後先編譯一次（不執行）確認語法，避免去註解時誤刪程式而產出無法執行的樣板。
 const AsyncFunction = (async () => {}).constructor;
 try { new AsyncFunction(js); } catch (e) { console.error(`src/viewer.js 壓縮後語法錯誤：${e.message}`); process.exit(1); }
+// Agent 以 grep '{{' 檢查佔位符是否都已替換；樣式與程式裡不能出現這個字串，否則會誤判。
+if (/\{\{/.test(css + js)) { console.error('src/viewer.css 或 src/viewer.js 含有 {{，會干擾 Agent 檢查佔位符'); process.exit(1); }
 let html = read('src/template.html');
 const put = (marker, value) => {
   if (html.split(marker).length !== 2) throw new Error(`marker ${marker} must appear once`);

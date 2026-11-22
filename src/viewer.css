@@ -2,7 +2,7 @@
     --bg: #F7F7F8; --surface: #FFFFFF; --text: #1F2328; --muted: #59636E;
     --border: #D1D9E0; --control: #EFF2F5; --control-text: #1F2328; --control-active: #FFFFFF;
     --danger: #A32D2D; --danger-bg: #FCEBEB; --warn: #854F0B; --warn-bg: #FAEEDA;
-    --canvas-light: #FAFAFA; --canvas-dark: #1B1B1F; --hl: #0969DA;
+    --canvas-light: #FAFAFA; --canvas-dark: #1B1B1F; --hl: #0969DA; --ann: #9A6700;
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Hiragino Sans", "Noto Sans TC", "Noto Sans JP", "Microsoft JhengHei", sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     color-scheme: light;
@@ -11,14 +11,14 @@
     :root:not([data-theme="light"]) {
       --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
       --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
-      --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF;
+      --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF; --ann: #BF8700;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
     --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
-    --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF;
+    --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF; --ann: #BF8700;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -38,6 +38,7 @@
   .toolbar button, .toolbar select, .float button, .controls select {
     font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
   .toolbar button:hover, .float button:hover { opacity: .85; }
+  .toolbar button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
   .toolbar .zoom { display: inline-flex; gap: 2px; }
   .toolbar .zoom .level { min-width: 56px; font-variant-numeric: tabular-nums; }
   .segmented { display: inline-flex; background: var(--control); border-radius: 6px; padding: 2px; }
@@ -93,7 +94,7 @@
     html.app .toolbar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
                         margin: 0; padding: 6px; width: max-content; max-width: calc(100vw - 24px); justify-content: center;
                         background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
-    html.app #status { position: fixed; top: calc(var(--top-h, 48px) + 20px); left: 50%; transform: translateX(-50%); z-index: 40; margin: 0; width: max-content; max-width: calc(100vw - 24px); }
+    html.app #status { position: fixed; top: calc(var(--top-h, 48px) + 20px); left: 12px; right: 12px; margin-inline: auto; z-index: 40; width: fit-content; max-width: calc(100vw - 24px); }
     #nav, #actions { position: fixed; top: max(12px, env(safe-area-inset-top)); z-index: 30; display: flex; gap: 4px; align-items: center; padding: 4px; }
     #nav { left: max(12px, env(safe-area-inset-left)); max-width: calc(100vw - var(--actions-w, 150px) - 36px); }
     #actions { right: max(12px, env(safe-area-inset-right)); }
@@ -119,10 +120,10 @@
     .menu .sizes .size-label { flex: 1 0 100%; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
     .menu .sizes button { display: inline-block; width: auto; flex: 1; text-align: center; padding: 4px 6px; background: var(--control); }
     .menu .sizes button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--text); font-weight: 600; }
-    .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
+    .toast { position: fixed; left: 12px; right: 12px; margin-inline: auto; width: fit-content; bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
              margin: 0; padding: 6px 14px; font-size: 13px; }
     /* 選取節點時的浮動列：節點名稱、上下游數量、複製引用；出現時提示訊息往上移。 */
-    #selbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 30;
+    #selbar { position: fixed; left: 12px; right: 12px; margin-inline: auto; width: fit-content; bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 30;
               display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; max-width: calc(100vw - 24px); font-size: 13px; }
     #selbar[hidden] { display: none; }
     #selbar .sel-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -179,28 +180,32 @@
     /* Agent 註解：說明視窗內的編號清單（有對應節點的可點擊定位）、圖上的編號徽章、浮動列第二行的全文。 */
     #info .ann-box h4 { font-size: 13px; font-weight: 600; margin: 10px 0 2px; }
     #info .ann-list { margin: 0; padding-left: 22px; font-size: 14px; }
-    #info .ann-list li.linked { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
     #info.card .ann-box { display: none; }
     html.app .canvas svg .ann-badge { cursor: pointer; }
-    html.app .canvas svg .ann-badge circle { fill: var(--ann, #BF8700); stroke: var(--canvas-light); stroke-width: 2px; }
+    html.app .canvas svg .ann-badge circle { fill: var(--ann); stroke: var(--canvas-light); stroke-width: 2px; }
+    html.app .canvas svg .ann-badge circle.hit { fill: transparent; stroke: none; }
+    #info .ann-list .ann-go { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: start; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
     html.app .canvas.dark svg .ann-badge circle { stroke: var(--canvas-dark); }
     html.app .canvas svg .ann-badge text { fill: #FFFFFF; font: 700 11px var(--font); pointer-events: none; }
     #selbar { flex-wrap: wrap; }
+    #selbar .sel-text { flex: 1 1 auto; }
     #selbar .sel-note { flex: 1 0 100%; display: flex; flex-direction: column; padding: 0 8px 4px 0; color: var(--muted); white-space: normal; }
     #selbar .sel-note[hidden] { display: none; }
     /* 畫筆：右側工具列、畫筆模式的游標、筆跡層（平常不攔截指標，橡皮擦時才可點中筆劃）。 */
     #penbar { position: fixed; right: max(12px, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); z-index: 30;
               display: flex; flex-direction: column; gap: 4px; padding: 4px; }
     #penbar[hidden] { display: none; }
+    #penbar .tools { display: flex; flex-direction: inherit; gap: 4px; }
     /* 窄螢幕：改為橫排在下方工具列上方，放不下時可橫向捲動。 */
     @media (max-width: 599px) {
-      #penbar { flex-direction: row; top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px);
-                max-width: calc(100vw - 24px); overflow-x: auto; }
-      #penbar .sep { width: 1px; height: auto; margin: 4px 2px; }
+      /* 窄螢幕：工具一列、動作（復原、清除、離開）一列，不必橫向捲動。 */
+      #penbar { flex-direction: column; top: auto; right: 12px; left: 12px; margin-inline: auto; width: fit-content; transform: none; bottom: calc(var(--bottom-h, 52px) + 24px); }
+      #penbar .tools { flex-direction: row; justify-content: center; }
+      #penbar .sep { display: none; }
       html.pen-on #selbar { display: none; }
-      html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 96px); }
+      html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 140px); }
     }
-    #penbar button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
+    #penbar button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
     #penbar .sep { height: 1px; margin: 2px 4px; background: var(--border); }
     #penbar .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
     #penbar [data-tool="red"] .swatch { background: #E5484D; }
@@ -213,7 +218,11 @@
     html.app .canvas svg g.ink { pointer-events: none; }
     /* 筆跡層：與圖重疊、不裁切（筆跡可以畫到圖外），不攔截指標。 */
     html.app .canvas > svg.ink-overlay { overflow: visible; pointer-events: none; }
-    html.erasing.pen-on .canvas.ready { cursor: cell; }
+    html.erasing.pen-on .canvas.ready { cursor: crosshair; }
+    html.pen-on.pen-pan .canvas.ready, html.pen-on.pen-pan .canvas.ready svg g.node { cursor: grab; }
+    /* 螢光筆：淺色以 multiply、深色以 screen 疊色，像實體螢光筆不蓋住文字。 */
+    html.app .canvas svg.ink-overlay path[stroke-opacity] { mix-blend-mode: multiply; }
+    html.app .canvas.dark svg.ink-overlay path[stroke-opacity] { mix-blend-mode: screen; }
     html.app .canvas svg g.ink path.laser { filter: drop-shadow(0 0 4px #FF3B30); transition: opacity .4s; }
     html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
     #info .credit { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
