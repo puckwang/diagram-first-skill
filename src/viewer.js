@@ -55,7 +55,7 @@ const I18N = {
         reportHead: '[diagram-first 問題回報]', reportPage: '頁面', reportDiagram: (k, n, title) => `第 ${k}/${n} 張〈${title}〉`, reportFig: '圖',
         reportState: '狀態', reportOk: 'render 成功', reportEnv: '環境', reportView: '檢視', reportSource: '原始碼', reportNote: '問題描述：',
         pen: '畫筆', penTools: '畫筆工具', penRed: '紅筆', penBlue: '藍筆', penInk: '黑筆', highlighter: '螢光筆', laser: '雷射筆',
-        eraser: '橡皮擦', undo: '復原', clearInk: '清除這張圖的筆跡', exitPen: '離開畫筆',
+        eraser: '橡皮擦', undo: '復原', clearInk: '清除這張圖的筆跡', exitPen: '離開畫筆', hideTools: '收起畫筆工具列',
         penOn: '畫筆模式：拖曳畫線，Space＋拖曳或滑鼠中鍵平移，Esc 離開。筆跡不會保存，可用匯出帶走。',
         penOnTouch: '畫筆模式：單指畫線、兩指平移縮放，按 × 離開。筆跡不會保存，可用匯出帶走。',
         stylusOn: '觸控筆可直接畫，手指照常平移；工具列按 × 收起。', penOff: '已離開畫筆模式',
@@ -87,7 +87,7 @@ const I18N = {
         reportHead: '[diagram-first issue report]', reportPage: 'Page', reportDiagram: (k, n, title) => `${k}/${n} "${title}"`, reportFig: 'Diagram',
         reportState: 'Status', reportOk: 'rendered', reportEnv: 'Environment', reportView: 'View', reportSource: 'Source', reportNote: 'What looks wrong:',
         pen: 'Pen', penTools: 'Pen tools', penRed: 'Red pen', penBlue: 'Blue pen', penInk: 'Black pen', highlighter: 'Highlighter', laser: 'Laser pointer',
-        eraser: 'Eraser', undo: 'Undo', clearInk: 'Clear the ink on this diagram', exitPen: 'Exit pen',
+        eraser: 'Eraser', undo: 'Undo', clearInk: 'Clear the ink on this diagram', exitPen: 'Exit pen', hideTools: 'Hide pen tools',
         penOn: 'Pen mode: drag to draw, Space + drag or middle-click to pan, Esc to exit. Ink is not saved; export to keep it.',
         penOnTouch: 'Pen mode: draw with one finger, pan and zoom with two, tap × to exit. Ink is not saved; export to keep it.',
         stylusOn: 'Your stylus draws directly and fingers still pan. Tap × to hide the tools.', penOff: 'Left pen mode',
@@ -119,7 +119,7 @@ const I18N = {
         reportHead: '[diagram-first 問題レポート]', reportPage: 'ページ', reportDiagram: (k, n, title) => `${k}/${n}〈${title}〉`, reportFig: '図',
         reportState: '状態', reportOk: '描画成功', reportEnv: '環境', reportView: '表示', reportSource: 'ソース', reportNote: '問題の説明：',
         pen: 'ペン', penTools: 'ペンツール', penRed: '赤ペン', penBlue: '青ペン', penInk: '黒ペン', highlighter: '蛍光ペン', laser: 'レーザーポインター',
-        eraser: '消しゴム', undo: '元に戻す', clearInk: 'この図の描き込みを消去', exitPen: 'ペンを終了',
+        eraser: '消しゴム', undo: '元に戻す', clearInk: 'この図の描き込みを消去', exitPen: 'ペンを終了', hideTools: 'ペンツールを閉じる',
         penOn: 'ペンモード：ドラッグで描画、Space＋ドラッグか中ボタンで移動、Esc で終了。描き込みは保存されないため、残すには書き出してください。',
         penOnTouch: 'ペンモード：1 本指で描画、2 本指で移動と拡大縮小、× で終了。描き込みは保存されないため、残すには書き出してください。',
         stylusOn: 'スタイラスはそのまま描画でき、指では移動できます。× でツールを閉じます。', penOff: 'ペンモードを終了しました',
@@ -1693,7 +1693,18 @@ const clearBtn = el('button', { type: 'button', 'aria-label': T.clearInk, title:
 clearBtn.addEventListener('click', () => { const d = curDiagram(); if (d) clearInk(d); });
 const exitBtn = el('button', { type: 'button', 'aria-label': T.exitPen, title: `${T.exitPen} (Esc)` }, '×');
 // × 在畫筆模式離開畫筆；只顯示觸控筆工具列時則收起工具列。
-exitBtn.addEventListener('click', () => { if (penOn) setPen(false); else { stylusBar = false; penbar.hidden = true; } });
+function hideStylusBar() {
+  stylusBar = false;
+  penbar.hidden = true;
+  document.documentElement.classList.remove('stylus-bar');
+  syncPenSpace();
+}
+exitBtn.addEventListener('click', () => { if (penOn) setPen(false); else hideStylusBar(); });
+// × 的名稱依狀態：畫筆模式是「離開畫筆」，只顯示觸控筆工具列時是「收起畫筆工具列」。
+const exitLabel = (pen) => {
+  exitBtn.setAttribute('aria-label', pen ? T.exitPen : T.hideTools);
+  exitBtn.title = `${pen ? T.exitPen : T.hideTools} (Esc)`;
+};
 toolGroup.append(...toolBtns);
 const actionGroup = el('div', { class: 'tools' });
 actionGroup.append(undoBtn, clearBtn, exitBtn);
@@ -1706,11 +1717,16 @@ function showStylusBar() {
   if (penOn || stylusBar) return;
   stylusBar = true;
   penbar.hidden = false;
+  document.documentElement.classList.add('stylus-bar');
+  exitLabel(false);
+  syncPenSpace();
   notify(T.stylusOn);
 }
 function setPen(on) {
   penOn = on;
   stylusBar = false;
+  document.documentElement.classList.remove('stylus-bar');
+  exitLabel(true);
   penbar.hidden = !on;
   document.documentElement.classList.toggle('pen-on', on);
   document.querySelectorAll('.pen-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
@@ -1728,7 +1744,8 @@ function setPen(on) {
 }
 // 畫筆工具列佔用的空間：桌機在右側（--pen-w）；窄螢幕畫筆模式收起底部工具列，工具列移到底部（由 measure 計入 --bottom-h）。
 function syncPenSpace() {
-  root.style.setProperty('--pen-w', penOn && innerWidth >= 600 ? `${penbar.offsetWidth + 12}px` : '0px');
+  // 觸控筆工具列（未進入畫筆模式）也佔同樣的位置。
+  root.style.setProperty('--pen-w', (penOn || stylusBar) && innerWidth >= 600 ? `${penbar.offsetWidth + 12}px` : '0px');
   measure();
 }
 // 有筆跡時離開頁面先提醒（筆跡只在記憶體）。
@@ -2240,6 +2257,7 @@ document.addEventListener('keydown', (e) => {
   }
   // Esc：先離開畫筆模式，再取消選取。
   if (e.key === 'Escape' && penOn && !popOpen) { setPen(false); return; }
+  if (e.key === 'Escape' && stylusBar && !popOpen && !selected) { hideStylusBar(); return; }
   const typing = e.target.closest?.('pre, input, textarea, select, .pop');
   // ⌘／Ctrl＋Z：復原目前這張圖的筆跡。
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !typing) {
@@ -2337,7 +2355,7 @@ landscape.addEventListener('change', async () => {
 });
 let resizeFrame = 0;
 addEventListener('resize', () => {
-  if (penOn) syncPenSpace();
+  if (penOn || stylusBar) syncPenSpace();
   cancelAnimationFrame(resizeFrame);
   resizeFrame = requestAnimationFrame(() => diagrams.forEach((d) => {
     if (d.fit) fitScreen(d);
