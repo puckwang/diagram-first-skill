@@ -800,11 +800,12 @@ function cardSvg(svgText, title, caption, background, dark, footnotes = []) {
 async function exportSvg(d, transparent, htmlLabels = true) {
   const t = exportTheme(d);
   const base = t.rerender || !htmlLabels ? await renderExport(d, t.rerender || currentTheme(), htmlLabels) : d.svg;
-  const inked = exportInk === 'on' ? withInk(d, base, t.dark) : base;
-  if (exportLayout !== 'card') return { svg: inked, dark: t.dark };
+  // 筆跡最後才加：它可能擴大 viewBox，徽章要在擴大前依原本的座標放好。
+  const ink = (svg) => (exportInk === 'on' ? withInk(d, svg, t.dark) : svg);
+  if (exportLayout !== 'card') return { svg: ink(base), dark: t.dark };
   const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
   const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
-  return { svg: cardSvg(exportAnnotations(d, inked), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
+  return { svg: cardSvg(ink(exportAnnotations(d, base)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
 }
 
 async function exportImage(d, type, transparent) {
@@ -1571,8 +1572,22 @@ function withInk(d, svgText, dark) {
   const map = viewMap(d, doc.documentElement);
   if (map) g.setAttribute('transform', map);
   strokes.forEach((s) => g.append(strokeEl(s, doc, dark)));
-  doc.documentElement.append(g);
-  return new XMLSerializer().serializeToString(doc.documentElement);
+  const root = doc.documentElement;
+  root.append(g);
+  // 筆跡超出圖的範圍時，擴大匯出的 viewBox 把筆跡包進來（含線寬與一點邊距）。
+  const vb = (root.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+  if (vb.length === 4 && !map) {
+    let [x0, y0, x1, y1] = [vb[0], vb[1], vb[0] + vb[2], vb[1] + vb[3]];
+    strokes.forEach((s) => s.pts.forEach(([x, y]) => {
+      const r = s.width / 2 + 8;
+      x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - r); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + r);
+    }));
+    if (x0 < vb[0] || y0 < vb[1] || x1 > vb[0] + vb[2] || y1 > vb[1] + vb[3]) {
+      root.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
+      root.removeAttribute('style');
+    }
+  }
+  return new XMLSerializer().serializeToString(root);
 }
 
 // 畫筆工具列：固定在右側，畫筆模式時顯示。

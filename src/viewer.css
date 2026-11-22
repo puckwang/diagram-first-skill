@@ -211,6 +211,8 @@
     #penbar [data-tool="eraser"] .swatch { background: transparent; border: 2px solid var(--muted); border-radius: 3px; width: 14px; height: 10px; }
     html.pen-on .canvas.ready, html.pen-on .canvas.ready svg g.node { cursor: crosshair; }
     html.app .canvas svg g.ink { pointer-events: none; }
+    /* 筆跡可以畫到圖的範圍外：圖的 SVG 不裁切超出 viewBox 的內容。 */
+    html.app .canvas > svg { overflow: visible; }
     html.erasing.pen-on .canvas.ready { cursor: cell; }
     html.app .canvas svg g.ink path.laser { filter: drop-shadow(0 0 4px #FF3B30); transition: opacity .4s; }
     html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
