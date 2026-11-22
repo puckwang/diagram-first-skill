@@ -211,8 +211,8 @@
     #penbar [data-tool="eraser"] .swatch { background: transparent; border: 2px solid var(--muted); border-radius: 3px; width: 14px; height: 10px; }
     html.pen-on .canvas.ready, html.pen-on .canvas.ready svg g.node { cursor: crosshair; }
     html.app .canvas svg g.ink { pointer-events: none; }
-    /* 筆跡可以畫到圖的範圍外：圖的 SVG 不裁切超出 viewBox 的內容。 */
-    html.app .canvas > svg { overflow: visible; }
+    /* 筆跡層：與圖重疊、不裁切（筆跡可以畫到圖外），不攔截指標。 */
+    html.app .canvas > svg.ink-overlay { overflow: visible; pointer-events: none; }
     html.erasing.pen-on .canvas.ready { cursor: cell; }
     html.app .canvas svg g.ink path.laser { filter: drop-shadow(0 0 4px #FF3B30); transition: opacity .4s; }
     html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
@@ -230,6 +230,7 @@
   @media print {
     #info .notes, .notes h3 { display: none; }
     .toolbar, .float, .pop, .close, #selbar, #penbar { display: none !important; }
+    .canvas > svg.ink-overlay { display: none !important; }
     .canvas svg.hl :is(g.node, [data-hl-edge], g.cluster) { opacity: 1 !important; filter: none !important; }
     .canvas { background-image: none !important; }
     .canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }

@@ -334,6 +334,7 @@ function applyView(d) {
   v.svg.style.width = `${v.w * d.scale}px`;
   v.svg.style.height = `${v.h * d.scale}px`;
   v.svg.style.transform = `translate(${d.tx}px, ${d.ty}px)`;
+  syncOverlay(d);
   syncGrid(d);
   showLevel(d);
 }
@@ -384,14 +385,16 @@ function fitScreen(d, soft = false) {
   const v = viewBox(d);
   if (!v || !d.canvas.clientWidth) return;
   if (soft && overlayOpen() && d.placed) { applyView(d); return; }
+  // 有筆跡時連同筆跡一起符合視窗（筆跡可能畫在圖的範圍外）。
+  const c = contentBox(d) || { ox: 0, oy: 0, w: v.w, h: v.h };
   const place = (a) => {
     const w = a.right - a.left;
     const h = a.bottom - a.top;
     if (w <= 0 || h <= 0) return null;
-    const s = Math.min(w / v.w, h / v.h, ZOOM.fitMax);
-    const x = a.left + (w - v.w * s) / 2;
-    const y = a.top + (h - v.h * s) / 2;
-    return { s, x, y, right: x + v.w * s, bottom: y + v.h * s };
+    const s = Math.min(w / c.w, h / c.h, ZOOM.fitMax);
+    const x = a.left + (w - c.w * s) / 2;
+    const y = a.top + (h - c.h * s) / 2;
+    return { s, x, y, right: x + c.w * s, bottom: y + c.h * s, tx: x - c.ox * s, ty: y - c.oy * s };
   };
   const { full, box, around } = fitArea(d);
   let best = place(full);
@@ -402,8 +405,8 @@ function fitScreen(d, soft = false) {
   if (!best) return;
   d.scale = best.s;
   d.fitScale = best.s;
-  d.tx = best.x;
-  d.ty = best.y;
+  d.tx = best.tx;
+  d.ty = best.ty;
   applyView(d);
   d.fit = true;
   d.placed = true;
@@ -859,7 +862,8 @@ async function jpegToPdf(r, viewW, viewH) {
 function printOne(d) {
   const v = viewBox(d);
   if (!v) return;
-  const pageStyle = el('style', {}, `@page { size: ${Math.ceil(v.w) + 2}px ${Math.ceil(v.h) + 2}px; margin: 0; }`);
+  const c = contentBox(d) || v;
+  const pageStyle = el('style', {}, `@page { size: ${Math.ceil(c.w) + 2}px ${Math.ceil(c.h) + 2}px; margin: 0; }`);
   document.head.append(pageStyle);
   document.documentElement.classList.add('print-one');
   const done = () => {
@@ -1404,16 +1408,55 @@ function inkOf(d) {
 const hasInk = () => diagrams.some((d) => d.ink && [...d.ink.values()].some((x) => x.strokes.length));
 // 畫筆模式中，或觸控筆（不必切模式）按下時畫線；按住 Space 時改為平移。
 const wantsInk = (e) => !spaceDown && (e.pointerType === 'pen' ? e.button === 0 : penOn && (e.pointerType !== 'mouse' || e.button === 0));
+// 筆跡畫在圖上方另一層透明 SVG（與圖同 viewBox、同位置），這層不裁切，筆跡可以畫到圖的範圍外；
+// 圖本身仍裁切在 viewBox 內（部分圖種例如 gantt 有遠超出 viewBox 的內容）。
 function inkLayer(d) {
   const svg = d.canvas.querySelector('svg');
-  let g = svg?.querySelector(':scope > g.ink');
-  if (svg && !g) {
-    g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  if (!svg) return null;
+  let overlay = d.canvas.querySelector(':scope > svg.ink-overlay');
+  if (!overlay) {
+    overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    overlay.setAttribute('class', 'ink-overlay');
+    overlay.setAttribute('aria-hidden', 'true');
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'ink');
-    g.setAttribute('aria-hidden', 'true');
-    svg.append(g);
+    overlay.append(g);
+    d.canvas.append(overlay);
+    syncOverlay(d);
   }
-  return g;
+  return overlay.firstChild;
+}
+// 讓筆跡層跟著圖：同樣的 viewBox、尺寸與位置。
+function syncOverlay(d) {
+  const overlay = d.canvas.querySelector(':scope > svg.ink-overlay');
+  const svg = d.canvas.querySelector('svg');
+  if (!overlay || !svg || overlay === svg) return;
+  overlay.setAttribute('viewBox', svg.getAttribute('viewBox') || '');
+  overlay.setAttribute('preserveAspectRatio', svg.getAttribute('preserveAspectRatio') || 'xMidYMid meet');
+  ['width', 'height', 'transform', 'maxWidth'].forEach((k) => { overlay.style[k] = svg.style[k]; });
+}
+// 目前排版的筆跡範圍（SVG 座標，含線寬與 8 單位邊距）；沒有筆跡時回傳 null。
+function inkBounds(d) {
+  const strokes = d.ink ? inkOf(d).strokes : [];
+  if (!strokes.length) return null;
+  let b = [Infinity, Infinity, -Infinity, -Infinity];
+  strokes.forEach((s) => s.pts.forEach(([x, y]) => {
+    const r = s.width / 2 + 8;
+    b = [Math.min(b[0], x - r), Math.min(b[1], y - r), Math.max(b[2], x + r), Math.max(b[3], y + r)];
+  }));
+  return b;
+}
+// 圖與筆跡合起來的範圍，相對於 viewBox 原點：{ ox, oy, w, h }。供「全圖」與輸出像素使用。
+function contentBox(d, withInk = true) {
+  const vb = d.canvas.querySelector('svg')?.viewBox.baseVal;
+  if (!vb || !vb.width) return null;
+  const ib = withInk ? inkBounds(d) : null;
+  if (!ib) return { ox: 0, oy: 0, w: vb.width, h: vb.height };
+  const x0 = Math.min(vb.x, ib[0]);
+  const y0 = Math.min(vb.y, ib[1]);
+  const x1 = Math.max(vb.x + vb.width, ib[2]);
+  const y1 = Math.max(vb.y + vb.height, ib[3]);
+  return { ox: x0 - vb.x, oy: y0 - vb.y, w: x1 - x0, h: y1 - y0 };
 }
 function toSvg(d, e) {
   const svg = d.canvas.querySelector('svg');
@@ -1561,6 +1604,7 @@ function viewMap(d, root) {
   const ob = (d.svg.match(/viewBox="([^"]+)"/)?.[1] || '0 0 1 1').split(/[\s,]+/).map(Number);
   const nb = (root.getAttribute('viewBox') || '0 0 1 1').split(/[\s,]+/).map(Number);
   if (ob.every((v, k) => Math.abs(v - nb[k]) < 0.5)) return null;
+  if (ob.length !== 4 || nb.length !== 4 || !(ob[2] > 0 && ob[3] > 0 && nb[2] > 0 && nb[3] > 0)) return null;
   const sx = nb[2] / ob[2];
   const sy = nb[3] / ob[3];
   return {
@@ -1862,6 +1906,9 @@ function syncSizes() {
   diagrams.filter((d) => d.section === sections[current]).forEach((d) => {
     if (!d.ok || !d.sizeLabel || !viewBox(d)) return;
     let { w, h } = svgSize(d.svg);
+    // 匯出含筆跡時，筆跡畫到圖外會擴大輸出範圍。
+    const cb = exportInk === 'on' ? contentBox(d) : null;
+    if (cb) ({ w, h } = cb);
     if (exportLayout === 'card') {
       const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
       ({ TW: w, TH: h } = cardLayout(w, h, d.section.dataset.title, caption, d.anns.map((a) => `${a.n}. ${a.text}`)));
@@ -2178,8 +2225,31 @@ document.addEventListener('keydown', (e) => {
   if (page) viewKey(diagrams.find((x) => x.section === sections[current]), e);
 });
 // 列印時把各圖的說明放回原位，逐張印出。
-addEventListener('beforeprint', () => notes.forEach((n, section) => section.append(n)));
-addEventListener('afterprint', () => show(current, false));
+addEventListener('beforeprint', () => {
+  notes.forEach((n, section) => section.append(n));
+  // 列印時筆跡層隱藏，改把筆跡併進圖裡並暫時擴大 viewBox，圖外的筆跡也印得出來。
+  diagrams.forEach((d) => {
+    const svg = d.canvas.querySelector('svg');
+    const ib = svg && inkBounds(d);
+    if (!ib) return;
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'ink-print');
+    inkOf(d).strokes.forEach((s) => g.append(strokeEl(s)));
+    svg.append(g);
+    const c = contentBox(d);
+    const vb = svg.viewBox.baseVal;
+    d.printViewBox = svg.getAttribute('viewBox');
+    svg.setAttribute('viewBox', `${vb.x + c.ox} ${vb.y + c.oy} ${c.w} ${c.h}`);
+  });
+});
+addEventListener('afterprint', () => {
+  diagrams.forEach((d) => {
+    const svg = d.canvas.querySelector('svg');
+    svg?.querySelector(':scope > g.ink-print')?.remove();
+    if (d.printViewBox) { svg?.setAttribute('viewBox', d.printViewBox); d.printViewBox = null; }
+  });
+  show(current, false);
+});
 // 依浮動列的實際高度與寬度保留畫布空間（手機上工具列可能換行）。
 const root = document.documentElement;
 const measure = () => {

@@ -33,7 +33,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-To/Rdr1eMoY+BNDMacPCs64cP8rwro+ueFhtVBzHxqQ=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-t5TXmGXb0HfipSORQl8E12UXG29U3AGS3PSuLabQAxk=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -233,7 +233,7 @@ html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 96px); }
 #penbar [data-tool="eraser"] .swatch { background: transparent; border: 2px solid var(--muted); border-radius: 3px; width: 14px; height: 10px; }
 html.pen-on .canvas.ready, html.pen-on .canvas.ready svg g.node { cursor: crosshair; }
 html.app .canvas svg g.ink { pointer-events: none; }
-html.app .canvas > svg { overflow: visible; }
+html.app .canvas > svg.ink-overlay { overflow: visible; pointer-events: none; }
 html.erasing.pen-on .canvas.ready { cursor: cell; }
 html.app .canvas svg g.ink path.laser { filter: drop-shadow(0 0 4px #FF3B30); transition: opacity .4s; }
 html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
@@ -251,6 +251,7 @@ html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
 @media print {
 #info .notes, .notes h3 { display: none; }
 .toolbar, .float, .pop, .close, #selbar, #penbar { display: none !important; }
+.canvas > svg.ink-overlay { display: none !important; }
 .canvas svg.hl :is(g.node, [data-hl-edge], g.cluster) { opacity: 1 !important; filter: none !important; }
 .canvas { background-image: none !important; }
 .canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }
@@ -567,6 +568,7 @@ v.svg.style.maxWidth = 'none';
 v.svg.style.width = `${v.w * d.scale}px`;
 v.svg.style.height = `${v.h * d.scale}px`;
 v.svg.style.transform = `translate(${d.tx}px, ${d.ty}px)`;
+syncOverlay(d);
 syncGrid(d);
 showLevel(d);
 }
@@ -604,14 +606,15 @@ function fitScreen(d, soft = false) {
 const v = viewBox(d);
 if (!v || !d.canvas.clientWidth) return;
 if (soft && overlayOpen() && d.placed) { applyView(d); return; }
+const c = contentBox(d) || { ox: 0, oy: 0, w: v.w, h: v.h };
 const place = (a) => {
 const w = a.right - a.left;
 const h = a.bottom - a.top;
 if (w <= 0 || h <= 0) return null;
-const s = Math.min(w / v.w, h / v.h, ZOOM.fitMax);
-const x = a.left + (w - v.w * s) / 2;
-const y = a.top + (h - v.h * s) / 2;
-return { s, x, y, right: x + v.w * s, bottom: y + v.h * s };
+const s = Math.min(w / c.w, h / c.h, ZOOM.fitMax);
+const x = a.left + (w - c.w * s) / 2;
+const y = a.top + (h - c.h * s) / 2;
+return { s, x, y, right: x + c.w * s, bottom: y + c.h * s, tx: x - c.ox * s, ty: y - c.oy * s };
 };
 const { full, box, around } = fitArea(d);
 let best = place(full);
@@ -622,8 +625,8 @@ best = around.map(place).filter(Boolean).reduce((m, p) => (!m || p.s > m.s ? p :
 if (!best) return;
 d.scale = best.s;
 d.fitScale = best.s;
-d.tx = best.x;
-d.ty = best.y;
+d.tx = best.tx;
+d.ty = best.ty;
 applyView(d);
 d.fit = true;
 d.placed = true;
@@ -1007,7 +1010,8 @@ return new Blob(parts, { type: 'application/pdf' });
 function printOne(d) {
 const v = viewBox(d);
 if (!v) return;
-const pageStyle = el('style', {}, `@page { size: ${Math.ceil(v.w) + 2}px ${Math.ceil(v.h) + 2}px; margin: 0; }`);
+const c = contentBox(d) || v;
+const pageStyle = el('style', {}, `@page { size: ${Math.ceil(c.w) + 2}px ${Math.ceil(c.h) + 2}px; margin: 0; }`);
 document.head.append(pageStyle);
 document.documentElement.classList.add('print-one');
 const done = () => {
@@ -1504,14 +1508,48 @@ const hasInk = () => diagrams.some((d) => d.ink && [...d.ink.values()].some((x) 
 const wantsInk = (e) => !spaceDown && (e.pointerType === 'pen' ? e.button === 0 : penOn && (e.pointerType !== 'mouse' || e.button === 0));
 function inkLayer(d) {
 const svg = d.canvas.querySelector('svg');
-let g = svg?.querySelector(':scope > g.ink');
-if (svg && !g) {
-g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+if (!svg) return null;
+let overlay = d.canvas.querySelector(':scope > svg.ink-overlay');
+if (!overlay) {
+overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+overlay.setAttribute('class', 'ink-overlay');
+overlay.setAttribute('aria-hidden', 'true');
+const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 g.setAttribute('class', 'ink');
-g.setAttribute('aria-hidden', 'true');
-svg.append(g);
+overlay.append(g);
+d.canvas.append(overlay);
+syncOverlay(d);
 }
-return g;
+return overlay.firstChild;
+}
+function syncOverlay(d) {
+const overlay = d.canvas.querySelector(':scope > svg.ink-overlay');
+const svg = d.canvas.querySelector('svg');
+if (!overlay || !svg || overlay === svg) return;
+overlay.setAttribute('viewBox', svg.getAttribute('viewBox') || '');
+overlay.setAttribute('preserveAspectRatio', svg.getAttribute('preserveAspectRatio') || 'xMidYMid meet');
+['width', 'height', 'transform', 'maxWidth'].forEach((k) => { overlay.style[k] = svg.style[k]; });
+}
+function inkBounds(d) {
+const strokes = d.ink ? inkOf(d).strokes : [];
+if (!strokes.length) return null;
+let b = [Infinity, Infinity, -Infinity, -Infinity];
+strokes.forEach((s) => s.pts.forEach(([x, y]) => {
+const r = s.width / 2 + 8;
+b = [Math.min(b[0], x - r), Math.min(b[1], y - r), Math.max(b[2], x + r), Math.max(b[3], y + r)];
+}));
+return b;
+}
+function contentBox(d, withInk = true) {
+const vb = d.canvas.querySelector('svg')?.viewBox.baseVal;
+if (!vb || !vb.width) return null;
+const ib = withInk ? inkBounds(d) : null;
+if (!ib) return { ox: 0, oy: 0, w: vb.width, h: vb.height };
+const x0 = Math.min(vb.x, ib[0]);
+const y0 = Math.min(vb.y, ib[1]);
+const x1 = Math.max(vb.x + vb.width, ib[2]);
+const y1 = Math.max(vb.y + vb.height, ib[3]);
+return { ox: x0 - vb.x, oy: y0 - vb.y, w: x1 - x0, h: y1 - y0 };
 }
 function toSvg(d, e) {
 const svg = d.canvas.querySelector('svg');
@@ -1649,6 +1687,7 @@ function viewMap(d, root) {
 const ob = (d.svg.match(/viewBox="([^"]+)"/)?.[1] || '0 0 1 1').split(/[\s,]+/).map(Number);
 const nb = (root.getAttribute('viewBox') || '0 0 1 1').split(/[\s,]+/).map(Number);
 if (ob.every((v, k) => Math.abs(v - nb[k]) < 0.5)) return null;
+if (ob.length !== 4 || nb.length !== 4 || !(ob[2] > 0 && ob[3] > 0 && nb[2] > 0 && nb[3] > 0)) return null;
 const sx = nb[2] / ob[2];
 const sy = nb[3] / ob[3];
 return {
@@ -1913,6 +1952,8 @@ document.querySelectorAll('[data-opt]').forEach((b) => b.setAttribute('aria-chec
 diagrams.filter((d) => d.section === sections[current]).forEach((d) => {
 if (!d.ok || !d.sizeLabel || !viewBox(d)) return;
 let { w, h } = svgSize(d.svg);
+const cb = exportInk === 'on' ? contentBox(d) : null;
+if (cb) ({ w, h } = cb);
 if (exportLayout === 'card') {
 const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
 ({ TW: w, TH: h } = cardLayout(w, h, d.section.dataset.title, caption, d.anns.map((a) => `${a.n}. ${a.text}`)));
@@ -2197,8 +2238,30 @@ return;
 }
 if (page) viewKey(diagrams.find((x) => x.section === sections[current]), e);
 });
-addEventListener('beforeprint', () => notes.forEach((n, section) => section.append(n)));
-addEventListener('afterprint', () => show(current, false));
+addEventListener('beforeprint', () => {
+notes.forEach((n, section) => section.append(n));
+diagrams.forEach((d) => {
+const svg = d.canvas.querySelector('svg');
+const ib = svg && inkBounds(d);
+if (!ib) return;
+const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+g.setAttribute('class', 'ink-print');
+inkOf(d).strokes.forEach((s) => g.append(strokeEl(s)));
+svg.append(g);
+const c = contentBox(d);
+const vb = svg.viewBox.baseVal;
+d.printViewBox = svg.getAttribute('viewBox');
+svg.setAttribute('viewBox', `${vb.x + c.ox} ${vb.y + c.oy} ${c.w} ${c.h}`);
+});
+});
+addEventListener('afterprint', () => {
+diagrams.forEach((d) => {
+const svg = d.canvas.querySelector('svg');
+svg?.querySelector(':scope > g.ink-print')?.remove();
+if (d.printViewBox) { svg?.setAttribute('viewBox', d.printViewBox); d.printViewBox = null; }
+});
+show(current, false);
+});
 const root = document.documentElement;
 const measure = () => {
 const toolbars = diagrams.map((d) => d.toolbar).concat([...document.querySelectorAll('section.active .toolbar')]);
