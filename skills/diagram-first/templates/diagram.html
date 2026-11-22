@@ -33,7 +33,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-tZAWVFiT2wUhEBJjX1dFOzQwCuPNMY+fQki5EYazxr0=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-To/Rdr1eMoY+BNDMacPCs64cP8rwro+ueFhtVBzHxqQ=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -1462,7 +1462,7 @@ const root = doc.documentElement;
 const SVGNS = 'http://www.w3.org/2000/svg';
 const layer = doc.createElementNS(SVGNS, 'g');
 const map = viewMap(d, root);
-if (map) layer.setAttribute('transform', map);
+if (map) layer.setAttribute('transform', map.transform);
 root.append(layer);
 placed.forEach((a) => {
 const g = doc.createElementNS(SVGNS, 'g');
@@ -1646,11 +1646,16 @@ syncSizes();
 notify(T.inkCleared);
 }
 function viewMap(d, root) {
-const a = svgSize(d.svg);
 const ob = (d.svg.match(/viewBox="([^"]+)"/)?.[1] || '0 0 1 1').split(/[\s,]+/).map(Number);
 const nb = (root.getAttribute('viewBox') || '0 0 1 1').split(/[\s,]+/).map(Number);
-if (ob.every((v, k) => Math.abs(v - nb[k]) < 0.5)) return '';
-return `translate(${nb[0]} ${nb[1]}) scale(${nb[2] / a.w} ${nb[3] / a.h}) translate(${-ob[0]} ${-ob[1]})`;
+if (ob.every((v, k) => Math.abs(v - nb[k]) < 0.5)) return null;
+const sx = nb[2] / ob[2];
+const sy = nb[3] / ob[3];
+return {
+transform: `translate(${nb[0]} ${nb[1]}) scale(${sx} ${sy}) translate(${-ob[0]} ${-ob[1]})`,
+point: (x, y) => [nb[0] + (x - ob[0]) * sx, nb[1] + (y - ob[1]) * sy],
+scale: Math.max(sx, sy),
+};
 }
 function withInk(d, svgText, dark) {
 const strokes = inkOf(d).strokes;
@@ -1658,15 +1663,18 @@ if (!strokes.length) return svgText;
 const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
 const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
 const map = viewMap(d, doc.documentElement);
-if (map) g.setAttribute('transform', map);
+if (map) g.setAttribute('transform', map.transform);
 strokes.forEach((s) => g.append(strokeEl(s, doc, dark)));
 const root = doc.documentElement;
 root.append(g);
 const vb = (root.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
-if (vb.length === 4 && !map) {
+if (vb.length === 4) {
 let [x0, y0, x1, y1] = [vb[0], vb[1], vb[0] + vb[2], vb[1] + vb[3]];
-strokes.forEach((s) => s.pts.forEach(([x, y]) => {
-const r = s.width / 2 + 8;
+const at = map ? map.point : (x, y) => [x, y];
+const k = map ? map.scale : 1;
+strokes.forEach((s) => s.pts.forEach(([px, py]) => {
+const [x, y] = at(px, py);
+const r = (s.width / 2) * k + 8;
 x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - r); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + r);
 }));
 if (x0 < vb[0] || y0 < vb[1] || x1 > vb[0] + vb[2] || y1 > vb[1] + vb[3]) {

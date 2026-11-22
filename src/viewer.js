@@ -1359,7 +1359,7 @@ function exportAnnotations(d, svgText) {
   const SVGNS = 'http://www.w3.org/2000/svg';
   const layer = doc.createElementNS(SVGNS, 'g');
   const map = viewMap(d, root);
-  if (map) layer.setAttribute('transform', map);
+  if (map) layer.setAttribute('transform', map.transform);
   root.append(layer);
   placed.forEach((a) => {
     const g = doc.createElementNS(SVGNS, 'g');
@@ -1556,12 +1556,18 @@ function clearInk(d) {
   notify(T.inkCleared);
 }
 // 匯出用的 SVG 若重新 render（換配色或改用純 SVG 標籤），viewBox 可能和畫面不同；筆跡與徽章依兩者的 viewBox 等比對應過去。
+// 回傳 null 表示座標相同；否則回傳 SVG transform 字串與換算單點的函式（畫面座標 → 匯出座標）。
 function viewMap(d, root) {
-  const a = svgSize(d.svg);
   const ob = (d.svg.match(/viewBox="([^"]+)"/)?.[1] || '0 0 1 1').split(/[\s,]+/).map(Number);
   const nb = (root.getAttribute('viewBox') || '0 0 1 1').split(/[\s,]+/).map(Number);
-  if (ob.every((v, k) => Math.abs(v - nb[k]) < 0.5)) return '';
-  return `translate(${nb[0]} ${nb[1]}) scale(${nb[2] / a.w} ${nb[3] / a.h}) translate(${-ob[0]} ${-ob[1]})`;
+  if (ob.every((v, k) => Math.abs(v - nb[k]) < 0.5)) return null;
+  const sx = nb[2] / ob[2];
+  const sy = nb[3] / ob[3];
+  return {
+    transform: `translate(${nb[0]} ${nb[1]}) scale(${sx} ${sy}) translate(${-ob[0]} ${-ob[1]})`,
+    point: (x, y) => [nb[0] + (x - ob[0]) * sx, nb[1] + (y - ob[1]) * sy],
+    scale: Math.max(sx, sy),
+  };
 }
 // 匯出：把目前排版的筆跡加進匯出的 SVG（雷射筆不包含）；黑筆依匯出配色決定深淺。
 function withInk(d, svgText, dark) {
@@ -1570,16 +1576,20 @@ function withInk(d, svgText, dark) {
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
   const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
   const map = viewMap(d, doc.documentElement);
-  if (map) g.setAttribute('transform', map);
+  if (map) g.setAttribute('transform', map.transform);
   strokes.forEach((s) => g.append(strokeEl(s, doc, dark)));
   const root = doc.documentElement;
   root.append(g);
   // 筆跡超出圖的範圍時，擴大匯出的 viewBox 把筆跡包進來（含線寬與一點邊距）。
+  // 匯出重新 render（換配色）時，先把筆跡座標換算到匯出 SVG 的座標再計算。
   const vb = (root.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
-  if (vb.length === 4 && !map) {
+  if (vb.length === 4) {
     let [x0, y0, x1, y1] = [vb[0], vb[1], vb[0] + vb[2], vb[1] + vb[3]];
-    strokes.forEach((s) => s.pts.forEach(([x, y]) => {
-      const r = s.width / 2 + 8;
+    const at = map ? map.point : (x, y) => [x, y];
+    const k = map ? map.scale : 1;
+    strokes.forEach((s) => s.pts.forEach(([px, py]) => {
+      const [x, y] = at(px, py);
+      const r = (s.width / 2) * k + 8;
       x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - r); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + r);
     }));
     if (x0 < vb[0] || y0 < vb[1] || x1 > vb[0] + vb[2] || y1 > vb[1] + vb[3]) {
