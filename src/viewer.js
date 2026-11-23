@@ -818,7 +818,7 @@ async function exportSvg(d, transparent, htmlLabels = true) {
   if (exportLayout !== 'card') return { svg: ink(base), dark: t.dark };
   const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
   const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
-  return { svg: cardSvg(ink(exportAnnotations(d, base, t.dark)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
+  return { svg: cardSvg(ink(exportAnnotations(d, base)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
 }
 
 async function exportImage(d, type, transparent) {
@@ -1380,7 +1380,7 @@ function placeAnnotations(d) {
 }
 const annsOf = (d, node) => d.anns.filter((a) => a.target === node);
 // 匯出用：把徽章加進匯出的 SVG（只有卡片版面使用），並回傳文字清單。
-function exportAnnotations(d, svgText, exportDark = false) {
+function exportAnnotations(d, svgText) {
   const placed = d.anns.filter((a) => a.pos);
   if (!placed.length) return svgText;
   const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
@@ -2317,6 +2317,7 @@ addEventListener('beforeprint', () => {
     const c = contentBox(d);
     const vb = svg.viewBox.baseVal;
     d.printViewBox = svg.getAttribute('viewBox');
+    d.printSvg = svg;
     svg.setAttribute('viewBox', `${vb.x + c.ox} ${vb.y + c.oy} ${c.w} ${c.h}`);
   });
 });
@@ -2324,7 +2325,9 @@ addEventListener('afterprint', () => {
   diagrams.forEach((d) => {
     const svg = d.canvas.querySelector('svg');
     svg?.querySelector(':scope > g.ink-print')?.remove();
-    if (d.printViewBox) { svg?.setAttribute('viewBox', d.printViewBox); d.printViewBox = null; }
+    // 列印期間若圖被重繪（例如列印時視窗方向改變），新的 SVG 已有自己的 viewBox，不還原舊值。
+    if (d.printViewBox && svg === d.printSvg) svg.setAttribute('viewBox', d.printViewBox);
+    d.printViewBox = d.printSvg = null;
   });
   show(current, false);
 });

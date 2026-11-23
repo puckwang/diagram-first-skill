@@ -33,7 +33,7 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cqDXwrO3gkrdTVIPhc/umwoGddnq9rBzJYO6q2rDGik=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-fytxz/PtxFXbvkQX70UtZT4XHoMkX0SrcI7WNl25YpA=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
@@ -978,7 +978,7 @@ const ink = (svg) => (exportInk === 'on' ? withInk(d, svg, t.dark) : svg);
 if (exportLayout !== 'card') return { svg: ink(base), dark: t.dark };
 const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
 const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
-return { svg: cardSvg(ink(exportAnnotations(d, base, t.dark)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
+return { svg: cardSvg(ink(exportAnnotations(d, base)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
 }
 async function exportImage(d, type, transparent) {
 const first = await exportSvg(d, transparent);
@@ -1483,7 +1483,7 @@ n.el.setAttribute('aria-label', n.el.getAttribute('aria-label') + T.annAria(text
 });
 }
 const annsOf = (d, node) => d.anns.filter((a) => a.target === node);
-function exportAnnotations(d, svgText, exportDark = false) {
+function exportAnnotations(d, svgText) {
 const placed = d.anns.filter((a) => a.pos);
 if (!placed.length) return svgText;
 const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
@@ -2320,6 +2320,7 @@ svg.append(g);
 const c = contentBox(d);
 const vb = svg.viewBox.baseVal;
 d.printViewBox = svg.getAttribute('viewBox');
+d.printSvg = svg;
 svg.setAttribute('viewBox', `${vb.x + c.ox} ${vb.y + c.oy} ${c.w} ${c.h}`);
 });
 });
@@ -2327,7 +2328,8 @@ addEventListener('afterprint', () => {
 diagrams.forEach((d) => {
 const svg = d.canvas.querySelector('svg');
 svg?.querySelector(':scope > g.ink-print')?.remove();
-if (d.printViewBox) { svg?.setAttribute('viewBox', d.printViewBox); d.printViewBox = null; }
+if (d.printViewBox && svg === d.printSvg) svg.setAttribute('viewBox', d.printViewBox);
+d.printViewBox = d.printSvg = null;
 });
 show(current, false);
 });
