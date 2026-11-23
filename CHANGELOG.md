@@ -8,23 +8,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
-### Added
-- Add a pen: press ✎ or P for pen, highlighter, laser pointer, eraser, undo and clear; a stylus draws without switching modes; ink follows pan and zoom, can be included in exports and printing, and is not saved
-- Add agent notes (`{{NOTES}}`): numbered badges next to nodes, full text in the selection bar, a list in the notes window and footnotes in card exports; the status bar warns when a note's node is missing
-- Add the project version and a GitHub link at the bottom of the notes window, and include the diagram-first version in issue reports
-- Add `src/` sources and `scripts/build-template.mjs`: the template is generated with the CSP hash computed automatically, and CI checks they stay in sync; the template shrinks from about 108 KB to about 85 KB
-- Add an export size choice (1x / 2x / 4x / Max); exports that exceed the browser limit shrink automatically and report the actual pixels
-- Add PDF download (high-resolution raster) and Print / vector PDF (current diagram only, page sized to the diagram)
-- Add upstream/downstream highlighting: hover, click or Tab to a node to highlight everything it connects to; lock it to copy a node reference back into the chat
-- Add "Copy for Claude" issue reports from error messages, the status bar and the ⋯ menu, with the error, diagram name, source and environment
-- Add card exports (title and caption above the diagram) and export colors (as shown / light / dark)
-- Add ? to open the controls hint
-### Changed
-- Change the HTML page to an infinite canvas: drag to pan at any zoom level with mouse, pen or touch, pan with two-finger trackpad scroll, pinch to zoom, and show a subtle dot grid that follows pan and zoom
-- Change the notes window to start collapsed as a small card at top left with the current diagram's title and caption; expand it for the full notes. Everywhere outside the card can be dragged
-- Change fit-to-window to avoid the card or expanded notes window instead of pushing the canvas aside
-- Change keyboard controls: arrow keys pan, +/− zoom, 0 fits, 1 shows actual size; switch diagrams with PageUp/PageDown or ←/→ inside the contents menu
-- Rename the "Reset" button to "Fit" and show the controls hint in the expanded notes window
 
 ## [1.4.0] - 2026-11-23
 ### Added
