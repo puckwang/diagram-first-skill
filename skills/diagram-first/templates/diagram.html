@@ -2,32 +2,27 @@
 <!--
   diagram-first HTML 樣板
 
-  使用方式（Agent 直接編輯文字，不執行任何程式）：
+  使用方式（複製本檔後只替換佔位符，不必讀取或改動樣式表與程式區塊；本檔很大，請勿整檔讀取或重寫）：
+  0. cp 本檔到目標路徑，以 grep -n '{{' 找出佔位符所在行，只讀本段註解與 <body> 開頭的佔位符段落。
   1. 替換 {{LANG}}：使用者語言的 BCP 47 代碼，例如 zh-Hant-TW、en、ja。介面文字會依此切換。
      只能包含英數字與 -（此處在 CSP 生效之前）。
   2. 替換 {{TITLE}} 與 {{SUMMARY}}：頁面標題與一句話摘要，使用使用者的語言。
-  3. 每張圖複製一個 <section class="diagram">…</section>，填入：
+  3. 每張圖複製一個 section.diagram 區塊，填入：
      - {{DIAGRAM_TITLE}}：這張圖的標題
      - {{DIAGRAM_CAPTION}}：一句話結論（約 30 字以內），例如「付款失敗一律釋放庫存」
-     - {{MERMAID_SOURCE}}：Mermaid 原始碼，貼在 <script type="text/plain"> 內，縮排不影響結果
-     - {{LEGEND}}：圖例，預設不寫，刪除整個 <div class="legend">；只在有縮寫、代號或非補充不可的節點時加，
+     - {{MERMAID_SOURCE}}：Mermaid 原始碼，貼在 type="text/plain" 的 script 區塊內，縮排不影響結果
+     - {{LEGEND}}：圖例，預設不寫，刪除整個 legend 區塊（div.legend）；只在有縮寫、代號或非補充不可的節點時加，
        最多 5 條、每條一行（見 references/mermaid-guide.md 2.6）。頁面上預設收合。
-  4. 刪除所有尚未替換的 {{…}} 佔位符與本段註解。
-  5. Mermaid 原始碼中不可出現字串 </script，必要時改寫標籤。
+     - {{NOTES}}：註解，預設不寫，刪除整個註解區塊（ol.annotations）；規則見 references/mermaid-guide.md 2.7。
+       每條一個 li 元素，以 data-node 屬性填 Mermaid 節點 id，內容是一句話，綁在節點上會顯示編號徽章；不綁節點時省略 data-node。
+       每張圖最多 3 條、每條約 40 字，只寫純文字。
+  4. 刪除所有尚未替換的 {{…}} 佔位符與本段註解，完成後再以 grep -n '{{' 確認沒有殘留。
+  5. Mermaid 原始碼中不可出現 script 的結束標籤，必要時改寫標籤。
 
-  不要修改 <script type="module"> 內的程式、版本號與 CSP。
-  CSP 只允許兩種 script：下方 <script type="module"> 的內容（以 sha256 比對，改動任何字元就無法執行），
+  不要修改樣式表、module script 內的程式、版本號與 CSP。本檔由 repo 的 src/ 以 scripts/build-template.mjs 產生。
+  CSP 只允許兩種 script：下方 module script 的內容（以 sha256 比對，改動任何字元就無法執行），
   以及 jsDelivr 上的 mermaid@12.1.0。
 
-  頁面為單圖檢視：一次顯示一張圖並撐滿視窗、自動符合大小，其餘介面都由程式產生並浮在圖上：
-  - 左上：目錄（依各圖 <h2> 產生）。兩張圖以上時可用下拉清單、‹ ›、鍵盤 ←／→ 切換，網址同步為 #diagram-N。
-  - 右上：說明視窗開關、⚙ 設定（模式、方向、Theme，存在 localStorage）、全螢幕（瀏覽器不支援時不顯示）。
-  - 說明視窗：頁面標題、摘要，以及目前這張圖的標題、一句話結論、圖例與原始碼；開關狀態存在 localStorage。
-  - 下方工具列：縮放、重設（符合視窗）、個別方向；⋯ 選單內有下載 SVG／PNG／JPEG／WebP、複製圖片與原始碼。
-  方向只影響 flowchart、state、class、ER、requirement；「自動」依視窗方向，橫向時轉為水平、直向時轉為垂直。
-  自動符合大小最多放大到 150%。寬螢幕打開說明視窗時，圖會避開說明視窗；窄螢幕預設收合說明視窗。
-  個別方向選單（跟隨頁面／垂直／水平）只在本次瀏覽有效，不存 localStorage。
-  畫布內可用 Ctrl／⌘＋滾輪或觸控板捏合縮放、拖曳平移。列印時改為逐張排列。
   Theme 預設為「自動」：淺色模式用 redux-color，深色模式用 redux-dark-color。
   Mermaid 原始碼的 front matter 不可指定 theme，否則會蓋過使用者的選擇。
 
@@ -38,139 +33,245 @@
 <html lang="{{LANG}}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-9ciTO78Twoi7fnz8l71B2/ZEHS/qoratuqKPpLB/VAk=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-fytxz/PtxFXbvkQX70UtZT4XHoMkX0SrcI7WNl25YpA=' https://cdn.jsdelivr.net/npm/mermaid@12.1.0/; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>{{TITLE}}</title>
 <style>
-  :root {
-    --bg: #F7F7F8; --surface: #FFFFFF; --text: #1F2328; --muted: #59636E;
-    --border: #D1D9E0; --control: #EFF2F5; --control-text: #1F2328; --control-active: #FFFFFF;
-    --danger: #A32D2D; --danger-bg: #FCEBEB; --warn: #854F0B; --warn-bg: #FAEEDA;
-    --canvas-light: #FFFFFF; --canvas-dark: #1B1B1F;
-    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Hiragino Sans", "Noto Sans TC", "Noto Sans JP", "Microsoft JhengHei", sans-serif;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    color-scheme: light;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
-      --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
-      --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402;
-      color-scheme: dark;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
-    --border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
-    --danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402;
-    color-scheme: dark;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 var(--font); }
-  .page { padding: 32px 24px 64px; }
-  header .summary, .caption, .legend { max-width: 80ch; }
-  header h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
-  header .summary { color: var(--muted); margin: 0; }
-  #status { margin: 0 0 24px; padding: 10px 14px; border-radius: 8px; font-size: 14px; display: none; }
-  #status.show { display: block; }
-  #status.warn { background: var(--warn-bg); color: var(--warn); }
-  #status.error { background: var(--danger-bg); color: var(--danger); }
-  .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 0 0 24px; }
-  .diagram h2 { font-size: 18px; font-weight: 600; margin: 0 0 2px; }
-  .caption { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
-  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
-  .toolbar button, .toolbar select, .float button, .controls select {
-    font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
-  .toolbar button:hover, .float button:hover { opacity: .85; }
-  .toolbar .zoom { display: inline-flex; gap: 2px; }
-  .toolbar .zoom .level { min-width: 56px; font-variant-numeric: tabular-nums; }
-  .segmented { display: inline-flex; background: var(--control); border-radius: 6px; padding: 2px; }
-  .segmented button { background: transparent; border-radius: 4px; padding: 3px 10px; }
-  .segmented button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--border); }
-  .canvas { overflow: auto; border-radius: 8px; padding: 12px; background: var(--canvas-light); touch-action: pan-x pan-y pinch-zoom; }
-  .canvas.dark { background: var(--canvas-dark); }
-  .canvas.zoomed { cursor: grab; }
-  .canvas.dragging { cursor: grabbing; user-select: none; }
-  .canvas svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
-  .legend { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
-  .legend ul { margin: 0; padding-left: 20px; }
-  details.legend-box .legend { margin: 8px 0 0; }
-  .err { background: var(--danger-bg); color: var(--danger); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
-  .err pre, details pre { font: 13px/1.5 var(--mono); white-space: pre-wrap; margin: 8px 0 0; }
-  details { margin: 12px 0 0; font-size: 14px; }
-  details summary { cursor: pointer; color: var(--muted); }
-  details pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text); max-height: 40vh; overflow: auto; }
-  .float, .pop { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
-  .pop[hidden] { display: none; }
-  :where(.toolbar, .float, .controls, .menu) :where(button, select) { min-block-size: 24px; min-inline-size: 24px; }
-  @media (pointer: coarse) { :where(.toolbar, .float, .controls, .menu) :where(button, select) { min-block-size: 44px; min-inline-size: 44px; } }
-  :where(.toolbar, .float, .controls, #info) :where(button, select, summary):focus-visible, .canvas:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
-
-  /* 單圖檢視：一次顯示一張圖並撐滿視窗，其餘介面浮在圖上。程式載入 Mermaid 後才加上 .app；列印時改回逐張排列。 */
-  @media screen {
-    html.app, html.app body { height: 100%; overflow: hidden; }
-    html.app .page { padding: 0; }
-    html.app main { position: fixed; inset: 0; }
-    html.app section.diagram { display: none; position: absolute; inset: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
-    html.app section.diagram.active { display: block; }
-    #info[hidden] { display: none; }
-    html.app section.diagram > .notes { display: none; }
-    /* 標題只在視覺上隱藏（目錄按鈕已顯示），螢幕閱讀器仍可讀到。 */
-    html.app section.diagram > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-    html.app .canvas { position: absolute; inset: 0; border-radius: 0; display: flex;
-                       padding: calc(var(--top-h, 48px) + 12px) 16px calc(var(--bottom-h, 52px) + 12px); }
-    html.app .canvas svg { flex: none; margin: auto; }
-    html.app .canvas > .err { margin: auto; max-width: min(720px, 100%); }
-    html.app .toolbar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
-                        margin: 0; padding: 6px; width: max-content; max-width: calc(100vw - 24px); justify-content: center;
-                        background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
-    html.app #status { position: fixed; top: calc(var(--top-h, 48px) + 12px); left: 50%; transform: translateX(-50%); z-index: 40; margin: 0; width: max-content; max-width: calc(100vw - 24px); }
-    #nav, #actions { position: fixed; top: max(12px, env(safe-area-inset-top)); z-index: 30; display: flex; gap: 4px; align-items: center; padding: 4px; }
-    #nav { left: max(12px, env(safe-area-inset-left)); max-width: calc(100vw - var(--actions-w, 150px) - 36px); }
-    #actions { right: max(12px, env(safe-area-inset-right)); }
-    #nav .toc-btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    #nav > div, #actions > div { position: relative; min-width: 0; display: flex; }
-    /* 彈出面板用 Popover API（頂層、點外面或 Esc 關閉）；位置由程式依觸發按鈕設定，不支援 Popover API 時同樣適用。 */
-    .pop { position: fixed; inset: auto; margin: 0; top: var(--pop-top, 56px); left: var(--pop-left, auto); right: var(--pop-right, auto); bottom: var(--pop-bottom, auto);
-           z-index: 35; padding: 6px 0; max-height: min(70vh, var(--pop-max-h, 70vh)); max-width: calc(100vw - 24px); overflow: auto; color: var(--text); }
-    #toc-panel { min-width: 240px; max-width: min(360px, calc(100vw - 24px)); }
-    #settings { padding: 10px; }
-    .menu { padding: 6px; min-width: 200px; }
-    .menu button { display: block; width: 100%; text-align: start; font: 14px var(--font); color: var(--control-text); background: transparent;
-                   border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
-    .menu button:hover, .menu button:focus-visible { background: var(--control); }
-    .menu button[hidden] { display: none; }
-    .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
-             margin: 0; padding: 6px 14px; font-size: 13px; }
-    /* 提示區域保持在無障礙樹中，沒有內容時只在視覺上隱藏，讓螢幕閱讀器穩定讀出。 */
-    .toast:empty { opacity: 0; padding: 0; border-color: transparent; box-shadow: none; pointer-events: none; }
-    .toc ol { list-style: none; margin: 0; padding: 0; }
-    .toc a { display: block; padding: 4px 12px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; font-size: 14px; }
-    .toc a:hover { color: var(--text); background: var(--control); }
-    .toc a[aria-current="true"] { color: var(--text); border-left-color: var(--text); font-weight: 600; }
-    .controls { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-    #info { position: fixed; top: calc(var(--top-h, 48px) + 12px); left: max(12px, env(safe-area-inset-left)); z-index: 25; width: min(380px, calc(100vw - 24px));
-            max-height: calc(100dvh - var(--top-h, 48px) - var(--bottom-h, 52px) - 36px); overflow: auto; padding: 12px 16px;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
-    #info header h1 { font-size: 16px; margin: 0 28px 2px 0; line-height: 1.4; }
-    #info header .summary { font-size: 14px; }
-    @media (min-width: 900px) {
-      html.app.info-open .canvas { padding-left: calc(min(380px, 100vw - 24px) + 28px); }
-    }
-    #info .notes { border-top: 1px solid var(--border); margin: 10px 0 0; padding: 10px 0 0; }
-    #info .notes h3 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
-    #info .caption { margin: 0; }
-    #info .close { position: absolute; top: 8px; right: 8px; font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 0 8px; cursor: pointer; }
-  }
-  @media print {
-    #info .notes, .notes h3 { display: none; }
-    #info[hidden] { display: block !important; }
-    .toolbar, .float, .pop, .close { display: none !important; }
-    .canvas svg { max-width: 100% !important; width: auto !important; height: auto !important; }
-    section.diagram { break-inside: avoid; }
-  }
+:root {
+--bg: #F7F7F8; --surface: #FFFFFF; --text: #1F2328; --muted: #59636E;
+--border: #D1D9E0; --control: #EFF2F5; --control-text: #1F2328; --control-active: #FFFFFF;
+--danger: #A32D2D; --danger-bg: #FCEBEB; --warn: #854F0B; --warn-bg: #FAEEDA;
+--canvas-light: #FAFAFA; --canvas-dark: #1B1B1F; --hl: #0969DA; --ann: #9A6700;
+--font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Hiragino Sans", "Noto Sans TC", "Noto Sans JP", "Microsoft JhengHei", sans-serif;
+--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+:root:not([data-theme="light"]) {
+--bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
+--border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
+--danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF;
+color-scheme: dark;
+}
+}
+:root[data-theme="dark"] {
+--bg: #151518; --surface: #1F1F23; --text: #E8E8EA; --muted: #A0A0A8;
+--border: #3A3A40; --control: #2A2A2F; --control-text: #E8E8EA; --control-active: #44444B;
+--danger: #F7C1C1; --danger-bg: #501313; --warn: #FAC775; --warn-bg: #412402; --hl: #58A6FF;
+color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.7 var(--font); }
+.page { padding: 32px 24px 64px; }
+header .summary, .caption, .legend { max-width: 80ch; }
+header h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
+header .summary { color: var(--muted); margin: 0; }
+#status { margin: 0 0 24px; padding: 10px 14px; border-radius: 8px; font-size: 14px; display: none; }
+#status.show { display: block; }
+#status.warn { background: var(--warn-bg); color: var(--warn); }
+#status.error { background: var(--danger-bg); color: var(--danger); }
+.diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 0 0 24px; }
+.diagram h2 { font-size: 18px; font-weight: 600; margin: 0 0 2px; }
+.caption { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+.toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
+.toolbar button, .toolbar select, .float button, .controls select {
+font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.toolbar button:hover, .float button:hover { opacity: .85; }
+.toolbar button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
+.toolbar .zoom { display: inline-flex; gap: 2px; }
+.toolbar .zoom .level { min-width: 56px; font-variant-numeric: tabular-nums; }
+.segmented { display: inline-flex; background: var(--control); border-radius: 6px; padding: 2px; }
+.segmented button { background: transparent; border-radius: 4px; padding: 3px 10px; }
+.segmented button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--border); }
+.canvas { overflow: auto; border-radius: 8px; padding: 12px; background: var(--canvas-light); touch-action: pan-x pan-y pinch-zoom; }
+.canvas.dark { background: var(--canvas-dark); }
+.canvas.dragging { cursor: grabbing; user-select: none; }
+.canvas svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.legend { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+.legend ul { margin: 0; padding-left: 20px; }
+details.legend-box .legend { margin: 8px 0 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.err { background: var(--danger-bg); color: var(--danger); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+.err pre, details pre { font: 13px/1.5 var(--mono); white-space: pre-wrap; margin: 8px 0 0; }
+details { margin: 12px 0 0; font-size: 14px; }
+details summary { cursor: pointer; color: var(--muted); }
+details pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text); max-height: 40vh; overflow: auto; }
+.float, .pop { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
+.pop[hidden] { display: none; }
+:where(.toolbar, .float, .controls, .menu, #info) :where(button, select) { min-block-size: 24px; min-inline-size: 24px; }
+@media (pointer: coarse) {
+:where(.toolbar, .float, .controls, .menu, #info) :where(button, select) { min-block-size: 44px; min-inline-size: 44px; }
+#info header h1 { margin-right: 72px !important; }
+}
+.float button[aria-pressed="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--border); }
+:where(.toolbar, .float, .controls, #info) :where(button, select, summary):focus-visible, .canvas:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media screen {
+html.app, html.app body { height: 100%; overflow: hidden; }
+html.app .page { padding: 0; }
+html.app main { position: fixed; inset: 0; }
+html.app section.diagram { display: none; position: absolute; inset: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+html.app section.diagram.active { display: block; }
+html.app section.diagram > .notes { display: none; }
+html.app section.diagram > h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+html.app .canvas { position: absolute; inset: 0; border-radius: 0; padding: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+--dot: rgba(0, 0, 0, .13);
+background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.25px);
+background-size: var(--grid, 24px) var(--grid, 24px); background-position: var(--gx, 0) var(--gy, 0); }
+html.app .canvas.dark { --dot: rgba(255, 255, 255, .11); }
+html.app .canvas.ready { cursor: grab; }
+html.app .canvas:focus-visible { outline-offset: -4px; }
+html.app .canvas.dragging { cursor: grabbing; }
+html.app .canvas svg { position: absolute; left: 0; top: 0; margin: 0; max-width: none; transform-origin: 0 0; will-change: transform; }
+html.app .canvas > .err { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); cursor: auto; touch-action: auto; user-select: text; -webkit-user-select: text;
+width: max-content; max-width: min(720px, calc(100% - 32px)); max-height: 60vh; overflow: auto; }
+@media (prefers-contrast: more) { html.app .canvas { background-image: none; } }
+html.app .toolbar { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
+margin: 0; padding: 6px; width: max-content; max-width: calc(100vw - 24px); justify-content: center;
+background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
+html.app #status { position: fixed; top: calc(var(--top-h, 48px) + 20px); left: 12px; right: 12px; margin-inline: auto; z-index: 40; width: fit-content; max-width: calc(100vw - 24px); }
+#nav, #actions { position: fixed; top: max(12px, env(safe-area-inset-top)); z-index: 30; display: flex; gap: 4px; align-items: center; padding: 4px; }
+#nav { left: max(12px, env(safe-area-inset-left)); max-width: calc(100vw - var(--actions-w, 150px) - 36px); }
+#actions { right: max(12px, env(safe-area-inset-right)); }
+#nav .toc-btn { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 599px) { #nav .toc-btn:has(> span + .t) .t { display: none; } }
+#nav .toc-btn .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#nav > div, #actions > div { position: relative; min-width: 0; display: flex; }
+.pop { position: fixed; inset: auto; margin: 0; top: var(--pop-top, 56px); left: var(--pop-left, auto); right: var(--pop-right, auto); bottom: var(--pop-bottom, auto);
+z-index: 35; padding: 6px 0; max-height: min(70vh, var(--pop-max-h, 70vh)); max-width: calc(100vw - 24px); overflow: auto; color: var(--text); }
+#toc-panel { min-width: 240px; max-width: min(360px, calc(100vw - 24px)); }
+#settings { padding: 10px; }
+.menu { padding: 6px; min-width: 200px; }
+.menu button { display: block; width: 100%; text-align: start; font: 14px var(--font); color: var(--control-text); background: transparent;
+border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.menu button:hover, .menu button:focus-visible { background: var(--control); }
+.menu button[hidden], .menu .opts[hidden] { display: none; }
+.menu .opts { margin: 0 0 4px; padding: 0 0 4px; border-bottom: 1px solid var(--border); }
+.menu .sizes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 6px; }
+.menu .sizes .opt-label { flex: 0 0 auto; min-width: 3em; font-size: 12px; color: var(--muted); }
+.menu .sizes .size-label { flex: 1 0 100%; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.menu .sizes button { display: inline-block; width: auto; flex: 1; text-align: center; padding: 4px 6px; background: var(--control); }
+.menu .sizes button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 1px var(--text); font-weight: 600; }
+.toast { position: fixed; left: 12px; right: 12px; margin-inline: auto; width: fit-content; bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 40;
+margin-block: 0; padding: 6px 14px; font-size: 13px; }
+#selbar { position: fixed; left: 12px; right: 12px; margin-inline: auto; width: fit-content; bottom: calc(var(--bottom-h, 52px) + 24px); z-index: 30;
+display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; max-width: calc(100vw - 24px); font-size: 13px; }
+#selbar[hidden] { display: none; }
+#selbar .sel-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#selbar button { flex: none; white-space: nowrap; }
+#selbar .short { display: none; }
+@media (max-width: 599px) { #selbar .full { display: none; } #selbar .short { display: inline; } }
+#selbar:not([hidden]) ~ .toast { bottom: calc(var(--bottom-h, 52px) + 72px); }
+html.app .canvas svg g.node { cursor: pointer; }
+html.app .canvas svg g.node:focus { outline: none; }
+html.app .canvas svg g.node:focus-visible { outline: 3px solid var(--hl); outline-offset: 4px; }
+html.app .canvas svg.hl :is(g.node, [data-hl-edge]):not(.hl-on) { opacity: .15; }
+html.app .canvas svg.hl g.cluster { opacity: .45; }
+html.app .canvas svg :is(g.node, [data-hl-edge], g.cluster) { transition: opacity .15s; }
+html.app .canvas svg g.node.hl-sel { filter: drop-shadow(0 0 6px var(--hl)); }
+html.app .canvas svg g.node.hl-lock { filter: drop-shadow(0 0 1px var(--hl)) drop-shadow(0 0 1px var(--hl)) drop-shadow(0 0 6px var(--hl)); }
+html.app .canvas svg g.node.hl-lock > :is(rect, polygon, circle, ellipse, path), html.app .canvas svg g.node.hl-lock > g:first-child > :is(rect, polygon, circle, ellipse, path):first-child,
+html.app .canvas svg g.node.hl-lock .label-container { stroke: var(--hl) !important; stroke-width: 3px !important; }
+@media (prefers-reduced-motion: reduce) { html.app .canvas svg :is(g.node, [data-hl-edge], g.cluster) { transition: none; } }
+.err .report, #status .report { margin: 8px 0 0; font: 13px var(--font); color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+#status .report { margin: 0 0 0 10px; }
+#info .hint.flash { animation: hint-flash 1.2s ease-out; }
+@keyframes hint-flash { from { background: var(--control); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { #info .hint.flash { animation: none; } }
+.toast:empty { opacity: 0; padding: 0; border-color: transparent; box-shadow: none; pointer-events: none; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc a { display: block; padding: 4px 12px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; font-size: 14px; }
+.toc a:hover { color: var(--text); background: var(--control); }
+.toc a[aria-current="true"] { color: var(--text); border-left-color: var(--text); font-weight: 600; }
+.controls { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+#info { position: fixed; top: calc(var(--top-h, 48px) + 20px); left: max(12px, env(safe-area-inset-left)); z-index: 25; width: min(380px, calc(100vw - 24px));
+cursor: auto;
+max-height: calc(100dvh - var(--top-h, 48px) - var(--bottom-h, 52px) - 52px); overflow: auto; padding: 12px 16px;
+background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); }
+#info header h1 { font-size: 16px; margin: 0 28px 2px 0; line-height: 1.4; }
+#info header .summary { font-size: 14px; }
+#info.card { width: auto; max-width: min(320px, calc(100vw - 24px)); padding: 8px 12px; pointer-events: none; }
+#info.card .expand { pointer-events: auto; }
+#info.card > header, #info.card .notes details, #info.card .close, #info.card .hint { display: none; }
+#info.card .notes { border-top: 0; margin: 0; padding: 0; }
+@media (min-width: 900px) { #info.card .notes:has(.caption) > h3 { display: none; } }
+@media (max-width: 599px) {
+#info.card { display: flex; align-items: center; gap: 10px; }
+#info.card .notes { min-width: 0; }
+#info.card .notes > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; }
+#info.card .expand { margin: 0; flex: none; }
+}
+#info .ann-box h4 { font-size: 13px; font-weight: 600; margin: 10px 0 2px; }
+#info .ann-list { margin: 0; padding-left: 22px; font-size: 14px; }
+#info.card .ann-box { display: none; }
+html.app .canvas svg .ann-badge { cursor: pointer; }
+html.app .canvas svg .ann-badge circle { fill: var(--ann); stroke: var(--canvas-light); stroke-width: 2px; }
+html.app .canvas svg .ann-badge circle.hit { fill: transparent; stroke: none; }
+#info .ann-list .ann-go { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: start; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+html.app .canvas.dark svg .ann-badge circle { stroke: var(--canvas-dark); }
+html.app .canvas svg .ann-badge text { fill: #FFFFFF; font: 700 11px var(--font); pointer-events: none; }
+#selbar { flex-wrap: wrap; }
+#selbar .sel-text { flex: 1 1 auto; }
+#selbar .sel-note { flex: 1 0 100%; display: flex; flex-direction: column; padding: 0 8px 4px 0; color: var(--muted); white-space: normal; }
+#selbar .sel-note[hidden] { display: none; }
+#penbar { position: fixed; right: max(12px, env(safe-area-inset-right)); top: 50%; transform: translateY(-50%); z-index: 30;
+display: flex; flex-direction: column; gap: 4px; padding: 4px; }
+#penbar[hidden] { display: none; }
+#penbar .tools { display: flex; flex-direction: inherit; gap: 4px; }
+@media (max-width: 599px) {
+#penbar { flex-direction: column; top: auto; right: 12px; left: 12px; margin-inline: auto; width: fit-content; transform: none; bottom: calc(var(--bottom-h, 52px) + 24px); }
+#penbar .tools { flex-direction: row; justify-content: center; }
+#penbar .sep { display: none; }
+html.pen-on #selbar, html.stylus-bar #selbar { display: none; }
+html.pen-on .toolbar { display: none !important; }
+html.pen-on #penbar { bottom: max(12px, env(safe-area-inset-bottom)); }
+html.pen-on .toast { bottom: calc(var(--bottom-h, 52px) + 32px); }
+}
+#penbar button[aria-checked="true"] { background: var(--control-active); box-shadow: 0 0 0 2px var(--hl); }
+#penbar .sep { height: 1px; margin: 2px 4px; background: var(--border); }
+#penbar .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
+#penbar [data-tool="red"] .swatch { background: #E5484D; }
+#penbar [data-tool="blue"] .swatch { background: #0969DA; }
+#penbar [data-tool="ink"] .swatch { background: var(--text); }
+#penbar [data-tool="hl"] .swatch { background: #FFD33D; border-radius: 3px; width: 16px; }
+#penbar [data-tool="laser"] .swatch { background: #FF3B30; box-shadow: 0 0 6px 2px #FF3B30; width: 8px; height: 8px; }
+#penbar [data-tool="eraser"] .swatch { background: transparent; border: 2px solid var(--muted); border-radius: 3px; width: 14px; height: 10px; }
+html.pen-on .canvas.ready, html.pen-on .canvas.ready svg g.node { cursor: crosshair; }
+html.app .canvas svg g.ink { pointer-events: none; }
+html.app .canvas > svg.ink-overlay { overflow: visible; pointer-events: none; }
+html.erasing.pen-on .canvas.ready { cursor: crosshair; }
+html.pen-on.pen-pan .canvas.ready, html.pen-on.pen-pan .canvas.ready svg g.node { cursor: grab; }
+html.app .canvas svg g.ink path.laser { filter: drop-shadow(0 0 4px #FF3B30); transition: opacity .4s; }
+html.app .canvas svg g.ink path.laser.fade { opacity: 0; }
+#info .credit { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+#info .credit a { color: inherit; }
+#info.card .credit { display: none; }
+#info .hint { margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+#info:not(.card) .expand { display: none; }
+#info .expand { margin: 6px 0 0; min-block-size: 28px; font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+#info .notes { border-top: 1px solid var(--border); margin: 10px 0 0; padding: 10px 0 0; }
+#info .notes h3 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+#info .caption { margin: 0; }
+#info .close { position: absolute; top: 8px; right: 8px; font: 13px var(--font); color: var(--control-text); background: var(--control); border: 0; border-radius: 6px; padding: 0 8px; cursor: pointer; }
+}
+@media print {
+#info .notes, .notes h3 { display: none; }
+.toolbar, .float, .pop, .close, #selbar, #penbar { display: none !important; }
+.canvas > svg.ink-overlay { display: none !important; }
+.canvas svg.hl :is(g.node, [data-hl-edge], g.cluster) { opacity: 1 !important; filter: none !important; }
+.canvas { background-image: none !important; }
+.canvas svg { position: static !important; transform: none !important; max-width: 100% !important; width: auto !important; height: auto !important; }
+#info .expand, #info .hint, #info .credit { display: none; }
+section.diagram { break-inside: avoid; }
+html.print-one body { margin: 0; }
+html.print-one .page { padding: 0; }
+html.print-one :is(header, #info, #status, section.diagram:not(.active)) { display: none !important; }
+html.print-one section.diagram { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+html.print-one section.diagram > :not(.canvas) { display: none !important; }
+html.print-one .canvas { padding: 0; border-radius: 0; overflow: visible; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+html.print-one .canvas svg { max-height: 100vh !important; margin: 0 auto; }
+}
 </style>
 </head>
 <body>
@@ -190,6 +291,7 @@
 {{MERMAID_SOURCE}}
       </script>
       <div class="legend">{{LEGEND}}</div>
+      <ol class="annotations">{{NOTES}}</ol>
     </section>
 
   </main>
@@ -199,659 +301,1813 @@
 const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@12.1.0/dist/mermaid.esm.min.mjs';
 const THEMES = ['redux-color', 'redux-dark-color', 'redux', 'redux-dark', 'default', 'dark', 'neo', 'neo-dark', 'forest', 'neutral'];
 const AUTO_THEME = { light: 'redux-color', dark: 'redux-dark-color' };
-const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction', info: 'diagram-first:info' };
-const ZOOM = { min: 0.25, max: 4, step: 1.25, fitMax: 1.5 };
-
+const STORE = { mode: 'diagram-first:mode', theme: 'diagram-first:theme', direction: 'diagram-first:direction', info: 'diagram-first:info', size: 'diagram-first:export-size',
+layout: 'diagram-first:export-layout', palette: 'diagram-first:export-palette' };
+const EXPORT = { sizes: ['1', '2', '4', 'max'], side: 16384, area: 64e6 };
+const MERMAID_VERSION = '12.1.0';
+const APP = { version: '1.3.0', repo: 'https://github.com/puckwang/diagram-first-skill' };
+const ZOOM = { min: 0.1, max: 8, step: 1.25, fitMax: 1.5 };
+const PAN = { keep: 48, threshold: 4, key: 40 };
 const I18N = {
-  zh: { copy: '複製原始碼', copied: '已複製', source: 'Mermaid 原始碼',
-        mode: '模式', theme: 'Theme', auto: '自動', light: '淺色', dark: '深色',
-        direction: '方向', vertical: '垂直', horizontal: '水平',
-        zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '重設',
-        followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
-        info: '說明', close: '關閉', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
-        transparent: 'PNG（透明背景）', copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
-        loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
-        renderFail: 'Render 失敗：', some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。請把錯誤訊息回報給 Agent。`,
-        noElk: 'ELK 排版未生效，圖形以預設的 dagre 排版顯示。請回報給 Agent。' },
-  en: { copy: 'Copy source', copied: 'Copied', source: 'Mermaid source',
-        mode: 'Mode', theme: 'Theme', auto: 'Auto', light: 'Light', dark: 'Dark',
-        direction: 'Direction', vertical: 'Vertical', horizontal: 'Horizontal',
-        zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Reset',
-        followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
-        info: 'Notes', close: 'Close', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
-        transparent: 'PNG (transparent)', copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
-        loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
-        renderFail: 'Render failed:', some: (ok, bad) => `${ok} succeeded, ${bad} failed. Please report the error to the agent.`,
-        noElk: 'ELK layout is not active; diagrams fell back to dagre. Please report this to the agent.' },
-  ja: { copy: 'ソースをコピー', copied: 'コピーしました', source: 'Mermaid ソース',
-        mode: 'モード', theme: 'テーマ', auto: '自動', light: 'ライト', dark: 'ダーク',
-        direction: '方向', vertical: '縦', horizontal: '横',
-        zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: 'リセット',
-        followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
-        info: '説明', close: '閉じる', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
-        transparent: 'PNG（透過）', copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
-        loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
-        renderFail: '描画に失敗しました：', some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。エラーをエージェントに報告してください。`,
-        noElk: 'ELK レイアウトが有効になっていません（dagre で表示）。エージェントに報告してください。' },
+zh: { copy: '複製原始碼', copied: '已複製', source: 'Mermaid 原始碼',
+mode: '模式', theme: 'Theme', auto: '自動', light: '淺色', dark: '深色',
+direction: '方向', vertical: '垂直', horizontal: '水平',
+zoomIn: '放大', zoomOut: '縮小', zoomActual: '原始大小', reset: '全圖', fitTitle: '符合視窗',
+followPage: '跟隨頁面', fullscreen: '全螢幕', exitFullscreen: '離開全螢幕', toc: '目錄', legend: '圖例',
+info: '說明', close: '收合', expand: '展開說明',
+broken: '頁面結構不完整（樣式或標題沒有正確替換），可能顯示異常。可複製問題回報，貼回對話給 Claude。',
+nodeAria: (label, up, down) => `${label}，上游 ${up} 個、下游 ${down} 個`, upstream: '上游', downstream: '下游', none: '無',
+selInfo: (label, up, down) => `「${label}」上游 ${up}・下游 ${down}`, copyRef: '複製引用', clearSel: '取消選取', selected: '已選取節點',
+nodeRef: (k, n, title, id, label, ups, downs, up, down) => `第 ${k}/${n} 張圖〈${title}〉的節點${id ? ` ${id}` : ''}「${label}」（直接上游：${ups}；直接下游：${downs}；全部上游 ${up} 個、下游 ${down} 個）`,
+andMore: (n) => `等 ${n} 個`,
+report: '複製給 Claude', reportAll: '複製全部問題給 Claude', reportMenu: '複製問題回報給 Claude',
+reportTitle: '內容含原始碼與瀏覽器版本', reportCopied: '已複製，貼回對話給 Claude 即可',
+reportHead: '[diagram-first 問題回報]', reportPage: '頁面', reportDiagram: (k, n, title) => `第 ${k}/${n} 張〈${title}〉`, reportFig: '圖',
+reportState: '狀態', reportOk: 'render 成功', reportEnv: '環境', reportView: '檢視', reportSource: '原始碼', reportNote: '問題描述：',
+pen: '畫筆', penTools: '畫筆工具', penRed: '紅筆', penBlue: '藍筆', penInk: '黑筆', highlighter: '螢光筆', laser: '雷射筆',
+eraser: '橡皮擦', undo: '復原', clearInk: '清除這張圖的筆跡', exitPen: '離開畫筆', hideTools: '收起畫筆工具列',
+penOn: '畫筆模式：拖曳畫線，Space＋拖曳或滑鼠中鍵平移，Esc 離開。筆跡不會保存，可用匯出帶走。',
+penOnTouch: '畫筆模式：單指畫線、兩指平移縮放，按 × 離開。筆跡不會保存，可用匯出帶走。',
+stylusOn: '觸控筆可直接畫，手指照常平移；工具列按 × 收起。', penOff: '已離開畫筆模式',
+inkCleared: '已清除筆跡，可按復原', inkLabel: '筆跡', inkOn: '含', inkOff: '不含', inkLeave: '筆跡不會保存，確定離開？',
+annTitle: '註解', annMissing: (list) => `${list} 找不到對應的節點，只列在說明視窗。可複製問題回報，貼回對話給 Claude。`,
+annItem: (n, node) => `註解 ${n}（節點 ${node}）`, annAria: (texts) => `，註解：${texts}`, annRef: (texts) => `；註解：${texts}`,
+madeWith: '由', madeWithAfter: '產生', repoLink: '在 GitHub 查看 diagram-first（另開視窗）',
+layout: '版面', layoutPlain: '只有圖', layoutCard: '卡片', palette: '配色', paletteFollow: '同畫面',
+hintTouch: '拖曳平移、兩指捏合縮放，按「全圖」還原；點節點看上下游；按 ✎ 用手指畫，觸控筆可直接畫。',
+hint: '拖曳或方向鍵平移，觸控板雙指平移、Shift＋滾輪水平平移；滾輪、捏合或 +／− 縮放；0 符合視窗、1 原始大小；PageUp／PageDown 切換圖。點節點或從畫布按 Tab 進入節點看上下游，節點間用 [ ] 或 Alt＋方向鍵移動，Enter 鎖定、Esc 取消；按 P 或 ✎ 使用畫筆（觸控筆可直接畫）；按 ? 開啟這段說明。', prev: '上一張', next: '下一張', settings: '設定', more: '更多動作', downloadAs: (f) => `下載 ${f}`,
+transparent: 'PNG（透明背景）', printPdf: '列印／向量 PDF', printTitle: '只印圖本身，不套用版面與配色', size: '大小', sizeMax: '最大',
+pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `已達瀏覽器上限，輸出 ${w}×${h} px`, copyImage: '複製圖片', copyFail: '無法複製', exportFail: '匯出失敗',
+loadFail: '無法載入 Mermaid，請確認網路連線後重新整理頁面。', parseFail: '語法錯誤，這張圖無法 render：',
+renderFail: 'Render 失敗：', some: (ok, bad) => `${ok} 張成功、${bad} 張失敗。可複製問題回報，貼回對話給 Claude。`,
+noElk: 'ELK 排版未生效，圖形以預設的 dagre 排版顯示。可複製問題回報，貼回對話給 Claude。' },
+en: { copy: 'Copy source', copied: 'Copied', source: 'Mermaid source',
+mode: 'Mode', theme: 'Theme', auto: 'Auto', light: 'Light', dark: 'Dark',
+direction: 'Direction', vertical: 'Vertical', horizontal: 'Horizontal',
+zoomIn: 'Zoom in', zoomOut: 'Zoom out', zoomActual: 'Actual size', reset: 'Fit', fitTitle: 'Fit to window',
+followPage: 'Follow page', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', toc: 'Contents', legend: 'Legend',
+info: 'Notes', close: 'Collapse', expand: 'Show notes',
+broken: 'The page structure is incomplete (styles or title were not replaced correctly) and may look wrong. Copy the issue report and paste it into the chat with Claude.',
+nodeAria: (label, up, down) => `${label}, ${up} upstream, ${down} downstream`, upstream: 'Upstream', downstream: 'Downstream', none: 'none',
+selInfo: (label, up, down) => `"${label}" ${up} upstream · ${down} downstream`, copyRef: 'Copy reference', clearSel: 'Clear selection', selected: 'Selected node',
+nodeRef: (k, n, title, id, label, ups, downs, up, down) => `Node ${id ? `${id} ` : ''}"${label}" in diagram ${k}/${n} "${title}" (direct upstream: ${ups}; direct downstream: ${downs}; ${up} upstream and ${down} downstream in total)`,
+andMore: (n) => `and ${n} more`,
+report: 'Copy for Claude', reportAll: 'Copy all issues for Claude', reportMenu: 'Copy issue report for Claude',
+reportTitle: 'Includes the source and browser version', reportCopied: 'Copied. Paste it into the chat with Claude',
+reportHead: '[diagram-first issue report]', reportPage: 'Page', reportDiagram: (k, n, title) => `${k}/${n} "${title}"`, reportFig: 'Diagram',
+reportState: 'Status', reportOk: 'rendered', reportEnv: 'Environment', reportView: 'View', reportSource: 'Source', reportNote: 'What looks wrong:',
+pen: 'Pen', penTools: 'Pen tools', penRed: 'Red pen', penBlue: 'Blue pen', penInk: 'Black pen', highlighter: 'Highlighter', laser: 'Laser pointer',
+eraser: 'Eraser', undo: 'Undo', clearInk: 'Clear the ink on this diagram', exitPen: 'Exit pen', hideTools: 'Hide pen tools',
+penOn: 'Pen mode: drag to draw, Space + drag or middle-click to pan, Esc to exit. Ink is not saved; export to keep it.',
+penOnTouch: 'Pen mode: draw with one finger, pan and zoom with two, tap × to exit. Ink is not saved; export to keep it.',
+stylusOn: 'Your stylus draws directly and fingers still pan. Tap × to hide the tools.', penOff: 'Left pen mode',
+inkCleared: 'Ink cleared. Undo to restore it', inkLabel: 'Ink', inkOn: 'Include', inkOff: 'Exclude', inkLeave: 'Ink is not saved. Leave anyway?',
+annTitle: 'Notes', annMissing: (list) => `${list}: no matching node, listed in the notes window only. Copy the issue report and paste it into the chat with Claude.`,
+annItem: (n, node) => `Note ${n} (node ${node})`, annAria: (texts) => `, notes: ${texts}`, annRef: (texts) => `; notes: ${texts}`,
+madeWith: 'Made with', madeWithAfter: '', repoLink: 'View diagram-first on GitHub (opens in a new window)',
+layout: 'Layout', layoutPlain: 'Diagram only', layoutCard: 'Card', palette: 'Colors', paletteFollow: 'As shown',
+hintTouch: 'Drag to pan, pinch to zoom, tap Fit to reset; tap a node to trace its upstream and downstream; tap ✎ to draw with a finger, or draw directly with a stylus.',
+hint: 'Drag or use arrow keys to pan; scroll with two fingers on a trackpad, or Shift + wheel to pan sideways; wheel, pinch or +/− to zoom; 0 fits the window, 1 shows actual size; PageUp/PageDown switch diagrams. Hover or click a node, or Tab from the canvas into the nodes, to trace its upstream and downstream; move between nodes with [ ] or Alt + arrow keys; Enter locks, Esc clears; press P or ✎ to draw (a stylus draws directly); press ? to open this help.', prev: 'Previous', next: 'Next', settings: 'Settings', more: 'More actions', downloadAs: (f) => `Download ${f}`,
+transparent: 'PNG (transparent)', printPdf: 'Print / vector PDF', printTitle: 'Prints the diagram only; layout and colors are not applied', size: 'Size', sizeMax: 'Max',
+pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `Browser limit reached, exported ${w}×${h} px`, copyImage: 'Copy image', copyFail: 'Copy failed', exportFail: 'Export failed',
+loadFail: 'Could not load Mermaid. Check your network connection and reload the page.', parseFail: 'Syntax error, this diagram could not be rendered:',
+renderFail: 'Render failed:', some: (ok, bad) => `${ok} succeeded, ${bad} failed. Copy the issue report and paste it into the chat with Claude.`,
+noElk: 'ELK layout is not active; diagrams fell back to dagre. Copy the issue report and paste it into the chat with Claude.' },
+ja: { copy: 'ソースをコピー', copied: 'コピーしました', source: 'Mermaid ソース',
+mode: 'モード', theme: 'テーマ', auto: '自動', light: 'ライト', dark: 'ダーク',
+direction: '方向', vertical: '縦', horizontal: '横',
+zoomIn: '拡大', zoomOut: '縮小', zoomActual: '原寸', reset: '全体', fitTitle: '画面に合わせる',
+followPage: 'ページに従う', fullscreen: '全画面', exitFullscreen: '全画面を終了', toc: '目次', legend: '凡例',
+info: '説明', close: '折りたたむ', expand: '説明を開く',
+broken: 'ページの構造が不完全です（スタイルやタイトルが正しく置き換えられていません）。表示が崩れる可能性があります。問題レポートをコピーして Claude との会話に貼り付けてください。',
+nodeAria: (label, up, down) => `${label}、上流 ${up} 件、下流 ${down} 件`, upstream: '上流', downstream: '下流', none: 'なし',
+selInfo: (label, up, down) => `「${label}」上流 ${up}・下流 ${down}`, copyRef: '参照をコピー', clearSel: '選択を解除', selected: '選択中のノード',
+nodeRef: (k, n, title, id, label, ups, downs, up, down) => `図 ${k}/${n}〈${title}〉のノード${id ? ` ${id}` : ''}「${label}」（直接の上流：${ups}；直接の下流：${downs}；上流 ${up} 件・下流 ${down} 件）`,
+andMore: (n) => `ほか ${n} 件`,
+report: 'Claude 用にコピー', reportAll: 'すべての問題を Claude 用にコピー', reportMenu: '問題レポートを Claude 用にコピー',
+reportTitle: 'ソースとブラウザのバージョンを含みます', reportCopied: 'コピーしました。Claude との会話に貼り付けてください',
+reportHead: '[diagram-first 問題レポート]', reportPage: 'ページ', reportDiagram: (k, n, title) => `${k}/${n}〈${title}〉`, reportFig: '図',
+reportState: '状態', reportOk: '描画成功', reportEnv: '環境', reportView: '表示', reportSource: 'ソース', reportNote: '問題の説明：',
+pen: 'ペン', penTools: 'ペンツール', penRed: '赤ペン', penBlue: '青ペン', penInk: '黒ペン', highlighter: '蛍光ペン', laser: 'レーザーポインター',
+eraser: '消しゴム', undo: '元に戻す', clearInk: 'この図の描き込みを消去', exitPen: 'ペンを終了', hideTools: 'ペンツールを閉じる',
+penOn: 'ペンモード：ドラッグで描画、Space＋ドラッグか中ボタンで移動、Esc で終了。描き込みは保存されないため、残すには書き出してください。',
+penOnTouch: 'ペンモード：1 本指で描画、2 本指で移動と拡大縮小、× で終了。描き込みは保存されないため、残すには書き出してください。',
+stylusOn: 'スタイラスはそのまま描画でき、指では移動できます。× でツールを閉じます。', penOff: 'ペンモードを終了しました',
+inkCleared: '描き込みを消去しました。元に戻せます', inkLabel: '描き込み', inkOn: '含める', inkOff: '含めない', inkLeave: '描き込みは保存されません。移動しますか？',
+annTitle: '注釈', annMissing: (list) => `${list} に対応するノードがないため、説明ウィンドウにのみ表示しています。問題レポートをコピーして Claude との会話に貼り付けてください。`,
+annItem: (n, node) => `注釈 ${n}（ノード ${node}）`, annAria: (texts) => `、注釈：${texts}`, annRef: (texts) => `；注釈：${texts}`,
+madeWith: '', madeWithAfter: 'で作成', repoLink: 'GitHub で diagram-first を見る（新しいウィンドウ）',
+layout: 'レイアウト', layoutPlain: '図のみ', layoutCard: 'カード', palette: '配色', paletteFollow: '表示どおり',
+hintTouch: 'ドラッグで移動、ピンチで拡大縮小、「全体」で元に戻す。ノードをタップすると上流と下流を表示。✎ で指で描画、スタイラスはそのまま描画。',
+hint: 'ドラッグ・矢印キー・トラックパッドの 2 本指・Shift＋ホイールで移動、ホイール・ピンチ・+／− で拡大縮小、0 で画面に合わせ、1 で原寸、PageUp／PageDown で図を切り替え。ノードにポインターを置く・クリック・キャンバスから Tab で上流と下流を表示、ノード間は [ ] か Alt＋矢印キーで移動、Enter で固定、Esc で解除。P か ✎ でペン（スタイラスはそのまま描画）。? でこの説明を開く。', prev: '前へ', next: '次へ', settings: '設定', more: 'その他の操作', downloadAs: (f) => `${f} をダウンロード`,
+transparent: 'PNG（透過）', printPdf: '印刷／ベクター PDF', printTitle: '図のみを印刷し、レイアウトと配色は適用しません', size: 'サイズ', sizeMax: '最大',
+pixels: (w, h) => `${w}×${h} px`, capped: (w, h) => `ブラウザの上限に達したため ${w}×${h} px で書き出しました`, copyImage: '画像をコピー', copyFail: 'コピーできません', exportFail: '書き出しに失敗しました',
+loadFail: 'Mermaid を読み込めません。ネットワーク接続を確認して再読み込みしてください。', parseFail: '構文エラーのため描画できません：',
+renderFail: '描画に失敗しました：', some: (ok, bad) => `${ok} 枚成功、${bad} 枚失敗。問題レポートをコピーして Claude との会話に貼り付けてください。`,
+noElk: 'ELK レイアウトが有効になっていません（dagre で表示）。問題レポートをコピーして Claude との会話に貼り付けてください。' },
 };
 const lang = (document.documentElement.lang || 'zh').toLowerCase();
 const T = I18N[lang.slice(0, 2)] || I18N.en;
-
 const statusEl = document.getElementById('status');
-function setStatus(kind, text) {
-  statusEl.className = 'show ' + kind;
-  statusEl.textContent = text;
+const errors = new Map();
+let elkOk = null;
+let statusText = '';
+function setStatus(kind, text, extra) {
+statusText = text;
+statusEl.className = 'show ' + kind;
+statusEl.textContent = text;
+if (extra) statusEl.append(extra);
 }
-
 function load(key, allowed, fallback) {
-  try {
-    const v = localStorage.getItem(key);
-    return allowed.includes(v) ? v : fallback;
-  } catch { return fallback; }
+try {
+const v = localStorage.getItem(key);
+return allowed.includes(v) ? v : fallback;
+} catch { return fallback; }
 }
 function save(key, value) {
-  try { localStorage.setItem(key, value); } catch {}
+try { localStorage.setItem(key, value); } catch {}
 }
-
 const systemDark = matchMedia('(prefers-color-scheme: dark)');
 let mode = load(STORE.mode, ['auto', 'light', 'dark'], 'auto');
 let theme = load(STORE.theme, ['auto', ...THEMES], 'auto');
 const landscape = matchMedia('(orientation: landscape)');
 let direction = load(STORE.direction, ['auto', 'vertical', 'horizontal'], 'auto');
-
 function isDark() {
-  return mode === 'dark' || (mode === 'auto' && systemDark.matches);
+return mode === 'dark' || (mode === 'auto' && systemDark.matches);
 }
 function applyMode() {
-  if (mode === 'auto') delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = mode;
+if (mode === 'auto') delete document.documentElement.dataset.theme;
+else document.documentElement.dataset.theme = mode;
 }
 function currentTheme() {
-  return theme === 'auto' ? AUTO_THEME[isDark() ? 'dark' : 'light'] : theme;
+return theme === 'auto' ? AUTO_THEME[isDark() ? 'dark' : 'light'] : theme;
 }
 applyMode();
-
 function dedent(text) {
-  const lines = text.replace(/\t/g, '    ').split('\n');
-  while (lines.length && !lines[0].trim()) lines.shift();
-  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
-  const indents = lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length);
-  const min = indents.length ? Math.min(...indents) : 0;
-  return lines.map((l) => l.slice(min)).join('\n');
+const lines = text.replace(/\t/g, '    ').split('\n');
+while (lines.length && !lines[0].trim()) lines.shift();
+while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+const indents = lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length);
+const min = indents.length ? Math.min(...indents) : 0;
+return lines.map((l) => l.slice(min)).join('\n');
 }
-
 const DIRECTED = /^(flowchart(-elk)?|graph|stateDiagram(-v2)?|classDiagram(-v2)?|erDiagram|requirementDiagram)(?=[\s;]|$)/;
 const DIR = '(TB|TD|BT|LR|RL)';
-
-// 找出圖種宣告所在的行；略過 front matter、空行與 %% 註解。找不到時回傳 -1。
 function headerIndex(lines) {
-  let k = 0;
-  if (lines[0].trim() === '---') {
-    const end = lines.findIndex((l, n) => n > 0 && l.trim() === '---');
-    if (end < 0) return -1;
-    k = end + 1;
-  }
-  while (k < lines.length && (!lines[k].trim() || lines[k].trim().startsWith('%%'))) k++;
-  return k < lines.length ? k : -1;
+let k = 0;
+if (lines[0].trim() === '---') {
+const end = lines.findIndex((l, n) => n > 0 && l.trim() === '---');
+if (end < 0) return -1;
+k = end + 1;
+}
+while (k < lines.length && (!lines[k].trim() || lines[k].trim().startsWith('%%'))) k++;
+return k < lines.length ? k : -1;
 }
 function isDirected(source) {
-  const lines = source.split('\n');
-  const k = headerIndex(lines);
-  return k >= 0 && DIRECTED.test(lines[k].trim());
+const lines = source.split('\n');
+const k = headerIndex(lines);
+return k >= 0 && DIRECTED.test(lines[k].trim());
 }
-
-// 依方向設定 dir（auto／vertical／horizontal）改寫整張圖的方向；只處理有方向設定的圖種，subgraph 等區塊內的 direction 不動。
 function withDirection(source, dir) {
-  // 「自動」依視窗方向：橫向轉為水平，直向轉為垂直。
-  if (dir === 'auto') dir = landscape.matches ? 'horizontal' : 'vertical';
-  const lines = source.split('\n');
-  const k = headerIndex(lines);
-  if (k < 0) return source;
-  const header = lines[k].trim();
-  const type = header.match(DIRECTED);
-  if (!type) return source;
-
-  const flow = /^(flowchart|graph)/.test(type[1]);
-  let author = 'TB';
-  let at = -1;
-  if (flow) {
-    const m = header.match(new RegExp('^\\S+\\s+' + DIR + '(?=[\\s;]|$)'));
-    if (m) author = m[1];
-  } else {
-    let depth = 0;
-    for (let n = k + 1; n < lines.length; n++) {
-      const m = depth === 0 && lines[n].match(new RegExp('^\\s*direction\\s+' + DIR + '\\s*$'));
-      if (m) { author = m[1]; at = n; break; }
-      depth += (lines[n].match(/\{/g) || []).length - (lines[n].match(/\}/g) || []).length;
-    }
-  }
-
-  const horizontal = author === 'LR' || author === 'RL';
-  if (dir === 'vertical' && !horizontal) return source;
-  if (dir === 'horizontal' && horizontal) return source;
-  const target = dir === 'vertical' ? 'TB' : 'LR';
-
-  if (flow) {
-    lines[k] = lines[k].replace(new RegExp('^(\\s*\\S+)(\\s+' + DIR + ')?(?=[\\s;]|$)'), `$1 ${target}`);
-  } else if (at >= 0) {
-    lines[at] = lines[at].replace(new RegExp(DIR), target);
-  } else {
-    lines.splice(k + 1, 0, `  direction ${target}`);
-  }
-  return lines.join('\n');
+if (dir === 'auto') dir = landscape.matches ? 'horizontal' : 'vertical';
+const lines = source.split('\n');
+const k = headerIndex(lines);
+if (k < 0) return source;
+const header = lines[k].trim();
+const type = header.match(DIRECTED);
+if (!type) return source;
+const flow = /^(flowchart|graph)/.test(type[1]);
+let author = 'TB';
+let at = -1;
+if (flow) {
+const m = header.match(new RegExp('^\\S+\\s+' + DIR + '(?=[\\s;]|$)'));
+if (m) author = m[1];
+} else {
+let depth = 0;
+for (let n = k + 1; n < lines.length; n++) {
+const m = depth === 0 && lines[n].match(new RegExp('^\\s*direction\\s+' + DIR + '\\s*$'));
+if (m) { author = m[1]; at = n; break; }
+depth += (lines[n].match(/\{/g) || []).length - (lines[n].match(/\}/g) || []).length;
 }
-
+}
+const horizontal = author === 'LR' || author === 'RL';
+if (dir === 'vertical' && !horizontal) return source;
+if (dir === 'horizontal' && horizontal) return source;
+const target = dir === 'vertical' ? 'TB' : 'LR';
+if (flow) {
+lines[k] = lines[k].replace(new RegExp('^(\\s*\\S+)(\\s+' + DIR + ')?(?=[\\s;]|$)'), `$1 ${target}`);
+} else if (at >= 0) {
+lines[at] = lines[at].replace(new RegExp(DIR), target);
+} else {
+lines.splice(k + 1, 0, `  direction ${target}`);
+}
+return lines.join('\n');
+}
 function el(tag, attrs = {}, text) {
-  const node = document.createElement(tag);
-  Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
-  if (text !== undefined) node.textContent = text;
-  return node;
+const node = document.createElement(tag);
+Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
+if (text !== undefined) node.textContent = text;
+return node;
 }
-
 async function elkIsActive(mermaid) {
-  const body = 'flowchart LR\n  A --> B\n  A --> C\n  B --> D\n  C --> D\n  A --> D';
-  try {
-    const a = await mermaid.render('probe-elk', '---\nconfig:\n  layout: elk\n---\n' + body);
-    const b = await mermaid.render('probe-dagre', '---\nconfig:\n  layout: dagre\n---\n' + body);
-    const strip = (s, id) => s.split(id).join('X');
-    return strip(a.svg, 'probe-elk') !== strip(b.svg, 'probe-dagre');
-  } catch {
-    return false;
-  }
+const body = 'flowchart LR\n  A --> B\n  A --> C\n  B --> D\n  C --> D\n  A --> D';
+try {
+const a = await mermaid.render('probe-elk', '---\nconfig:\n  layout: elk\n---\n' + body);
+const b = await mermaid.render('probe-dagre', '---\nconfig:\n  layout: dagre\n---\n' + body);
+const strip = (s, id) => s.split(id).join('X');
+return strip(a.svg, 'probe-elk') !== strip(b.svg, 'probe-dagre');
+} catch {
+return false;
 }
-
+}
 let mermaid;
 try {
-  ({ default: mermaid } = await import(MERMAID_URL));
+({ default: mermaid } = await import(MERMAID_URL));
 } catch (e) {
-  setStatus('error', T.loadFail);
-  throw e;
+setStatus('error', T.loadFail);
+throw e;
 }
-
 const font = getComputedStyle(document.documentElement).getPropertyValue('--font').trim();
 await document.fonts.ready;
 function initMermaid() {
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: currentTheme(),
-    fontFamily: font,
-    themeVariables: { fontFamily: font },
-  });
+mermaid.initialize({
+startOnLoad: false,
+securityLevel: 'strict',
+theme: currentTheme(),
+fontFamily: font,
+themeVariables: { fontFamily: font },
+});
 }
-
-function viewWidth(d) {
-  const svg = d.canvas.querySelector('svg');
-  const vb = svg && svg.viewBox && svg.viewBox.baseVal;
-  return vb && vb.width ? vb.width : 0;
+function viewBox(d) {
+const svg = d.canvas.querySelector('svg');
+const vb = svg && svg.viewBox && svg.viewBox.baseVal;
+return vb && vb.width && vb.height ? { svg, w: vb.width, h: vb.height } : null;
 }
 function currentScale(d) {
-  const svg = d.canvas.querySelector('svg');
-  const w = viewWidth(d);
-  return svg && w ? svg.getBoundingClientRect().width / w : 1;
+return d.scale || 1;
 }
 function showLevel(d) {
-  if (d.ok) d.level.textContent = `${Math.round(currentScale(d) * 100)}%`;
+if (!d.ok) return;
+const pct = `${Math.round(currentScale(d) * 100)}%`;
+d.level.textContent = pct;
+d.level.setAttribute('aria-label', `${pct}, ${T.zoomActual}`);
 }
-
-// scale 為 null 時符合寬度；anchor 為縮放時保持不動的螢幕座標。
+function syncGrid(d) {
+let g = 24 * d.scale;
+while (g < 12) g *= 2;
+while (g > 48) g /= 2;
+const c = d.canvas.style;
+c.setProperty('--grid', `${g}px`);
+c.setProperty('--gx', `${d.tx % g}px`);
+c.setProperty('--gy', `${d.ty % g}px`);
+}
+function barLimits(d) {
+const ch = d.canvas.clientHeight;
+const top = (parseFloat(root.style.getPropertyValue('--top-h')) || 48) + 20;
+const bottom = ch - (parseFloat(root.style.getPropertyValue('--bottom-h')) || 52) - 20 - (parseFloat(root.style.getPropertyValue('--sel-h')) || 0);
+return { top, bottom: Math.max(top + 1, bottom) };
+}
+function clampPan(d, w, h) {
+const cw = d.canvas.clientWidth;
+const { top, bottom } = barLimits(d);
+const keepX = Math.min(PAN.keep, w * d.scale);
+const keepY = Math.min(PAN.keep, h * d.scale);
+d.tx = Math.min(cw - keepX, Math.max(keepX - w * d.scale, d.tx));
+d.ty = Math.min(bottom - keepY, Math.max(top + keepY - h * d.scale, d.ty));
+}
+function applyView(d) {
+const v = viewBox(d);
+if (!v || !d.canvas.clientWidth) return;
+clampPan(d, v.w, v.h);
+v.svg.style.maxWidth = 'none';
+v.svg.style.width = `${v.w * d.scale}px`;
+v.svg.style.height = `${v.h * d.scale}px`;
+v.svg.style.transform = `translate(${d.tx}px, ${d.ty}px)`;
+syncOverlay(d);
+syncGrid(d);
+showLevel(d);
+}
+function clampScale(d, s) {
+return Math.min(ZOOM.max, Math.max(Math.min(ZOOM.min, d.fitScale || ZOOM.min), s));
+}
 function setZoom(d, scale, anchor) {
-  const svg = d.canvas.querySelector('svg');
-  const w = viewWidth(d);
-  if (!svg || !w) return;
-  const before = svg.getBoundingClientRect();
-  if (scale === null) {
-    if (d.baseStyle === null) svg.removeAttribute('style');
-    else svg.setAttribute('style', d.baseStyle);
-    d.canvas.classList.remove('zoomed');
-  } else {
-    scale = Math.min(ZOOM.max, Math.max(ZOOM.min, scale));
-    svg.style.maxWidth = 'none';
-    svg.style.width = `${w * scale}px`;
-    d.canvas.classList.add('zoomed');
-  }
-  d.scale = scale;
-  d.fit = false;
-  if (anchor) {
-    const rx = (anchor.x - before.left) / before.width;
-    const ry = (anchor.y - before.top) / before.height;
-    const after = svg.getBoundingClientRect();
-    d.canvas.scrollLeft += after.left + rx * after.width - anchor.x;
-    d.canvas.scrollTop += after.top + ry * after.height - anchor.y;
-  }
-  showLevel(d);
+if (!viewBox(d)) return;
+const r = d.canvas.getBoundingClientRect();
+const ax = (anchor ? anchor.x : r.left + r.width / 2) - r.left;
+const ay = (anchor ? anchor.y : r.top + r.height / 2) - r.top;
+const next = clampScale(d, scale);
+d.tx = ax - (ax - d.tx) * (next / d.scale);
+d.ty = ay - (ay - d.ty) * (next / d.scale);
+d.scale = next;
+d.fit = false;
+applyView(d);
 }
-
-// 讓整張圖符合畫布的寬與高；畫布不可見時不動作，等切換到這張圖時再計算。
-function fitScreen(d) {
-  const svg = d.canvas.querySelector('svg');
-  const vb = svg && svg.viewBox && svg.viewBox.baseVal;
-  if (!vb || !vb.width || !vb.height) return;
-  const cs = getComputedStyle(d.canvas);
-  const w = d.canvas.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 1;
-  const h = d.canvas.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 1;
-  if (w <= 0 || h <= 0) return;
-  setZoom(d, Math.min(w / vb.width, h / vb.height, ZOOM.fitMax));
-  d.fit = true;
-  d.canvas.classList.remove('zoomed');
+function panBy(d, dx, dy) {
+d.tx += dx;
+d.ty += dy;
+d.fit = false;
+applyView(d);
 }
-
-// 全螢幕：整頁進入 Fullscreen API，隱藏瀏覽器介面；不支援的環境（例如 iPhone Safari）不顯示按鈕。
+const overlayOpen = () => !info.classList.contains('card') && innerWidth < 900;
+function fitArea(d) {
+const r = d.canvas.getBoundingClientRect();
+const penW = parseFloat(root.style.getPropertyValue('--pen-w')) || 0;
+const full = { left: 16, ...barLimits(d), right: r.width - 16 - penW };
+const b = info.getBoundingClientRect();
+if (!b.width) return { full, around: [] };
+const box = { left: b.left - r.left, top: b.top - r.top, right: b.right - r.left, bottom: b.bottom - r.top };
+return { full, box, around: [{ ...full, left: Math.max(full.left, box.right + 16) }, { ...full, top: Math.max(full.top, box.bottom + 12) }] };
+}
+function fitScreen(d, soft = false) {
+const v = viewBox(d);
+if (!v || !d.canvas.clientWidth) return;
+if (soft && overlayOpen() && d.placed) { applyView(d); return; }
+const c = contentBox(d) || { ox: 0, oy: 0, w: v.w, h: v.h };
+const place = (a) => {
+const w = a.right - a.left;
+const h = a.bottom - a.top;
+if (w <= 0 || h <= 0) return null;
+const s = Math.min(w / c.w, h / c.h, ZOOM.fitMax);
+const x = a.left + (w - c.w * s) / 2;
+const y = a.top + (h - c.h * s) / 2;
+return { s, x, y, right: x + c.w * s, bottom: y + c.h * s, tx: x - c.ox * s, ty: y - c.oy * s };
+};
+const { full, box, around } = fitArea(d);
+let best = place(full);
+const hits = (p) => box && !overlayOpen() && p.x < box.right && p.right > box.left && p.y < box.bottom && p.bottom > box.top;
+if (best && hits(best)) {
+best = around.map(place).filter(Boolean).reduce((m, p) => (!m || p.s > m.s ? p : m), null);
+}
+if (!best) return;
+d.scale = best.s;
+d.fitScale = best.s;
+d.tx = best.tx;
+d.ty = best.ty;
+applyView(d);
+d.fit = true;
+d.placed = true;
+}
 const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
 const fsEnabled = Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled);
 async function toggleFullscreen() {
-  const root = document.documentElement;
-  try {
-    if (fsElement()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-    else await (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
-  } catch {}
+const root = document.documentElement;
+try {
+if (fsElement()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+else await (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+} catch {}
 }
-
+let wheelKind = null;
+let wheelAt = 0;
+let wheelNotch = false;
+function wheelSource(e) {
+if (e.deltaMode === 0 && e.deltaX !== 0) wheelKind = null;
+else if (wheelKind && e.timeStamp - wheelAt < 150) { wheelAt = e.timeStamp; return wheelKind; }
+const chromePad = Boolean(e.wheelDeltaY) && Math.abs(e.deltaY * 3) === Math.abs(e.wheelDeltaY);
+const wheel120 = !chromePad && e.wheelDeltaY && e.wheelDeltaY % 120 === 0;
+const notch = e.deltaX === 0 && !chromePad && (wheel120 || (Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50));
+wheelKind = e.deltaMode !== 0 || notch ? 'mouse' : 'trackpad';
+wheelNotch = e.deltaMode !== 0 || Boolean(wheel120);
+wheelAt = e.timeStamp;
+return wheelKind;
+}
+function wheelZoomOrPan(d, e) {
+const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? d.canvas.clientHeight : 1;
+const dx = e.deltaX * unit;
+const dy = e.deltaY * unit;
+const at = { x: e.clientX, y: e.clientY };
+const zoom = e.ctrlKey || e.metaKey;
+if (e.shiftKey && !zoom) { wheelKind = null; panBy(d, -(dx || dy), 0); return; }
+const kind = wheelSource(e);
+const cap = (v, lo) => Math.sign(v) * Math.min(120, Math.max(lo, Math.abs(v)));
+if (zoom) setZoom(d, currentScale(d) * Math.exp(kind === 'trackpad' ? -dy * 0.01 : -cap(dy, 0) * 0.0025), at);
+else if (kind === 'trackpad') panBy(d, -dx, -dy);
+else {
+setZoom(d, currentScale(d) * Math.exp(-cap(dy, wheelNotch ? 40 : 0) * 0.0025), at);
+}
+}
 function bindGestures(d) {
-  const c = d.canvas;
-  c.addEventListener('wheel', (e) => {
-    if (!d.ok || !(e.ctrlKey || e.metaKey)) return;
-    e.preventDefault();
-    // 觸控板捏合送出小幅、連續的 deltaY；滑鼠滾輪每格以固定倍率縮放。
-    const pinch = e.deltaMode === 0 && Math.abs(e.deltaY) < 50;
-    const factor = pinch ? Math.exp(-e.deltaY * 0.01) : e.deltaY < 0 ? ZOOM.step : 1 / ZOOM.step;
-    setZoom(d, currentScale(d) * factor, { x: e.clientX, y: e.clientY });
-  }, { passive: false });
-  let gestureBase = 1;
-  c.addEventListener('gesturestart', (e) => { e.preventDefault(); gestureBase = currentScale(d); });
-  c.addEventListener('gesturechange', (e) => {
-    if (!d.ok) return;
-    e.preventDefault();
-    setZoom(d, gestureBase * e.scale, { x: e.clientX, y: e.clientY });
-  });
-  let drag = null;
-  c.addEventListener('pointerdown', (e) => {
-    if (d.scale === null || d.fit || e.pointerType !== 'mouse' || e.button !== 0) return;
-    drag = { x: e.clientX, y: e.clientY, left: c.scrollLeft, top: c.scrollTop };
-    c.setPointerCapture(e.pointerId);
-    c.classList.add('dragging');
-  });
-  c.addEventListener('pointermove', (e) => {
-    if (!drag) return;
-    c.scrollLeft = drag.left - (e.clientX - drag.x);
-    c.scrollTop = drag.top - (e.clientY - drag.y);
-  });
-  const end = () => { drag = null; c.classList.remove('dragging'); };
-  c.addEventListener('pointerup', end);
-  c.addEventListener('pointercancel', end);
+const c = d.canvas;
+c.addEventListener('wheel', (e) => {
+if (!d.ok) return;
+e.preventDefault();
+wheelZoomOrPan(d, e);
+}, { passive: false });
+const pointers = new Map();
+let drag = null;
+let pinch = null;
+const mid = () => {
+const [a, b] = [...pointers.values()];
+return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, dist: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
+};
+const startPinch = () => {
+const r = c.getBoundingClientRect();
+pinch = { ...mid(), scale: d.scale, tx: d.tx, ty: d.ty, left: r.left, top: r.top };
+};
+const startDrag = (e) => { drag = { id: e.pointerId, x: e.clientX, y: e.clientY, tx: d.tx, ty: d.ty, moved: false }; };
+const listen = (on) => {
+const f = on ? addEventListener : removeEventListener;
+f('pointermove', move);
+f('pointerup', release);
+f('pointercancel', release);
+};
+c.addEventListener('pointerdown', (e) => {
+if (stroke && e.pointerType === 'touch' && stroke.touch) {
+const first = stroke;
+cancelStroke(d);
+listen(true);
+pointers.set(first.id, first.last);
+} else if (!pointers.size && !stroke && d.ok && wantsInk(e)) {
+e.preventDefault();
+startStroke(d, e);
+return;
 }
-
-// 把 SVG 轉成點陣圖。含 foreignObject 的 SVG 在部分瀏覽器會污染 canvas，此時改用純 SVG 文字標籤重新 render。
+const middle = penOn && e.pointerType === 'mouse' && e.button === 1;
+if (!d.ok || (e.pointerType === 'mouse' && e.button !== 0 && !middle) || e.target.closest('.err')) return;
+if (middle) e.preventDefault();
+if (!pointers.size) listen(true);
+pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+if (pointers.size === 1) startDrag(e);
+else if (pointers.size === 2) {
+drag = null;
+startPinch();
+[...pointers.keys()].forEach((id) => { try { c.setPointerCapture(id); } catch {} });
+}
+});
+function move(e) {
+if (!pointers.has(e.pointerId)) return;
+pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+if (pinch && pointers.size >= 2) {
+const m = mid();
+const s = clampScale(d, pinch.scale * m.dist / pinch.dist);
+d.tx = m.x - pinch.left - (pinch.x - pinch.left - pinch.tx) * (s / pinch.scale);
+d.ty = m.y - pinch.top - (pinch.y - pinch.top - pinch.ty) * (s / pinch.scale);
+d.scale = s;
+d.fit = false;
+applyView(d);
+return;
+}
+if (!drag || drag.id !== e.pointerId) return;
+const dx = e.clientX - drag.x;
+const dy = e.clientY - drag.y;
+if (!drag.moved) {
+if (Math.hypot(dx, dy) < PAN.threshold) return;
+drag.moved = true;
+c.setPointerCapture(e.pointerId);
+c.classList.add('dragging');
+}
+d.tx = drag.tx + dx;
+d.ty = drag.ty + dy;
+d.fit = false;
+applyView(d);
+}
+const end = (e) => {
+if (!pointers.delete(e.pointerId)) return;
+if (pointers.size < 2) pinch = null;
+else if (pinch) startPinch();
+if (pointers.size === 1) {
+const [[id, p]] = [...pointers];
+drag = { id, x: p.x, y: p.y, tx: d.tx, ty: d.ty, moved: true };
+} else if (!pointers.size) {
+drag = null;
+listen(false);
+}
+};
+function release(e) {
+end(e);
+requestAnimationFrame(() => { if (!pointers.size) c.classList.remove('dragging'); });
+}
+addEventListener('blur', () => {
+if (!pointers.size) return;
+pointers.clear();
+drag = pinch = null;
+listen(false);
+c.classList.remove('dragging');
+});
+c.addEventListener('click', (e) => { if (c.classList.contains('dragging')) e.preventDefault(); }, true);
+c.addEventListener('dragstart', (e) => e.preventDefault());
+let gestureBase = 1;
+c.addEventListener('gesturestart', (e) => { e.preventDefault(); gestureBase = currentScale(d); });
+c.addEventListener('gesturechange', (e) => {
+e.preventDefault();
+if (!d.ok || pointers.size >= 2) return;
+setZoom(d, gestureBase * e.scale, { x: e.clientX, y: e.clientY });
+});
+c.addEventListener('keydown', (e) => viewKey(d, e));
+}
+function viewKey(d, e) {
+if (!d || !d.ok || e.altKey || e.ctrlKey || e.metaKey) return;
+const step = e.shiftKey ? PAN.key * 5 : PAN.key;
+const move = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+if (move) panBy(d, ...move);
+else if (e.key === '+' || e.key === '=') setZoom(d, currentScale(d) * ZOOM.step);
+else if (e.key === '-' || e.key === '_') setZoom(d, currentScale(d) / ZOOM.step);
+else if (e.key === '0') fitScreen(d);
+else if (e.key === '1') setZoom(d, 1);
+else return;
+e.preventDefault();
+}
+let exportSize = load(STORE.size, EXPORT.sizes, '2');
+let exportLayout = load(STORE.layout, ['plain', 'card'], 'plain');
+let exportPalette = load(STORE.palette, ['follow', 'light', 'dark'], 'follow');
+let exportInk = 'on';
+function svgSize(svgText) {
+const m = svgText.match(/viewBox="[^"]*?([\d.]+)[\s,]+([\d.]+)"/);
+return m ? { w: Number(m[1]), h: Number(m[2]) } : { w: 1, h: 1 };
+}
+function exportDims(w, h) {
+const want = exportSize === 'max' ? Infinity : Number(exportSize);
+const s = Math.min(want, EXPORT.side / w, EXPORT.side / h, Math.sqrt(EXPORT.area / (w * h)));
+return { w: Math.max(1, Math.round(w * s)), h: Math.max(1, Math.round(h * s)), capped: s < want };
+}
+function makeCanvas(w, h) {
+for (let k = 0; k < 16; k++) {
+const c = document.createElement('canvas');
+c.width = w;
+c.height = h;
+const g = c.getContext('2d');
+if (g) {
+g.fillRect(w - 1, h - 1, 1, 1);
+if (g.getImageData(w - 1, h - 1, 1, 1).data[3] === 255) {
+g.clearRect(w - 1, h - 1, 1, 1);
+return { c, g, shrunk: k > 0 };
+}
+}
+c.width = c.height = 0;
+w = Math.max(1, Math.floor(w * 0.75));
+h = Math.max(1, Math.floor(h * 0.75));
+}
+throw new Error('canvas');
+}
 async function rasterize(svgText, type, background) {
-  const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-  const root = doc.documentElement;
-  const vb = (root.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
-  if (vb.length !== 4 || !vb[2]) throw new Error('no viewBox');
-  root.setAttribute('width', vb[2]);
-  root.setAttribute('height', vb[3]);
-  root.removeAttribute('style');
-  const img = new Image();
-  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(root));
-  await img.decode();
-  const ratio = 2;
-  const c = document.createElement('canvas');
-  c.width = Math.ceil(vb[2] * ratio);
-  c.height = Math.ceil(vb[3] * ratio);
-  const g = c.getContext('2d');
-  if (background) { g.fillStyle = background; g.fillRect(0, 0, c.width, c.height); }
-  g.drawImage(img, 0, 0, c.width, c.height);
-  return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), type, 0.92));
+const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+const root = doc.documentElement;
+const vb = (root.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+if (vb.length !== 4 || !vb[2] || !vb[3]) throw new Error('no viewBox');
+const want = exportDims(vb[2], vb[3]);
+root.setAttribute('width', want.w);
+root.setAttribute('height', want.h);
+root.removeAttribute('style');
+const img = new Image();
+img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(root));
+await img.decode();
+const { c, g, shrunk } = makeCanvas(want.w, want.h);
+if (background) { g.fillStyle = background; g.fillRect(0, 0, c.width, c.height); }
+g.drawImage(img, 0, 0, c.width, c.height);
+const blob = await new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), type, 0.92));
+const out = { blob, width: c.width, height: c.height, capped: want.capped || shrunk, svg: svgText };
+c.width = c.height = 0;
+return out;
+}
+let renderQueue = Promise.resolve();
+function serial(fn) {
+const run = renderQueue.then(fn, fn);
+renderQueue = run.catch(() => {});
+return run;
+}
+function renderExport(d, themeName, htmlLabels) {
+return serial(() => renderExportNow(d, themeName, htmlLabels));
+}
+async function renderExportNow(d, themeName, htmlLabels) {
+mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: themeName, fontFamily: font,
+themeVariables: { fontFamily: font }, ...(htmlLabels ? {} : { htmlLabels: false, flowchart: { htmlLabels: false } }) });
+try {
+const source = withDirection(d.source, dirOf(d));
+let svg;
+try {
+({ svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, source));
+} catch (e) {
+if (source === d.source) throw e;
+({ svg } = await mermaid.render(`export-${d.i}-${Date.now()}-src`, d.source));
+}
+const box = document.createElement('div');
+box.innerHTML = svg;
+return new XMLSerializer().serializeToString(box.querySelector('svg'));
+} finally {
+initMermaid();
+}
+}
+function exportTheme(d) {
+const shownDark = d.canvas.classList.contains('dark');
+const dark = exportPalette === 'follow' ? shownDark : exportPalette === 'dark';
+return { dark, rerender: dark !== shownDark ? AUTO_THEME[dark ? 'dark' : 'light'] : null };
+}
+function tokenColor(name, dark) {
+const html = document.documentElement;
+const keep = html.dataset.theme;
+html.dataset.theme = dark ? 'dark' : 'light';
+const v = getComputedStyle(html).getPropertyValue(name).trim();
+if (keep === undefined) delete html.dataset.theme;
+else html.dataset.theme = keep;
+return v || (dark ? '#E8E8EA' : '#1F2328');
+}
+function exportBackground(dark) {
+return dark ? getComputedStyle(document.documentElement).getPropertyValue('--canvas-dark').trim() : '#FFFFFF';
+}
+const measureCtx = document.createElement('canvas').getContext('2d');
+function wrapText(text, css, width) {
+measureCtx.font = css;
+let seg = null;
+try { seg = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(lang, { granularity: 'word' }) : null; } catch {
+try { seg = new Intl.Segmenter(undefined, { granularity: 'word' }); } catch {}
+}
+const parts = seg ? [...seg.segment(text)].map((x) => x.segment) : [...text];
+const lines = [];
+let line = '';
+const pieces = parts.flatMap((x) => (measureCtx.measureText(x).width > width ? [...x] : [x]));
+for (const part of pieces) {
+const next = line + part;
+if (line && measureCtx.measureText(next).width > width) {
+lines.push(line.trimEnd());
+line = part.trimStart();
+} else line = next;
+}
+if (line.trim()) lines.push(line.trimEnd());
+return lines;
+}
+function cardLayout(w, h, title, caption, footnotes = []) {
+const pad = 32;
+const W = Math.max(w, 480);
+const titleCss = `600 22px ${font}`;
+const capCss = `15px ${font}`;
+const titleLines = title ? wrapText(title, titleCss, W) : [];
+const capLines = caption ? wrapText(caption, capCss, W) : [];
+const head = titleLines.length * 30 + (capLines.length ? 6 + capLines.length * 22 : 0) + (titleLines.length || capLines.length ? 20 : 0);
+const footCss = `14px ${font}`;
+const footLines = footnotes.flatMap((t) => wrapText(t, footCss, W));
+const foot = footLines.length ? 16 + footLines.length * 20 : 0;
+return { pad, W, titleCss, capCss, titleLines, capLines, head, footCss, footLines, foot, TW: W + pad * 2, TH: pad + head + h + foot + pad };
+}
+function cardSvg(svgText, title, caption, background, dark, footnotes = []) {
+const SVGNS = 'http://www.w3.org/2000/svg';
+const inner = new DOMParser().parseFromString(svgText, 'image/svg+xml').documentElement;
+const vb = (inner.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+if (vb.length !== 4 || !vb[2] || !vb[3]) return svgText;
+const { pad, W, titleCss, capCss, titleLines, capLines, head, footCss, footLines, TW, TH } = cardLayout(vb[2], vb[3], title, caption, footnotes);
+const doc = document.implementation.createDocument(SVGNS, 'svg', null);
+const root = doc.documentElement;
+[['viewBox', `0 0 ${TW} ${TH}`], ['width', TW], ['height', TH]].forEach(([k, v]) => root.setAttribute(k, v));
+if (background) {
+const r = doc.createElementNS(SVGNS, 'rect');
+[['width', TW], ['height', TH], ['fill', background]].forEach(([k, v]) => r.setAttribute(k, v));
+root.append(r);
+}
+let y = pad;
+const text = (lines, css, size, lineH, color) => lines.forEach((t) => {
+const n = doc.createElementNS(SVGNS, 'text');
+y += lineH;
+[['x', pad], ['y', y - (lineH - size) / 2 - 4], ['fill', color], ['font-family', font], ['font-size', size]].forEach(([k, v]) => n.setAttribute(k, v));
+if (css.startsWith('600')) n.setAttribute('font-weight', '600');
+n.textContent = t;
+root.append(n);
+});
+text(titleLines, titleCss, 22, 30, tokenColor('--text', dark));
+if (capLines.length) y += 6;
+text(capLines, capCss, 15, 22, tokenColor('--muted', dark));
+const graph = doc.importNode(inner, true);
+graph.removeAttribute('style');
+[['x', pad + (W - vb[2]) / 2], ['y', pad + head], ['width', vb[2]], ['height', vb[3]]].forEach(([k, v]) => graph.setAttribute(k, v));
+root.append(graph);
+y = pad + head + vb[3] + 16;
+text(footLines, footCss, 14, 20, tokenColor('--muted', dark));
+return new XMLSerializer().serializeToString(root);
+}
+async function exportSvg(d, transparent, htmlLabels = true) {
+const t = exportTheme(d);
+const base = t.rerender || !htmlLabels ? await renderExport(d, t.rerender || currentTheme(), htmlLabels) : d.svg;
+const ink = (svg) => (exportInk === 'on' ? withInk(d, svg, t.dark) : svg);
+if (exportLayout !== 'card') return { svg: ink(base), dark: t.dark };
+const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
+const footnotes = d.anns.map((a) => `${a.n}. ${a.text}`);
+return { svg: cardSvg(ink(exportAnnotations(d, base)), d.section.dataset.title, caption, transparent ? null : exportBackground(t.dark), t.dark, footnotes), dark: t.dark };
 }
 async function exportImage(d, type, transparent) {
-  const background = transparent ? null : getComputedStyle(d.canvas).backgroundColor;
-  try {
-    return await rasterize(d.svg, type, background);
-  } catch (e) {
-    if (e.name !== 'SecurityError') throw e;
-    mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: currentTheme(), fontFamily: font,
-      themeVariables: { fontFamily: font }, htmlLabels: false, flowchart: { htmlLabels: false } });
-    try {
-      const { svg } = await mermaid.render(`export-${d.i}-${Date.now()}`, withDirection(d.source, dirOf(d)));
-      // 與 d.svg 相同，經由 DOM 序列化成合法的 XML 再轉點陣圖。
-      const box = document.createElement('div');
-      box.innerHTML = svg;
-      return await rasterize(new XMLSerializer().serializeToString(box.querySelector('svg')), type, background);
-    } finally {
-      initMermaid();
-    }
-  }
+const first = await exportSvg(d, transparent);
+const background = transparent ? null : exportBackground(first.dark);
+try {
+return await rasterize(first.svg, type, background);
+} catch (e) {
+if (e.name !== 'SecurityError') throw e;
+return await rasterize((await exportSvg(d, transparent, false)).svg, type, background);
+}
+}
+async function jpegToPdf(r, viewW, viewH) {
+const jpg = new Uint8Array(await r.blob.arrayBuffer());
+const k = Math.min(0.75, 14400 / viewW, 14400 / viewH);
+const W = (viewW * k).toFixed(2);
+const H = (viewH * k).toFixed(2);
+const enc = new TextEncoder();
+const parts = [];
+const offsets = [];
+let len = 0;
+const push = (x) => {
+const b = typeof x === 'string' ? enc.encode(x) : x;
+parts.push(b);
+len += b.length;
+};
+const obj = (n, dict, stream) => {
+offsets[n] = len;
+push(`${n} 0 obj\n${dict}\n`);
+if (stream) { push('stream\n'); push(stream); push('\nendstream\n'); }
+push('endobj\n');
+};
+const content = enc.encode(`q ${W} 0 0 ${H} 0 0 cm /Im0 Do Q`);
+push('%PDF-1.4\n');
+push(new Uint8Array([37, 226, 227, 207, 211, 10]));
+obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+obj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
+obj(4, `<< /Type /XObject /Subtype /Image /Width ${r.width} /Height ${r.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>`, jpg);
+obj(5, `<< /Length ${content.length} >>`, content);
+const xref = len;
+const rows = offsets.slice(1).map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('');
+push(`xref\n0 6\n0000000000 65535 f \n${rows}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+return new Blob(parts, { type: 'application/pdf' });
+}
+function printOne(d) {
+const v = viewBox(d);
+if (!v) return;
+const c = contentBox(d) || v;
+const pageStyle = el('style', {}, `@page { size: ${Math.ceil(c.w) + 2}px ${Math.ceil(c.h) + 2}px; margin: 0; }`);
+document.head.append(pageStyle);
+document.documentElement.classList.add('print-one');
+const done = () => {
+pageStyle.remove();
+document.documentElement.classList.remove('print-one');
+removeEventListener('afterprint', done);
+};
+addEventListener('afterprint', done);
+print();
 }
 function saveBlob(blob, name) {
-  const a = el('a', { href: URL.createObjectURL(blob), download: name });
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+const a = el('a', { href: URL.createObjectURL(blob), download: name });
+a.click();
+setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 const probe = document.createElement('canvas');
-const FORMATS = [['svg', 'SVG'], ['png', 'PNG'], ['png-transparent', null], ['jpeg', 'JPEG']];
+const FORMATS = [['png', 'PNG'], ['png-transparent', null], ['jpeg', 'JPEG']];
 if (probe.toDataURL('image/webp').startsWith('data:image/webp')) FORMATS.push(['webp', 'WebP']);
-
-// 工具列只佔一個 Tab 停留點，以方向鍵在按鈕間移動；瀏覽器支援 focusgroup 時交給瀏覽器處理。
-function rovingToolbar(bar) {
-  bar.setAttribute('focusgroup', 'toolbar wrap');
-  if ('focusGroup' in HTMLElement.prototype) return () => {};
-  const items = () => [...bar.querySelectorAll('button, select')];
-  const sync = (active) => {
-    const list = items();
-    const keep = list.includes(active) ? active : list.find((b) => b.tabIndex === 0) || list[0];
-    list.forEach((b) => { b.tabIndex = b === keep ? 0 : -1; });
-  };
-  bar.addEventListener('focusin', (e) => sync(e.target));
-  bar.addEventListener('keydown', (e) => {
-    const list = items();
-    const k = list.indexOf(e.target);
-    if (k < 0) return;
-    const rtl = getComputedStyle(bar).direction === 'rtl';
-    const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 }[e.key];
-    const next = step ? list[(k + step + list.length) % list.length]
-      : e.key === 'Home' ? list[0] : e.key === 'End' ? list[list.length - 1] : null;
-    if (!next) return;
-    e.preventDefault();
-    next.focus();
-  });
-  return () => sync(null);
+FORMATS.push(['pdf', 'PDF'], ['svg', 'SVG']);
+function rovingToolbar(bar, own = false) {
+if (!own) bar.setAttribute('focusgroup', 'toolbar wrap');
+if (!own && 'focusGroup' in HTMLElement.prototype) return () => {};
+const items = () => [...bar.querySelectorAll('button, select')];
+const sync = (active) => {
+const list = items();
+const keep = list.includes(active) ? active : list.find((b) => b.tabIndex === 0) || list[0];
+list.forEach((b) => { b.tabIndex = b === keep ? 0 : -1; });
+};
+bar.addEventListener('focusin', (e) => sync(e.target));
+bar.addEventListener('keydown', (e) => {
+const list = items();
+const k = list.indexOf(e.target);
+if (k < 0) return;
+const rtl = getComputedStyle(bar).direction === 'rtl';
+const vertical = getComputedStyle(bar).flexDirection === 'column';
+const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, ...(vertical ? { ArrowDown: 1, ArrowUp: -1 } : {}) }[e.key];
+const next = step ? list[(k + step + list.length) % list.length]
+: e.key === 'Home' ? list[0] : e.key === 'End' ? list[list.length - 1] : null;
+if (!next) return;
+e.preventDefault();
+next.focus();
+});
+return () => sync(null);
 }
-
-// 彈出面板：優先用 Popover API（點外面或 Esc 自動關閉）；不支援時以 hidden 切換並自行處理關閉。
 const nativePopover = Object.hasOwn(HTMLElement.prototype, 'popover');
 const popovers = [];
 function popover(btn, panel, align, onOpen) {
-  btn.setAttribute('aria-expanded', 'false');
-  const prop = (k, v) => panel.style.setProperty(k, v);
-  const place = () => {
-    const r = btn.getBoundingClientRect();
-    const up = align === 'up';
-    prop('--pop-top', up ? 'auto' : `${Math.round(r.bottom + 8)}px`);
-    prop('--pop-bottom', up ? `${Math.round(innerHeight - r.top + 8)}px` : 'auto');
-    prop('--pop-max-h', `${Math.max(120, Math.round(up ? r.top - 16 : innerHeight - r.bottom - 16))}px`);
-    const end = align === 'right' || up;
-    prop('--pop-right', end ? `${Math.max(12, Math.round(innerWidth - r.right))}px` : 'auto');
-    prop('--pop-left', end ? 'auto' : `${Math.max(12, Math.round(r.left))}px`);
-  };
-  // 開啟後若超出視窗左右邊緣，改貼齊該側。
-  const clamp = () => {
-    const m = panel.getBoundingClientRect();
-    if (m.left < 12) { prop('--pop-right', 'auto'); prop('--pop-left', '12px'); }
-    else if (m.right > innerWidth - 12) { prop('--pop-left', 'auto'); prop('--pop-right', '12px'); }
-  };
-  let set;
-  if (nativePopover) {
-    panel.setAttribute('popover', 'auto');
-    btn.setAttribute('popovertarget', panel.id);
-    panel.addEventListener('beforetoggle', (e) => { if (e.newState === 'open') place(); });
-    panel.addEventListener('toggle', (e) => {
-      btn.setAttribute('aria-expanded', String(e.newState === 'open'));
-      if (e.newState === 'open') { clamp(); onOpen?.(); }
-    });
-    set = (v) => {
-      const open = panel.matches(':popover-open');
-      if (v && !open) panel.showPopover();
-      if (!v && open) panel.hidePopover();
-    };
-  } else {
-    panel.hidden = true;
-    set = (v) => {
-      if (v) place();
-      panel.hidden = !v;
-      btn.setAttribute('aria-expanded', String(v));
-      if (v) { clamp(); onOpen?.(); }
-    };
-    btn.addEventListener('click', () => {
-      const v = panel.hidden;
-      popovers.forEach((p) => p.set(false));
-      set(v);
-    });
-  }
-  const p = { btn, panel, set, isOpen: () => (nativePopover ? panel.matches(':popover-open') : !panel.hidden) };
-  popovers.push(p);
-  return p;
+btn.setAttribute('aria-expanded', 'false');
+const prop = (k, v) => panel.style.setProperty(k, v);
+const place = () => {
+const r = btn.getBoundingClientRect();
+const up = align === 'up';
+prop('--pop-top', up ? 'auto' : `${Math.round(r.bottom + 8)}px`);
+prop('--pop-bottom', up ? `${Math.round(innerHeight - r.top + 8)}px` : 'auto');
+prop('--pop-max-h', `${Math.max(120, Math.round(up ? r.top - 16 : innerHeight - r.bottom - 16))}px`);
+const end = align === 'right' || up;
+prop('--pop-right', end ? `${Math.max(12, Math.round(innerWidth - r.right))}px` : 'auto');
+prop('--pop-left', end ? 'auto' : `${Math.max(12, Math.round(r.left))}px`);
+};
+const clamp = () => {
+const m = panel.getBoundingClientRect();
+if (m.left < 12) { prop('--pop-right', 'auto'); prop('--pop-left', '12px'); }
+else if (m.right > innerWidth - 12) { prop('--pop-left', 'auto'); prop('--pop-right', '12px'); }
+};
+let set;
+if (nativePopover) {
+panel.setAttribute('popover', 'auto');
+btn.setAttribute('popovertarget', panel.id);
+panel.addEventListener('beforetoggle', (e) => { if (e.newState === 'open') place(); });
+panel.addEventListener('toggle', (e) => {
+btn.setAttribute('aria-expanded', String(e.newState === 'open'));
+if (e.newState === 'open') { clamp(); onOpen?.(); }
+});
+set = (v) => {
+const open = panel.matches(':popover-open');
+if (v && !open) panel.showPopover();
+if (!v && open) panel.hidePopover();
+};
+} else {
+panel.hidden = true;
+set = (v) => {
+if (v) place();
+panel.hidden = !v;
+btn.setAttribute('aria-expanded', String(v));
+if (v) { clamp(); onOpen?.(); }
+};
+btn.addEventListener('click', () => {
+const v = panel.hidden;
+popovers.forEach((p) => p.set(false));
+set(v);
+});
+}
+const p = { btn, panel, set, isOpen: () => (nativePopover ? panel.matches(':popover-open') : !panel.hidden) };
+popovers.push(p);
+return p;
 }
 if (!nativePopover) {
-  document.addEventListener('click', (e) => {
-    popovers.forEach((p) => { if (p.isOpen() && !p.btn.contains(e.target) && !p.panel.contains(e.target)) p.set(false); });
-  });
+document.addEventListener('click', (e) => {
+popovers.forEach((p) => { if (p.isOpen() && !p.btn.contains(e.target) && !p.panel.contains(e.target)) p.set(false); });
+});
 }
-
-// 下拉選單：開啟時聚焦第一項，↑／↓／Home／End 移動，Tab 離開時關閉。
 function menuKeys(menu, p) {
-  const items = () => [...menu.querySelectorAll('[role="menuitem"]')].filter((x) => !x.hidden);
-  menu.addEventListener('keydown', (e) => {
-    const list = items();
-    const k = list.indexOf(document.activeElement);
-    if (k < 0 && e.key === 'ArrowUp') { e.preventDefault(); list[list.length - 1]?.focus(); return; }
-    const next = { ArrowDown: list[(k + 1) % list.length], ArrowUp: list[(k - 1 + list.length) % list.length],
-                   Home: list[0], End: list[list.length - 1] }[e.key];
-    if (next) { e.preventDefault(); next.focus(); }
-    if (e.key === 'Tab') {
-      p.set(false);
-      // 不支援 Popover API 時，關閉後焦點不會自動回到按鈕，先移回再讓 Tab 繼續。
-      if (!nativePopover) p.btn.focus();
-    }
-  });
-  return () => items()[0]?.focus();
+const items = () => [...menu.querySelectorAll('[role^="menuitem"]')].filter((x) => !x.closest('[hidden]'));
+menu.addEventListener('keydown', (e) => {
+const list = items();
+const k = list.indexOf(document.activeElement);
+if (k < 0 && e.key === 'ArrowUp') { e.preventDefault(); list[list.length - 1]?.focus(); return; }
+const next = { ArrowDown: list[(k + 1) % list.length], ArrowUp: list[(k - 1 + list.length) % list.length],
+Home: list[0], End: list[list.length - 1] }[e.key];
+if (next) { e.preventDefault(); next.focus(); }
+if (e.key === 'Tab') {
+p.set(false);
+if (!nativePopover) p.btn.focus();
 }
-
-// 操作結果提示（複製、匯出），同時供螢幕閱讀器讀出。
+});
+return () => items()[0]?.focus();
+}
 const toast = el('p', { class: 'toast float', role: 'status' });
 let toastTimer = 0;
 function notify(text) {
-  // 先清空再寫入，連續相同的訊息也會再讀一次。
-  toast.textContent = '';
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toast.textContent = text;
-    toastTimer = setTimeout(() => { toast.textContent = ''; }, 2000);
-  }, 50);
+toast.textContent = '';
+clearTimeout(toastTimer);
+toastTimer = setTimeout(() => {
+toast.textContent = text;
+toastTimer = setTimeout(() => { toast.textContent = ''; }, Math.max(2000, [...text].length * 120));
+}, 50);
 }
-
 const diagrams = [];
 let badCount = 0;
 const sections = [...document.querySelectorAll('section.diagram')];
 document.documentElement.classList.add('app');
-
-// 說明視窗：頁面標題與摘要，加上目前這張圖的標題、一句話結論、圖例與原始碼。
 const page = document.querySelector('.page');
 const info = el('aside', { id: 'info', 'aria-label': T.info });
 const closeInfo = el('button', { type: 'button', class: 'close', 'aria-label': T.close, title: T.close }, '×');
+const expandInfo = el('button', { type: 'button', class: 'expand', 'aria-expanded': 'false', 'aria-controls': 'info' }, T.expand);
 info.append(closeInfo);
+const credit = el('p', { class: 'credit' });
+const repoA = el('a', { href: APP.repo, target: '_blank', rel: 'noopener noreferrer', 'aria-label': T.repoLink }, 'GitHub');
+credit.append(...[T.madeWith, `diagram-first v${APP.version}`, T.madeWithAfter].filter(Boolean).join(' '), ' · ', repoA);
+const hint = el('p', { id: 'canvas-hint', class: 'hint' }, matchMedia('(any-pointer: fine)').matches ? T.hint : T.hintTouch);
 const headerEl = document.querySelector('header');
 if (headerEl) info.append(headerEl);
 page.prepend(info);
 const notes = new Map();
-
 for (const [i, section] of sections.entries()) {
-  if (!section.id) section.id = `diagram-${i + 1}`;
-  const title = section.querySelector('h2')?.textContent.trim() || `#${i + 1}`;
-  section.dataset.title = title;
-  const note = el('div', { class: 'notes' });
-  note.append(el('h3', {}, title));
-  const caption = section.querySelector('.caption');
-  if (caption) note.append(caption);
-  notes.set(section, note);
-  section.append(note);
-
-  const srcNode = section.querySelector('script.mermaid-src');
-  if (!srcNode) continue;
-  const source = dedent(srcNode.textContent);
-
-  const toolbar = el('div', { class: 'toolbar', role: 'toolbar', 'aria-label': title });
-  const canvas = el('div', { class: 'canvas', role: 'region', 'aria-label': title, tabindex: '0' });
-  const details = el('details');
-  const pre = el('pre', { tabindex: '0' });
-  pre.append(el('code', {}, source));
-  details.append(el('summary', {}, T.source), pre);
-  srcNode.after(canvas, toolbar);
-  const legend = section.querySelector('.legend');
-  if (legend) {
-    const items = legend.querySelectorAll('li').length;
-    const box = el('details', { class: 'legend-box', open: '' });
-    box.append(el('summary', {}, items ? `${T.legend} (${items})` : T.legend), legend);
-    note.append(box);
-  }
-  note.append(details);
-
-  // ⋯ 選單：下載、複製圖片、複製原始碼。
-  const moreBtn = el('button', { type: 'button', 'aria-label': T.more, title: T.more, 'aria-haspopup': 'menu', 'aria-controls': `more-${i + 1}` }, '⋯');
-  const menu = el('div', { class: 'pop menu', id: `more-${i + 1}`, role: 'menu', 'aria-label': T.more });
-  toolbar.append(moreBtn);
-  document.body.append(menu);
-  let focusFirst = () => {};
-  const more = popover(moreBtn, menu, 'up', () => focusFirst());
-  focusFirst = menuKeys(menu, more);
-  const menuItem = (label, run) => {
-    const b = el('button', { type: 'button', role: 'menuitem', tabindex: '-1' }, label);
-    b.addEventListener('click', async () => {
-      more.set(false);
-      moreBtn.focus();
-      await run();
-    });
-    menu.append(b);
-    return b;
-  };
-  menuItem(T.copy, async () => {
-    try {
-      await navigator.clipboard.writeText(source);
-      notify(T.copied);
-    } catch {
-      notify(T.copyFail);
-      details.open = true;
-      showInfo(true);
-    }
-  });
-  const syncToolbar = rovingToolbar(toolbar);
-
-  try {
-    await mermaid.parse(source);
-  } catch (e) {
-    badCount++;
-    const box = el('div', { class: 'err' }, T.parseFail);
-    box.append(el('pre', {}, String(e.message || e)));
-    canvas.append(box);
-    details.open = true;
-    continue;
-  }
-
-  const d = { i, section, source, canvas, details, toolbar, ok: false, svg: '', scale: null, baseStyle: null,
-              direction: 'page', fit: true, syncToolbar };
-  const download = async (v) => {
-    const name = `diagram-${i + 1}`;
-    try {
-      if (v === 'svg') saveBlob(new Blob([d.svg], { type: 'image/svg+xml' }), `${name}.svg`);
-      else {
-        const type = v === 'png-transparent' ? 'image/png' : `image/${v}`;
-        const ext = v === 'jpeg' ? 'jpg' : v === 'png-transparent' ? 'png' : v;
-        saveBlob(await exportImage(d, type, v === 'png-transparent'), `${name}.${ext}`);
-      }
-    } catch {
-      notify(T.exportFail);
-    }
-  };
-  const copyImage = async () => {
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': exportImage(d, 'image/png', false) })]);
-      notify(T.copied);
-    } catch {
-      notify(T.copyFail);
-    }
-  };
-  // 圖片相關項目放在原始碼之前；render 失敗時隱藏。
-  d.imageItems = [...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
-                  menuItem(T.copyImage, copyImage)];
-  menu.prepend(...d.imageItems);
-  d.imageItems.forEach((b) => { b.hidden = true; });
-  const zoom = el('div', { class: 'zoom', role: 'group' });
-  const outBtn = el('button', { type: 'button', 'aria-label': T.zoomOut, title: T.zoomOut }, '−');
-  d.level = el('button', { type: 'button', class: 'level', title: T.zoomActual }, '');
-  const inBtn = el('button', { type: 'button', 'aria-label': T.zoomIn, title: T.zoomIn }, '+');
-  const resetBtn = el('button', { type: 'button' }, T.reset);
-  outBtn.addEventListener('click', () => setZoom(d, currentScale(d) / ZOOM.step));
-  inBtn.addEventListener('click', () => setZoom(d, currentScale(d) * ZOOM.step));
-  d.level.addEventListener('click', () => setZoom(d, 1));
-  resetBtn.addEventListener('click', () => fitScreen(d));
-  zoom.append(outBtn, d.level, inBtn);
-  d.buttons = [zoom, resetBtn];
-  if (isDirected(source)) {
-    const dirSelect = el('select', { 'aria-label': T.direction, title: T.direction });
-    [['page', T.followPage], ['vertical', T.vertical], ['horizontal', T.horizontal]]
-      .forEach(([v, label]) => dirSelect.append(el('option', { value: v }, label)));
-    dirSelect.addEventListener('change', async () => {
-      d.direction = dirSelect.value;
-      // 方向改變後圖的尺寸不同，舊倍率不再適用，重新符合視窗。
-      d.fit = true;
-      await renderOne(d);
-    });
-    d.buttons.push(dirSelect);
-  }
-  bindGestures(d);
-  diagrams.push(d);
+if (!section.id) section.id = `diagram-${i + 1}`;
+const title = section.querySelector('h2')?.textContent.trim() || `#${i + 1}`;
+section.dataset.title = title;
+const note = el('div', { class: 'notes' });
+note.append(el('h3', {}, title));
+const caption = section.querySelector('.caption');
+if (caption) note.append(caption);
+notes.set(section, note);
+section.append(note);
+const srcNode = section.querySelector('script.mermaid-src');
+if (!srcNode) continue;
+const source = dedent(srcNode.textContent);
+const toolbar = el('div', { class: 'toolbar', role: 'toolbar', 'aria-label': title });
+const canvas = el('div', { class: 'canvas', role: 'region', 'aria-label': title, 'aria-describedby': 'canvas-hint', tabindex: '0' });
+const details = el('details');
+const pre = el('pre', { tabindex: '0' });
+pre.append(el('code', {}, source));
+details.append(el('summary', {}, T.source), pre);
+srcNode.after(canvas, toolbar);
+const legend = section.querySelector('.legend');
+if (legend) {
+const items = legend.querySelectorAll('li').length;
+const box = el('details', { class: 'legend-box', open: '' });
+box.append(el('summary', {}, items ? `${T.legend} (${items})` : T.legend), legend);
+note.append(box);
 }
-
-// 每張圖的方向：「跟隨頁面」時用頁首的方向設定。
+const annList = section.querySelector('ol.annotations');
+const anns = annList ? [...annList.querySelectorAll(':scope > li')].map((li) => ({ node: li.dataset.node || null, text: li.textContent.trim() }))
+.filter((a) => a.text).map((a, k) => ({ ...a, n: k + 1 })) : [];
+if (annList) {
+annList.remove();
+if (anns.length) {
+const box = el('div', { class: 'ann-box' });
+const ol = el('ol', { class: 'ann-list' });
+anns.forEach((a) => {
+const li = el('li', { value: String(a.n) });
+a.item = li;
+li.append(a.text);
+ol.append(li);
+});
+box.append(el('h4', {}, `${T.annTitle} (${anns.length})`), ol);
+note.append(box);
+}
+}
+note.append(details);
+const moreBtn = el('button', { type: 'button', 'aria-label': T.more, title: T.more, 'aria-haspopup': 'menu', 'aria-controls': `more-${i + 1}` }, '⋯');
+const menu = el('div', { class: 'pop menu', id: `more-${i + 1}`, role: 'menu', 'aria-label': T.more });
+toolbar.append(moreBtn);
+document.body.append(menu);
+let focusFirst = () => {};
+const more = popover(moreBtn, menu, 'up', () => { syncSizes(); focusFirst(); });
+focusFirst = menuKeys(menu, more);
+const menuItem = (label, run) => {
+const b = el('button', { type: 'button', role: 'menuitem', tabindex: '-1' }, label);
+b.addEventListener('click', async () => {
+more.set(false);
+moreBtn.focus();
+await run();
+});
+menu.append(b);
+return b;
+};
+menuItem(T.copy, async () => {
+try {
+await navigator.clipboard.writeText(source);
+notify(T.copied);
+} catch {
+notify(T.copyFail);
+details.open = true;
+showInfo(true);
+}
+});
+const syncToolbar = rovingToolbar(toolbar);
+const reportItem = menuItem(T.reportMenu, () => copyReport(i));
+reportItem.title = T.reportTitle;
+try {
+await mermaid.parse(source);
+} catch (e) {
+badCount++;
+const box = el('div', { class: 'err' }, T.parseFail);
+errors.set(i, String(e.message || e));
+box.append(el('pre', {}, String(e.message || e)), reportButton(i));
+canvas.append(box);
+details.open = true;
+continue;
+}
+const d = { i, section, source, canvas, details, toolbar, ok: false, svg: '', scale: 1, tx: 0, ty: 0,
+direction: 'page', fit: true, syncToolbar, anns };
+const report = (r) => { if (r.capped) notify(T.capped(r.width, r.height)); };
+const download = async (v) => {
+const name = `diagram-${i + 1}`;
+try {
+if (v === 'svg') saveBlob(new Blob([(await exportSvg(d, false)).svg], { type: 'image/svg+xml' }), `${name}.svg`);
+else if (v === 'pdf') {
+const r = await exportImage(d, 'image/jpeg', false);
+const vb = svgSize(r.svg);
+saveBlob(await jpegToPdf(r, vb.w, vb.h), `${name}.pdf`);
+report(r);
+} else {
+const type = v === 'png-transparent' ? 'image/png' : `image/${v}`;
+const ext = v === 'jpeg' ? 'jpg' : v === 'png-transparent' ? 'png' : v;
+const r = await exportImage(d, type, v === 'png-transparent');
+saveBlob(r.blob, `${name}.${ext}`);
+report(r);
+}
+} catch {
+notify(T.exportFail);
+}
+};
+const copyImage = async () => {
+try {
+let r = null;
+const png = exportImage(d, 'image/png', false).then((x) => { r = x; return x.blob; });
+await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+notify(r && r.capped ? T.capped(r.width, r.height) : T.copied);
+} catch {
+notify(T.copyFail);
+}
+};
+const opts = el('div', { class: 'opts' });
+d.sizeLabel = el('span', { class: 'size-label', 'aria-hidden': 'true' });
+const optRow = (key, label, values) => {
+const row = el('div', { class: 'sizes', role: 'group', 'aria-label': label });
+if (key !== 'size') row.append(el('span', { class: 'opt-label', 'aria-hidden': 'true' }, label));
+row.append(...values.map(([v, text]) => {
+const b = el('button', { type: 'button', role: 'menuitemradio', tabindex: '-1', 'data-opt': key, 'data-value': v }, text);
+b.addEventListener('click', () => setExportOpt(key, v));
+return b;
+}));
+return row;
+};
+const sizeRow = optRow('size', T.size, EXPORT.sizes.map((v) => [v, v === 'max' ? T.sizeMax : `${v}x`]));
+sizeRow.prepend(d.sizeLabel);
+opts.append(sizeRow,
+optRow('layout', T.layout, [['plain', T.layoutPlain], ['card', T.layoutCard]]),
+optRow('palette', T.palette, [['follow', T.paletteFollow], ['light', T.light], ['dark', T.dark]]));
+d.inkRow = optRow('ink', T.inkLabel, [['on', T.inkOn], ['off', T.inkOff]]);
+d.inkRow.hidden = true;
+opts.append(d.inkRow);
+d.imageItems = [opts, ...FORMATS.map(([v, label]) => menuItem(T.downloadAs(label || T.transparent), () => download(v))),
+Object.assign(menuItem(T.printPdf, () => printOne(d)), { title: T.printTitle }), menuItem(T.copyImage, copyImage)];
+menu.append(reportItem);
+menu.prepend(...d.imageItems);
+d.imageItems.forEach((b) => { b.hidden = true; });
+const zoom = el('div', { class: 'zoom', role: 'group' });
+const outBtn = el('button', { type: 'button', 'aria-label': T.zoomOut, title: T.zoomOut }, '−');
+d.level = el('button', { type: 'button', class: 'level', title: T.zoomActual }, '');
+const inBtn = el('button', { type: 'button', 'aria-label': T.zoomIn, title: T.zoomIn }, '+');
+const resetBtn = el('button', { type: 'button', title: `${T.fitTitle} (0)` }, T.reset);
+outBtn.addEventListener('click', () => setZoom(d, currentScale(d) / ZOOM.step));
+inBtn.addEventListener('click', () => setZoom(d, currentScale(d) * ZOOM.step));
+d.level.addEventListener('click', () => setZoom(d, 1));
+resetBtn.addEventListener('click', () => fitScreen(d));
+zoom.append(outBtn, d.level, inBtn);
+const penBtn = el('button', { type: 'button', class: 'pen-btn', 'aria-label': T.pen, title: `${T.pen} (P)`, 'aria-pressed': 'false' }, '✎');
+penBtn.addEventListener('click', () => setPen(!penOn));
+d.buttons = [zoom, resetBtn, penBtn];
+if (isDirected(source)) {
+const dirSelect = el('select', { 'aria-label': T.direction, title: T.direction });
+[['page', T.followPage], ['vertical', T.vertical], ['horizontal', T.horizontal]]
+.forEach(([v, label]) => dirSelect.append(el('option', { value: v }, label)));
+dirSelect.addEventListener('change', async () => {
+d.direction = dirSelect.value;
+d.fit = true;
+await renderOne(d);
+});
+d.buttons.push(dirSelect);
+}
+bindGestures(d);
+bindNodes(d);
+anns.forEach((a) => {
+a.item?.addEventListener('click', (e) => {
+if (!a.target || !e.target.closest('button')) return;
+if (overlayOpen()) showInfo(false);
+if (selected?.node !== a.target) select(d, a.target);
+else ensureVisible(d, a.target.el);
+});
+});
+diagrams.push(d);
+}
+function setExportOpt(key, v) {
+if (key === 'size') { exportSize = v; save(STORE.size, v); }
+if (key === 'layout') { exportLayout = v; save(STORE.layout, v); }
+if (key === 'palette') { exportPalette = v; save(STORE.palette, v); }
+if (key === 'ink') exportInk = v;
+syncSizes();
+}
+async function indexGraph(d, source) {
+d.graph = null;
+let data;
+try {
+const dg = await mermaid.mermaidAPI.getDiagramFromText(source);
+data = typeof dg.db.getData === 'function' ? dg.db.getData() : null;
+} catch { return; }
+const svg = d.canvas.querySelector('svg');
+if (!svg || !data || !data.nodes?.length || !data.edges?.length) return;
+const pre = svg.id + '-';
+const exact = new Map();
+const loose = new Map();
+svg.querySelectorAll('g.node').forEach((g) => {
+if (!g.id.startsWith(pre)) return;
+const k = g.id.slice(pre.length);
+exact.set(k, g);
+const s = k.replace(/-\d+$/, '');
+loose.set(s, loose.has(s) ? null : g);
+});
+const nodes = new Map();
+const used = new Set();
+for (const n of data.nodes) {
+if (n.isGroup) continue;
+const keys = [n.domId, n.id].filter(Boolean).map(String);
+const g = keys.map((k) => exact.get(k)).find(Boolean) || keys.map((k) => loose.get(k.replace(/-\d+$/, ''))).find(Boolean);
+if (!g || used.has(g)) continue;
+used.add(g);
+const raw = typeof n.label === 'string' && !/[<>]/.test(n.label) && n.label !== 'undefined' ? n.label : '';
+const shown = (g.querySelector('.nodeLabel, .label, text')?.textContent || g.textContent || '').replace(/\s+/g, ' ').trim();
+const label = /^(stateStart|stateEnd)$/.test(n.shape) ? (n.shape === 'stateStart' ? '[*] start' : '[*] end') : shown || raw || String(n.id);
+const src = n.nodeId ?? String(n.id).match(/^entity-(.+)-\d+$/)?.[1] ?? n.id;
+nodes.set(n.id, { id: n.id, src: String(src), el: g, label, out: [], in: [] });
+}
+const edgeEls = new Map();
+svg.querySelectorAll('[data-id]').forEach((x) => {
+if (x.closest('g.node')) return;
+const list = edgeEls.get(x.dataset.id) || [];
+list.push(x);
+edgeEls.set(x.dataset.id, list);
+});
+let count = 0;
+for (const e of data.edges) {
+const a = nodes.get(e.start);
+const b = nodes.get(e.end);
+const els = edgeEls.get(e.id) || [];
+if (!a || !b) continue;
+els.forEach((x) => x.setAttribute('data-hl-edge', ''));
+const edge = { a, b, els };
+a.out.push(edge);
+b.in.push(edge);
+count++;
+}
+if (nodes.size < 2 || !count) return;
+d.graph = { nodes, byEl: new Map([...nodes.values()].map((n) => [n.el, n])), bySrc: new Map([...nodes.values()].map((n) => [n.src, n])) };
+let first = true;
+for (const n of nodes.values()) {
+const { ups, downs } = reach(n);
+n.el.setAttribute('tabindex', first ? '0' : '-1');
+first = false;
+n.el.setAttribute('role', 'button');
+n.el.setAttribute('aria-pressed', 'false');
+n.el.setAttribute('aria-label', T.nodeAria(n.label, ups.size, downs.size));
+}
+}
+function placeAnnotations(d) {
+const svg = d.canvas.querySelector('svg');
+if (!svg || !d.anns.length) return;
+d.annPending = !d.canvas.clientWidth;
+svg.querySelector(':scope > g.ann-layer')?.remove();
+const SVGNS = 'http://www.w3.org/2000/svg';
+const vb = svg.viewBox.baseVal;
+const box = svg.getBoundingClientRect();
+const k = box.width ? vb.width / box.width : 1;
+const layer = document.createElementNS(SVGNS, 'g');
+layer.setAttribute('class', 'ann-layer');
+layer.setAttribute('aria-hidden', 'true');
+const stack = new Map();
+d.anns.forEach((a) => {
+a.target = a.node !== null ? d.graph?.bySrc.get(a.node) || d.graph?.nodes.get(a.node) || null : null;
+a.pos = null;
+if (a.item) {
+a.item.classList.toggle('linked', Boolean(a.target));
+if (a.target && !a.item.querySelector('button')) {
+const b = el('button', { type: 'button', class: 'ann-go', title: T.annItem(a.n, a.node) }, a.text);
+a.item.replaceChildren(b);
+} else if (!a.target && a.item.querySelector('button')) a.item.replaceChildren(a.text);
+}
+if (!a.target || d.annPending) return;
+const r = a.target.el.getBoundingClientRect();
+const count = stack.get(a.target) || 0;
+stack.set(a.target, count + 1);
+const poly = a.target.el.querySelector(':scope > polygon, :scope > g > polygon');
+const sx = poly ? r.left + r.width / 2 + 14 : r.right;
+const sy = poly ? r.top + 6 : r.top;
+const x = vb.x + (sx - box.left) * k - count * 18;
+const y = vb.y + (sy - box.top) * k;
+a.pos = { x, y };
+const g = document.createElementNS(SVGNS, 'g');
+g.setAttribute('class', 'ann-badge');
+g.setAttribute('transform', `translate(${x} ${y})`);
+g.dataset.ann = String(a.n);
+const c = document.createElementNS(SVGNS, 'circle');
+c.setAttribute('r', '9');
+const hit = document.createElementNS(SVGNS, 'circle');
+hit.setAttribute('r', matchMedia('(pointer: coarse)').matches ? '16' : '11');
+hit.setAttribute('class', 'hit');
+g.append(hit);
+const t = document.createElementNS(SVGNS, 'text');
+t.setAttribute('text-anchor', 'middle');
+t.setAttribute('dy', '0.35em');
+t.textContent = String(a.n);
+g.append(c, t);
+layer.append(g);
+});
+svg.append(layer);
+d.graph?.nodes.forEach((n) => {
+const texts = annsOf(d, n).map((a) => a.text);
+if (!texts.length || n.el.dataset.annAria) return;
+n.el.dataset.annAria = '1';
+n.el.setAttribute('aria-label', n.el.getAttribute('aria-label') + T.annAria(texts.join('；')));
+});
+}
+const annsOf = (d, node) => d.anns.filter((a) => a.target === node);
+function exportAnnotations(d, svgText) {
+const placed = d.anns.filter((a) => a.pos);
+if (!placed.length) return svgText;
+const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+const root = doc.documentElement;
+const SVGNS = 'http://www.w3.org/2000/svg';
+const layer = doc.createElementNS(SVGNS, 'g');
+const map = viewMap(d, root);
+if (map) layer.setAttribute('transform', map.transform);
+root.append(layer);
+placed.forEach((a) => {
+const g = doc.createElementNS(SVGNS, 'g');
+g.setAttribute('transform', `translate(${a.pos.x} ${a.pos.y})`);
+const c = doc.createElementNS(SVGNS, 'circle');
+[['r', '9'], ['fill', '#9A6700']].forEach(([k, v]) => c.setAttribute(k, v));
+const t = doc.createElementNS(SVGNS, 'text');
+[['text-anchor', 'middle'], ['dy', '0.35em'], ['fill', '#FFFFFF'], ['font-size', '11'], ['font-weight', '700'], ['font-family', font]].forEach(([k, v]) => t.setAttribute(k, v));
+t.textContent = String(a.n);
+g.append(c, t);
+layer.append(g);
+});
+return new XMLSerializer().serializeToString(root);
+}
+const TOOLS = [
+{ id: 'red', label: 'penRed', color: '#E5484D', width: 3 },
+{ id: 'blue', label: 'penBlue', color: '#0969DA', width: 3 },
+{ id: 'ink', label: 'penInk', color: null, width: 3 },
+{ id: 'hl', label: 'highlighter', color: '#FFD33D', width: 16, opacity: 0.4 },
+{ id: 'laser', label: 'laser', color: '#FF3B30', width: 4 },
+{ id: 'eraser', label: 'eraser' },
+];
+let penOn = false;
+let tool = TOOLS[0];
+let stroke = null;
+let spaceDown = false;
+const layoutKey = (d) => {
+if (!isDirected(d.source)) return 'fixed';
+const v = dirOf(d);
+return v === 'auto' ? (landscape.matches ? 'horizontal' : 'vertical') : v;
+};
+function inkOf(d) {
+d.ink ||= new Map();
+const k = layoutKey(d);
+if (!d.ink.has(k)) d.ink.set(k, { strokes: [], history: [] });
+return d.ink.get(k);
+}
+const hasInk = () => diagrams.some((d) => d.ink && [...d.ink.values()].some((x) => x.strokes.length));
+const wantsInk = (e) => !spaceDown && (e.pointerType === 'pen' ? e.button === 0 : penOn && (e.pointerType !== 'mouse' || e.button === 0));
+function inkLayer(d) {
+const svg = d.canvas.querySelector('svg');
+if (!svg) return null;
+let overlay = d.canvas.querySelector(':scope > svg.ink-overlay');
+if (!overlay) {
+overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+overlay.setAttribute('class', 'ink-overlay');
+overlay.setAttribute('aria-hidden', 'true');
+const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+g.setAttribute('class', 'ink');
+overlay.append(g);
+d.canvas.append(overlay);
+syncOverlay(d);
+}
+return overlay.firstChild;
+}
+function syncOverlay(d) {
+const overlay = d.canvas.querySelector(':scope > svg.ink-overlay');
+const svg = d.canvas.querySelector('svg');
+if (!overlay || !svg || overlay === svg) return;
+overlay.setAttribute('viewBox', svg.getAttribute('viewBox') || '');
+overlay.setAttribute('preserveAspectRatio', svg.getAttribute('preserveAspectRatio') || 'xMidYMid meet');
+['width', 'height', 'transform', 'maxWidth'].forEach((k) => { overlay.style[k] = svg.style[k]; });
+}
+function inkBounds(d) {
+const strokes = d.ink ? inkOf(d).strokes : [];
+if (!strokes.length) return null;
+let b = [Infinity, Infinity, -Infinity, -Infinity];
+strokes.forEach((s) => s.pts.forEach(([x, y]) => {
+const r = s.width / 2 + 8;
+b = [Math.min(b[0], x - r), Math.min(b[1], y - r), Math.max(b[2], x + r), Math.max(b[3], y + r)];
+}));
+return b;
+}
+function contentBox(d, withInk = true) {
+const vb = d.canvas.querySelector('svg')?.viewBox.baseVal;
+if (!vb || !vb.width) return null;
+const ib = withInk ? inkBounds(d) : null;
+if (!ib) return { ox: 0, oy: 0, w: vb.width, h: vb.height };
+const x0 = Math.min(vb.x, ib[0]);
+const y0 = Math.min(vb.y, ib[1]);
+const x1 = Math.max(vb.x + vb.width, ib[2]);
+const y1 = Math.max(vb.y + vb.height, ib[3]);
+return { ox: x0 - vb.x, oy: y0 - vb.y, w: x1 - x0, h: y1 - y0 };
+}
+function toSvg(d, e) {
+const svg = d.canvas.querySelector('svg');
+const m = svg.getScreenCTM()?.inverse();
+const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(m);
+return [Math.round(pt.x * 10) / 10, Math.round(pt.y * 10) / 10];
+}
+function pathData(pts) {
+if (pts.length === 1) return `M${pts[0][0]} ${pts[0][1]}l0.01 0`;
+let p = `M${pts[0][0]} ${pts[0][1]}`;
+for (let k = 1; k < pts.length - 1; k++) {
+const [x, y] = pts[k];
+const [nx, ny] = pts[k + 1];
+p += `Q${x} ${y} ${(x + nx) / 2} ${(y + ny) / 2}`;
+}
+const [lx, ly] = pts[pts.length - 1];
+return `${p}L${lx} ${ly}`;
+}
+function strokeEl(s, doc = document, dark = null) {
+const el = doc.createElementNS('http://www.w3.org/2000/svg', 'path');
+const color = s.color || tokenColor('--text', dark ?? s.d.canvas.classList.contains('dark'));
+[['d', pathData(s.pts)], ['fill', 'none'], ['stroke', color], ['stroke-width', s.width], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]
+.forEach(([k, v]) => el.setAttribute(k, v));
+if (s.opacity) el.setAttribute('stroke-opacity', (dark ?? s.d.canvas.classList.contains('dark')) ? Math.min(1, s.opacity + 0.15) : s.opacity);
+return el;
+}
+function drawInk(d) {
+const g = inkLayer(d);
+if (!g) return;
+g.replaceChildren();
+inkOf(d).strokes.forEach((s) => { s.el = strokeEl(s); g.append(s.el); });
+}
+function startStroke(d, e) {
+const c = d.canvas;
+const capture = () => { try { c.setPointerCapture(e.pointerId); } catch {} };
+const lazy = !penOn;
+if (!lazy) capture();
+if (tool.id === 'eraser') {
+stroke = { d, id: e.pointerId, erase: true, lazy, start: { x: e.clientX, y: e.clientY }, touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+if (!lazy) eraseAt(d, e);
+} else {
+const s = { d, pts: [toSvg(d, e)], color: tool.color, width: Math.round((tool.width / d.scale) * 100) / 100, opacity: tool.opacity };
+s.el = strokeEl(s);
+if (tool.id === 'laser') s.el.setAttribute('class', 'laser');
+if (!lazy) inkLayer(d).append(s.el);
+stroke = { d, id: e.pointerId, s, lazy, start: { x: e.clientX, y: e.clientY }, laser: tool.id === 'laser', touch: e.pointerType === 'touch', last: { x: e.clientX, y: e.clientY } };
+}
+const moveInk = (ev) => {
+if (!stroke || ev.pointerId !== stroke.id) return;
+stroke.last = { x: ev.clientX, y: ev.clientY };
+if (stroke.lazy) {
+if (Math.hypot(ev.clientX - stroke.start.x, ev.clientY - stroke.start.y) < PAN.threshold) return;
+stroke.lazy = false;
+capture();
+showStylusBar();
+if (!stroke.erase) inkLayer(d).append(stroke.s.el);
+}
+if (stroke.erase) { eraseAt(d, ev); return; }
+const evs = ev.getCoalescedEvents?.() || [ev];
+evs.forEach((x) => {
+const pt = toSvg(d, x);
+const prev = stroke.s.pts[stroke.s.pts.length - 1];
+if (Math.hypot(pt[0] - prev[0], pt[1] - prev[1]) * d.scale >= 2) stroke.s.pts.push(pt);
+});
+stroke.s.el.setAttribute('d', pathData(stroke.s.pts));
+};
+const up = (ev) => {
+if (!stroke || ev.pointerId !== stroke.id) return;
+removeEventListener('pointermove', moveInk);
+removeEventListener('pointerup', up);
+removeEventListener('pointercancel', up);
+const done = stroke;
+stroke = null;
+if (done.erase || done.lazy) return;
+if (done.laser) {
+setTimeout(() => {
+if (matchMedia('(prefers-reduced-motion: reduce)').matches) { done.s.el.remove(); return; }
+done.s.el.classList.add('fade');
+setTimeout(() => done.s.el.remove(), 400);
+}, 1500);
+return;
+}
+const ink = inkOf(d);
+ink.strokes.push(done.s);
+ink.history.push({ add: done.s });
+syncSizes();
+};
+stroke.cleanup = () => { removeEventListener('pointermove', moveInk); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
+addEventListener('pointermove', moveInk);
+addEventListener('pointerup', up);
+addEventListener('pointercancel', up);
+}
+function cancelStroke() {
+if (!stroke) return;
+stroke.cleanup();
+stroke.s?.el.remove();
+stroke = null;
+}
+function eraseAt(d, e) {
+const ink = inkOf(d);
+const [px, py] = toSvg(d, e);
+const near = (s) => {
+const r = Math.max(s.width / 2, 10 / d.scale);
+return s.pts.some(([x, y], k) => {
+const [ax, ay] = k ? s.pts[k - 1] : [x, y];
+const dx = x - ax;
+const dy = y - ay;
+const t = dx || dy ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))) : 0;
+return Math.hypot(px - (ax + t * dx), py - (ay + t * dy)) <= r;
+});
+};
+const k = ink.strokes.findLastIndex(near);
+if (k < 0) return;
+const [s] = ink.strokes.splice(k, 1);
+s.el.remove();
+ink.history.push({ erase: s, at: k });
+syncSizes();
+}
+function undoInk(d) {
+const ink = inkOf(d);
+const h = ink.history.pop();
+if (!h) return;
+if (h.add) ink.strokes.splice(ink.strokes.indexOf(h.add), 1);
+if (h.erase) ink.strokes.splice(h.at, 0, h.erase);
+if (h.clear) ink.strokes.push(...h.clear);
+drawInk(d);
+syncSizes();
+}
+function clearInk(d) {
+const ink = inkOf(d);
+if (!ink.strokes.length) return;
+ink.history.push({ clear: ink.strokes.splice(0) });
+drawInk(d);
+syncSizes();
+notify(T.inkCleared);
+}
+function viewMap(d, root) {
+const ob = (d.svg.match(/viewBox="([^"]+)"/)?.[1] || '0 0 1 1').split(/[\s,]+/).map(Number);
+const nb = (root.getAttribute('viewBox') || '0 0 1 1').split(/[\s,]+/).map(Number);
+if (ob.every((v, k) => Math.abs(v - nb[k]) < 0.5)) return null;
+if (ob.length !== 4 || nb.length !== 4 || !(ob[2] > 0 && ob[3] > 0 && nb[2] > 0 && nb[3] > 0)) return null;
+const sx = nb[2] / ob[2];
+const sy = nb[3] / ob[3];
+return {
+transform: `translate(${nb[0]} ${nb[1]}) scale(${sx} ${sy}) translate(${-ob[0]} ${-ob[1]})`,
+point: (x, y) => [nb[0] + (x - ob[0]) * sx, nb[1] + (y - ob[1]) * sy],
+scale: Math.max(sx, sy),
+};
+}
+function withInk(d, svgText, dark) {
+const strokes = inkOf(d).strokes;
+if (!strokes.length) return svgText;
+const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
+const map = viewMap(d, doc.documentElement);
+if (map) g.setAttribute('transform', map.transform);
+strokes.forEach((s) => g.append(strokeEl(s, doc, dark)));
+const root = doc.documentElement;
+root.append(g);
+const vb = (root.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+if (vb.length === 4) {
+let [x0, y0, x1, y1] = [vb[0], vb[1], vb[0] + vb[2], vb[1] + vb[3]];
+const at = map ? map.point : (x, y) => [x, y];
+const k = map ? map.scale : 1;
+strokes.forEach((s) => s.pts.forEach(([px, py]) => {
+const [x, y] = at(px, py);
+const r = (s.width / 2) * k + 8;
+x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - r); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + r);
+}));
+if (x0 < vb[0] || y0 < vb[1] || x1 > vb[0] + vb[2] || y1 > vb[1] + vb[3]) {
+root.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
+root.removeAttribute('style');
+}
+}
+return new XMLSerializer().serializeToString(root);
+}
+const penbar = el('div', { id: 'penbar', class: 'float', role: 'toolbar', 'aria-label': T.penTools, hidden: '' });
+const toolGroup = el('div', { class: 'tools', role: 'radiogroup', 'aria-label': T.penTools });
+const toolBtns = TOOLS.map((t) => {
+const b = el('button', { type: 'button', role: 'radio', 'aria-label': T[t.label], title: T[t.label], 'aria-checked': String(t === tool), 'data-tool': t.id });
+b.append(el('span', { class: 'swatch', 'aria-hidden': 'true' }));
+b.addEventListener('click', () => {
+tool = t;
+toolBtns.forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+document.documentElement.classList.toggle('erasing', t.id === 'eraser');
+});
+return b;
+});
+const curDiagram = () => diagrams.find((x) => x.section === sections[current]);
+const undoBtn = el('button', { type: 'button', 'aria-label': T.undo, title: `${T.undo} (⌘/Ctrl+Z)` }, '↶');
+undoBtn.addEventListener('click', () => { const d = curDiagram(); if (d) undoInk(d); });
+const clearBtn = el('button', { type: 'button', 'aria-label': T.clearInk, title: T.clearInk }, '🗑');
+clearBtn.addEventListener('click', () => { const d = curDiagram(); if (d) clearInk(d); });
+const exitBtn = el('button', { type: 'button', 'aria-label': T.exitPen, title: `${T.exitPen} (Esc)` }, '×');
+function hideStylusBar() {
+stylusBar = false;
+penbar.hidden = true;
+document.documentElement.classList.remove('stylus-bar');
+syncPenSpace();
+}
+exitBtn.addEventListener('click', () => { if (penOn) setPen(false); else hideStylusBar(); });
+const exitLabel = (pen) => {
+exitBtn.setAttribute('aria-label', pen ? T.exitPen : T.hideTools);
+exitBtn.title = `${pen ? T.exitPen : T.hideTools} (Esc)`;
+};
+toolGroup.append(...toolBtns);
+const actionGroup = el('div', { class: 'tools' });
+actionGroup.append(undoBtn, clearBtn, exitBtn);
+penbar.append(toolGroup, el('span', { class: 'sep', 'aria-hidden': 'true' }), actionGroup);
+rovingToolbar(penbar, true);
+let stylusBar = false;
+function showStylusBar() {
+if (penOn || stylusBar) return;
+stylusBar = true;
+penbar.hidden = false;
+document.documentElement.classList.add('stylus-bar');
+exitLabel(false);
+syncPenSpace();
+notify(T.stylusOn);
+}
+function setPen(on) {
+penOn = on;
+stylusBar = false;
+document.documentElement.classList.remove('stylus-bar');
+exitLabel(true);
+penbar.hidden = !on;
+document.documentElement.classList.toggle('pen-on', on);
+document.querySelectorAll('.pen-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
+if (on) {
+if (matchMedia('(pointer: coarse)').matches) clearSelection();
+diagrams.forEach((d) => { if (!selected || selected.d !== d) highlight(d, null); });
+}
+else cancelStroke();
+syncPenSpace();
+const d = curDiagram();
+if (d?.ok && d.fit) fitScreen(d);
+notify(on ? (matchMedia('(any-pointer: fine)').matches ? T.penOn : T.penOnTouch) : T.penOff);
+}
+function syncPenSpace() {
+root.style.setProperty('--pen-w', (penOn || stylusBar) && innerWidth >= 600 ? `${penbar.offsetWidth + 12}px` : '0px');
+measure();
+}
+addEventListener('beforeunload', (e) => { if (hasInk()) { e.preventDefault(); e.returnValue = T.inkLeave; } });
+const spaceUp = () => { spaceDown = false; document.documentElement.classList.remove('pen-pan'); };
+addEventListener('keyup', (e) => { if (e.key === ' ') spaceUp(); });
+addEventListener('blur', spaceUp);
+function reach(node) {
+const walk = (dir) => {
+const seen = new Set();
+const edges = new Set();
+const stack = [node];
+while (stack.length) {
+const n = stack.pop();
+for (const e of n[dir]) {
+edges.add(e);
+const m = dir === 'out' ? e.b : e.a;
+if (m !== node && !seen.has(m)) { seen.add(m); stack.push(m); }
+}
+}
+return { seen, edges };
+};
+const down = walk('out');
+const up = walk('in');
+return { ups: up.seen, downs: down.seen, edges: new Set([...up.edges, ...down.edges]) };
+}
+function highlight(d, node) {
+const svg = d.canvas.querySelector('svg');
+if (!svg) return;
+svg.querySelectorAll('.hl-on, .hl-sel, .hl-lock').forEach((x) => x.classList.remove('hl-on', 'hl-sel', 'hl-lock'));
+svg.classList.toggle('hl', Boolean(node));
+if (!node) return;
+const r = reach(node);
+node.el.classList.add('hl-on', 'hl-sel');
+if (selected?.node === node) node.el.classList.add('hl-lock');
+[...r.ups, ...r.downs].forEach((n) => n.el.classList.add('hl-on'));
+r.edges.forEach((e) => e.els.forEach((x) => x.classList.add('hl-on')));
+}
+const selbar = el('div', { id: 'selbar', class: 'float', role: 'group', 'aria-label': T.selected, hidden: '' });
+const selText = el('span', { class: 'sel-text' });
+const selCopy = el('button', { type: 'button' }, T.copyRef);
+const selClear = el('button', { type: 'button', 'aria-label': T.clearSel, title: `${T.clearSel} (Esc)` }, '×');
+const selNote = el('div', { class: 'sel-note', hidden: '' });
+selbar.append(selText, selCopy, selClear, selNote);
+let selected = null;
+const selLive = el('p', { class: 'sr-only', role: 'status' });
+function select(d, node, quiet = false) {
+if (selected?.node === node) node = null;
+if (selected) selected.node.el.setAttribute('aria-pressed', 'false');
+selected = node ? { d, node } : null;
+highlight(d, node);
+if (node) {
+node.el.setAttribute('aria-pressed', 'true');
+node.el.classList.add('hl-lock');
+const r = reach(node);
+const full = T.selInfo(node.label, r.ups.size, r.downs.size);
+selText.replaceChildren(el('span', { class: 'full' }, full), el('span', { class: 'short' }, `${node.label} ↑${r.ups.size} ↓${r.downs.size}`));
+selText.title = full;
+const notesHere = annsOf(d, node);
+selNote.replaceChildren(...notesHere.map((a) => el('span', {}, `${a.n}. ${a.text}`)));
+selNote.hidden = !notesHere.length;
+if (!quiet) { selLive.textContent = ''; requestAnimationFrame(() => { selLive.textContent = full; }); }
+}
+selbar.hidden = !node;
+root.style.setProperty('--sel-h', node ? `${selbar.offsetHeight + 12}px` : '0px');
+if (node && !quiet) ensureVisible(d, node.el);
+}
+function clearSelection(d) {
+if (selected && (!d || selected.d === d)) select(selected.d, selected.node);
+else if (d) highlight(d, null);
+}
+function nodeRef(d, node) {
+const r = reach(node);
+const names = (list) => {
+const uniq = [...new Set(list)];
+if (!uniq.length) return T.none;
+const shown = uniq.slice(0, 8).map((n) => n.label).join('、');
+return uniq.length > 8 ? `${shown} ${T.andMore(uniq.length - 8)}` : shown;
+};
+const k = sections.indexOf(d.section) + 1;
+const id = /^\d+$/.test(node.src) ? '' : node.src;
+const texts = annsOf(d, node).map((a) => a.text);
+return T.nodeRef(k, sections.length, d.section.dataset.title, id, node.label,
+names(node.in.map((e) => e.a)), names(node.out.map((e) => e.b)), r.ups.size, r.downs.size) + (texts.length ? T.annRef(texts.join('；')) : '');
+}
+selCopy.addEventListener('click', async () => {
+if (!selected) return;
+try {
+await navigator.clipboard.writeText(nodeRef(selected.d, selected.node));
+notify(T.copied);
+} catch {
+notify(T.copyFail);
+}
+});
+selClear.addEventListener('click', () => {
+const n = selected?.node;
+clearSelection();
+n?.el.focus({ preventScroll: true });
+});
+function bindNodes(d) {
+const c = d.canvas;
+const nodeOf = (t) => d.graph?.byEl.get(t.closest?.('g.node'));
+const preview = (n) => { if (!penOn && (!selected || selected.d !== d)) highlight(d, n); };
+const focused = () => (document.activeElement?.matches?.(':focus-visible') ? nodeOf(document.activeElement) : null);
+c.addEventListener('pointerover', (e) => { if (e.pointerType === 'mouse') { const n = nodeOf(e.target); if (n) preview(n); } });
+c.addEventListener('pointerout', (e) => {
+if (e.pointerType !== 'mouse' || !nodeOf(e.target) || nodeOf(e.relatedTarget || c) === nodeOf(e.target)) return;
+preview(focused() || null);
+});
+c.addEventListener('click', (e) => {
+if (c.classList.contains('dragging') || !d.graph || penOn) return;
+if (e.target.closest?.('a')) return;
+const badge = e.target.closest?.('.ann-badge');
+const n = badge ? d.anns.find((a) => String(a.n) === badge.dataset.ann)?.target : nodeOf(e.target);
+if (n) select(d, n);
+else if (selected?.d === d) clearSelection();
+});
+c.addEventListener('focusin', (e) => {
+const n = nodeOf(e.target);
+if (!n) return;
+d.graph.nodes.forEach((x) => x.el.setAttribute('tabindex', x === n ? '0' : '-1'));
+if (!e.target.matches(':focus-visible')) return;
+preview(n);
+ensureVisible(d, n.el);
+});
+c.addEventListener('focusout', (e) => { if (nodeOf(e.target) && !nodeOf(e.relatedTarget || c)) preview(null); });
+c.addEventListener('keydown', (e) => {
+const n = nodeOf(e.target);
+if (!n) return;
+if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); select(d, n); return; }
+const next = moveTarget(d, n, e);
+const altArrow = e.altKey && /^Arrow/.test(e.key);
+if (next || altArrow) { e.preventDefault(); e.stopPropagation(); next?.el.focus(); }
+else if (e.key === 'Escape' && !selected) { e.preventDefault(); c.focus(); }
+}, true);
+c.addEventListener('scroll', () => { if (c.scrollLeft || c.scrollTop) { c.scrollLeft = 0; c.scrollTop = 0; } });
+}
+function moveTarget(d, n, e) {
+const list = [...d.graph.nodes.values()];
+if (e.key === '[' || e.key === ']') return list[(list.indexOf(n) + (e.key === ']' ? 1 : list.length - 1)) % list.length];
+const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+if (!e.altKey || !dir) return null;
+const center = (x) => { const r = x.el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+const [cx, cy] = center(n);
+let best = null;
+for (const m of list) {
+if (m === n) continue;
+const [x, y] = center(m);
+const along = (x - cx) * dir[0] + (y - cy) * dir[1];
+if (along <= 0) continue;
+const across = Math.abs((x - cx) * dir[1] + (y - cy) * dir[0]);
+const score = along + across * 2;
+if (!best || score < best.score) best = { m, score };
+}
+return best?.m || null;
+}
+function ensureVisible(d, node) {
+const r = node.getBoundingClientRect();
+const c = d.canvas.getBoundingClientRect();
+const { top, bottom } = barLimits(d);
+const dx = r.left < c.left + 16 ? c.left + 16 - r.left : r.right > c.right - 16 ? c.right - 16 - r.right : 0;
+const dy = r.top < c.top + top ? c.top + top - r.top : r.bottom > c.top + bottom ? c.top + bottom - r.bottom : 0;
+if (dx || dy) panBy(d, dx, dy);
+}
+function buildReport(i) {
+const lines = [T.reportHead, `${T.reportPage}: ${document.title}`];
+if (i === null && statusEl.firstChild) lines.push(`${T.reportState}: ${statusEl.firstChild.textContent}`);
+const failed = sections.map((_, k) => k).filter((k) => errors.has(k));
+const list = i !== null ? [i] : failed.length ? failed : [current];
+const dirLabel = { auto: T.auto, vertical: T.vertical, horizontal: T.horizontal };
+for (const k of list) {
+const section = sections[k];
+const d = diagrams.find((x) => x.section === section);
+lines.push('', `${T.reportFig}: ${T.reportDiagram(k + 1, sections.length, section.dataset.title)}`);
+lines.push(`${T.reportState}: ${errors.get(k) || (d && d.ok ? T.reportOk : '?')}`);
+if (d) lines.push(`${T.reportView}: ${T.direction} ${dirLabel[dirOf(d)] || dirOf(d)}, Theme ${currentTheme()}`);
+const src = section.querySelector('script.mermaid-src');
+const code = src ? dedent(src.textContent) : '';
+const fence = '`'.repeat(Math.max(3, ...(code.match(/`+/g) || []).map((x) => x.length + 1)));
+if (src) lines.push(`${T.reportSource}:`, `${fence}mermaid`, code, fence);
+}
+lines.push('', `${T.reportEnv}: diagram-first ${APP.version}, Mermaid ${MERMAID_VERSION}, ELK ${elkOk === null ? '?' : elkOk ? 'on' : 'off'}, ${navigator.userAgent}`);
+if (!errors.size || (i !== null && !errors.has(i))) lines.push('', T.reportNote);
+return lines.join('\n');
+}
+async function copyReport(i) {
+try {
+await navigator.clipboard.writeText(buildReport(i));
+notify(T.reportCopied);
+} catch {
+notify(T.copyFail);
+}
+}
+function reportButton(i) {
+const b = el('button', { type: 'button', class: 'report', title: T.reportTitle }, i === null && errors.size > 1 ? T.reportAll : T.report);
+b.addEventListener('click', () => copyReport(i));
+return b;
+}
+function syncSizes() {
+const cur = { size: exportSize, layout: exportLayout, palette: exportPalette, ink: exportInk };
+diagrams.forEach((d) => { if (d.inkRow) d.inkRow.hidden = !inkOf(d).strokes.length; });
+document.querySelectorAll('[data-opt]').forEach((b) => b.setAttribute('aria-checked', String(cur[b.dataset.opt] === b.dataset.value)));
+diagrams.filter((d) => d.section === sections[current]).forEach((d) => {
+if (!d.ok || !d.sizeLabel || !viewBox(d)) return;
+let { w, h } = svgSize(d.svg);
+const cb = exportInk === 'on' ? contentBox(d) : null;
+if (cb) ({ w, h } = cb);
+if (exportLayout === 'card') {
+const caption = notes.get(d.section)?.querySelector('.caption')?.textContent.trim() || '';
+({ TW: w, TH: h } = cardLayout(w, h, d.section.dataset.title, caption, d.anns.map((a) => `${a.n}. ${a.text}`)));
+}
+const o = exportDims(w, h);
+const text = T.pixels(o.w, o.h);
+d.sizeLabel.textContent = `${T.size} · ${text}`;
+d.sizeLabel.parentElement.setAttribute('aria-label', `${T.size} ${text}`);
+});
+}
 function dirOf(d) {
-  return d.direction === 'page' ? direction : d.direction;
+return d.direction === 'page' ? direction : d.direction;
 }
-
 let renderCount = 0;
-async function renderOne(d) {
-  const n = ++renderCount;
-  d.canvas.classList.toggle('dark', currentTheme().includes('dark'));
-  try {
-    const source = withDirection(d.source, dirOf(d));
-    let svg;
-    try {
-      ({ svg } = await mermaid.render(`diagram-${d.i}-${n}`, source));
-    } catch (e) {
-      if (source === d.source) throw e;
-      ({ svg } = await mermaid.render(`diagram-${d.i}-${n}-src`, d.source));
-    }
-    d.canvas.innerHTML = svg;
-    // 從 DOM 序列化成合法的 XML：Mermaid 的 HTML 標籤（例如 <br>）不一定是自我封閉，直接當 XML 解析會失敗。
-    d.svg = new XMLSerializer().serializeToString(d.canvas.querySelector('svg'));
-    d.baseStyle = d.canvas.querySelector('svg')?.getAttribute('style') ?? null;
-    if (!d.ok) { d.toolbar.prepend(...d.buttons); d.syncToolbar(); }
-    d.imageItems.forEach((b) => { b.hidden = false; });
-    d.ok = true;
-    if (d.fit) fitScreen(d);
-    else setZoom(d, d.scale);
-  } catch (e) {
-    const box = el('div', { class: 'err' }, T.renderFail);
-    box.append(el('pre', {}, String(e.message || e)));
-    d.canvas.replaceChildren(box);
-    d.buttons.forEach((b) => b.remove());
-    d.imageItems.forEach((b) => { b.hidden = true; });
-    d.syncToolbar();
-    d.ok = false;
-    d.details.open = true;
-  }
+function renderOne(d) {
+return serial(() => renderOneNow(d));
 }
-// filter 為 null 時重繪全部；否則只重繪符合條件的圖。
-async function renderAll(filter = null) {
-  initMermaid();
-  for (const d of diagrams) {
-    if (!filter || filter(d)) await renderOne(d);
-  }
+async function renderOneNow(d) {
+const n = ++renderCount;
+d.canvas.classList.toggle('dark', currentTheme().includes('dark'));
+const focusId = d.graph?.byEl.get(document.activeElement)?.id ?? null;
+try {
+const source = withDirection(d.source, dirOf(d));
+let svg;
+try {
+({ svg } = await mermaid.render(`diagram-${d.i}-${n}`, source));
+} catch (e) {
+if (source === d.source) throw e;
+({ svg } = await mermaid.render(`diagram-${d.i}-${n}-src`, d.source));
+}
+d.canvas.innerHTML = svg;
+d.svg = new XMLSerializer().serializeToString(d.canvas.querySelector('svg'));
+errors.delete(d.i);
+const keep = selected?.d === d ? selected.node.id : null;
+clearSelection(d);
+await indexGraph(d, source);
+placeAnnotations(d);
+drawInk(d);
+const again = keep !== null && d.graph?.nodes.get(keep);
+if (again) select(d, again, true);
+const back = d.graph?.nodes.get(focusId ?? keep);
+if (back) {
+d.graph.nodes.forEach((x) => x.el.setAttribute('tabindex', x === back ? '0' : '-1'));
+if (focusId !== null) back.el.focus({ preventScroll: true });
+}
+if (!d.ok) { d.toolbar.prepend(...d.buttons); d.syncToolbar(); }
+d.imageItems.forEach((b) => { b.hidden = false; });
+d.ok = true;
+d.canvas.classList.add('ready');
+if (d.fit) fitScreen(d);
+else applyView(d);
+} catch (e) {
+const box = el('div', { class: 'err' }, T.renderFail);
+errors.set(d.i, String(e.message || e));
+box.append(el('pre', {}, String(e.message || e)), reportButton(d.i));
+d.canvas.replaceChildren(box);
+d.buttons.forEach((b) => b.remove());
+d.imageItems.forEach((b) => { b.hidden = true; });
+d.syncToolbar();
+d.ok = false;
+d.canvas.classList.remove('ready', 'dragging');
+d.details.open = true;
+}
+}
+function renderAll(filter = null) {
+return serial(async () => {
+initMermaid();
+for (const d of diagrams) {
+if (!filter || filter(d)) await renderOneNow(d);
+}
+});
 }
 const followsPage = (d) => d.direction === 'page';
-
-// 右上角：說明、設定、全螢幕。
 const actions = el('div', { id: 'actions', class: 'float' });
-const infoBtn = el('button', { type: 'button', 'aria-label': T.info, title: T.info, 'aria-controls': 'info' }, `ⓘ ${T.info}`);
+const infoBtn = el('button', { type: 'button', 'aria-label': T.info, title: `${T.info} (?)`, 'aria-controls': 'info', 'aria-keyshortcuts': '?' }, `ⓘ ${T.info}`);
 function showInfo(v, remember = true) {
-  info.hidden = !v;
-  infoBtn.setAttribute('aria-pressed', String(v));
-  document.documentElement.classList.toggle('info-open', v);
-  if (remember) save(STORE.info, v ? 'open' : 'closed');
-  // 寬螢幕時說明視窗會讓出畫布左側，圖要重新符合大小。
-  diagrams.forEach((d) => { if (d.ok && d.fit) requestAnimationFrame(() => fitScreen(d)); });
+info.classList.toggle('card', !v);
+infoBtn.setAttribute('aria-pressed', String(v));
+expandInfo.setAttribute('aria-expanded', String(v));
+if (remember) save(STORE.info, v ? 'open' : 'closed');
+diagrams.forEach((d) => { if (d.ok && d.fit) requestAnimationFrame(() => fitScreen(d, true)); });
 }
-infoBtn.addEventListener('click', () => showInfo(info.hidden));
+const isOpen = () => !info.classList.contains('card');
+infoBtn.addEventListener('click', () => showInfo(!isOpen()));
 closeInfo.addEventListener('click', () => { showInfo(false); infoBtn.focus(); });
-// 預設：寬螢幕（圖會避開說明視窗）打開，較窄時收合，避免遮住圖。
-showInfo(load(STORE.info, ['open', 'closed'], matchMedia('(min-width: 900px)').matches ? 'open' : 'closed') === 'open', false);
+expandInfo.addEventListener('click', () => { showInfo(true); closeInfo.focus(); });
+showInfo(load(STORE.info, ['open', 'closed'], 'closed') === 'open', false);
 const settingsWrap = el('div');
 const settingsBtn = el('button', { type: 'button', 'aria-label': T.settings, title: T.settings, 'aria-controls': 'settings' }, '⚙');
 const settings = el('div', { class: 'pop', id: 'settings', role: 'group', 'aria-label': T.settings });
@@ -861,29 +2117,28 @@ settingsWrap.append(settingsBtn, settings);
 popover(settingsBtn, settings, 'right');
 actions.append(infoBtn, settingsWrap);
 if (fsEnabled) {
-  const fsBtn = el('button', { type: 'button', 'aria-pressed': 'false' }, T.fullscreen);
-  fsBtn.addEventListener('click', toggleFullscreen);
-  const sync = () => {
-    const on = Boolean(fsElement());
-    fsBtn.textContent = on ? T.exitFullscreen : T.fullscreen;
-    fsBtn.setAttribute('aria-pressed', String(on));
-  };
-  document.addEventListener('fullscreenchange', sync);
-  document.addEventListener('webkitfullscreenchange', sync);
-  actions.append(fsBtn);
+const fsBtn = el('button', { type: 'button', 'aria-pressed': 'false' }, T.fullscreen);
+fsBtn.addEventListener('click', toggleFullscreen);
+const sync = () => {
+const on = Boolean(fsElement());
+fsBtn.textContent = on ? T.exitFullscreen : T.fullscreen;
+fsBtn.setAttribute('aria-pressed', String(on));
+};
+document.addEventListener('fullscreenchange', sync);
+document.addEventListener('webkitfullscreenchange', sync);
+actions.append(fsBtn);
 }
-
 const modeGroup = el('div', { class: 'segmented', role: 'group', 'aria-label': T.mode });
 const modeButtons = ['auto', 'light', 'dark'].map((m) => {
-  const b = el('button', { type: 'button', 'aria-pressed': String(m === mode) }, T[m]);
-  b.addEventListener('click', async () => {
-    mode = m;
-    save(STORE.mode, m);
-    modeButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(['auto', 'light', 'dark'][k] === m)));
-    applyMode();
-    if (theme === 'auto') await renderAll();
-  });
-  return b;
+const b = el('button', { type: 'button', 'aria-pressed': String(m === mode) }, T[m]);
+b.addEventListener('click', async () => {
+mode = m;
+save(STORE.mode, m);
+modeButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(['auto', 'light', 'dark'][k] === m)));
+applyMode();
+if (theme === 'auto') await renderAll();
+});
+return b;
 });
 modeGroup.append(...modeButtons);
 const themeSelect = el('select', { 'aria-label': T.theme });
@@ -891,27 +2146,25 @@ themeSelect.append(el('option', { value: 'auto' }, `${T.auto} (${AUTO_THEME.ligh
 THEMES.forEach((t) => themeSelect.append(el('option', { value: t }, t)));
 themeSelect.value = theme;
 themeSelect.addEventListener('change', async () => {
-  theme = themeSelect.value;
-  save(STORE.theme, theme);
-  await renderAll();
+theme = themeSelect.value;
+save(STORE.theme, theme);
+await renderAll();
 });
 const DIRECTIONS = ['auto', 'vertical', 'horizontal'];
 const directionGroup = el('div', { class: 'segmented', role: 'group', 'aria-label': T.direction });
 const directionButtons = DIRECTIONS.map((v) => {
-  const b = el('button', { type: 'button', 'aria-pressed': String(v === direction) }, T[v]);
-  b.addEventListener('click', async () => {
-    direction = v;
-    save(STORE.direction, v);
-    directionButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(DIRECTIONS[k] === v)));
-    diagrams.forEach((d) => { if (followsPage(d)) d.fit = true; });
-    await renderAll(followsPage);
-  });
-  return b;
+const b = el('button', { type: 'button', 'aria-pressed': String(v === direction) }, T[v]);
+b.addEventListener('click', async () => {
+direction = v;
+save(STORE.direction, v);
+directionButtons.forEach((x, k) => x.setAttribute('aria-pressed', String(DIRECTIONS[k] === v)));
+diagrams.forEach((d) => { if (followsPage(d)) d.fit = true; });
+await renderAll(followsPage);
+});
+return b;
 });
 directionGroup.append(...directionButtons);
 controls.append(modeGroup, directionGroup, themeSelect);
-
-// 左上角：目錄切換。兩張圖以上才有清單與上一張／下一張。
 const nav = el('nav', { id: 'nav', class: 'float toc', 'aria-label': T.toc });
 const tocWrap = el('div');
 const tocBtn = el('button', { type: 'button', class: 'toc-btn', 'aria-controls': 'toc-panel' });
@@ -920,110 +2173,209 @@ nav.append(tocWrap);
 const links = new Map();
 let current = 0;
 const multi = sections.length >= 2;
-const prevBtn = el('button', { type: 'button', 'aria-label': T.prev, title: T.prev }, '‹');
-const nextBtn = el('button', { type: 'button', 'aria-label': T.next, title: T.next }, '›');
+const prevBtn = el('button', { type: 'button', 'aria-label': T.prev, title: `${T.prev} (PageUp)` }, '‹');
+const nextBtn = el('button', { type: 'button', 'aria-label': T.next, title: `${T.next} (PageDown)` }, '›');
 if (multi) {
-  const panel = el('div', { class: 'pop', id: 'toc-panel' });
-  const list = el('ol');
-  sections.forEach((section) => {
-    const a = el('a', { href: `#${section.id}` }, section.dataset.title);
-    links.set(section, a);
-    const li = el('li');
-    li.append(a);
-    list.append(li);
-  });
-  panel.append(list);
-  tocWrap.append(panel);
-  const toc = popover(tocBtn, panel);
-  list.addEventListener('click', (e) => {
-    const a = e.target.closest('a');
-    if (!a) return;
-    e.preventDefault();
-    toc.set(false);
-    show(sections.findIndex((x) => `#${x.id}` === a.getAttribute('href')));
-  });
-  prevBtn.addEventListener('click', () => show(current - 1));
-  nextBtn.addEventListener('click', () => show(current + 1));
-  nav.append(prevBtn, nextBtn);
+const panel = el('div', { class: 'pop', id: 'toc-panel' });
+const list = el('ol');
+sections.forEach((section) => {
+const a = el('a', { href: `#${section.id}` }, section.dataset.title);
+links.set(section, a);
+const li = el('li');
+li.append(a);
+list.append(li);
+});
+panel.append(list);
+tocWrap.append(panel);
+const toc = popover(tocBtn, panel);
+list.addEventListener('click', (e) => {
+const a = e.target.closest('a');
+if (!a) return;
+e.preventDefault();
+toc.set(false);
+show(sections.findIndex((x) => `#${x.id}` === a.getAttribute('href')));
+});
+prevBtn.addEventListener('click', () => show(current - 1));
+nextBtn.addEventListener('click', () => show(current + 1));
+nav.append(prevBtn, nextBtn);
 } else {
-  tocBtn.disabled = true;
+tocBtn.disabled = true;
 }
-document.body.append(nav, actions, toast);
-
-// 切換到第 k 張圖：顯示該圖、把它的說明移入說明視窗，並同步網址的 #id。
+document.body.append(nav, actions, selbar, penbar, toast, selLive);
 function show(k, updateHash = true) {
-  popovers.forEach((p) => p.set(false));
-  if (!sections.length) return;
-  current = (k + sections.length) % sections.length;
-  const section = sections[current];
-  sections.forEach((x) => x.classList.toggle('active', x === section));
-  info.querySelectorAll('.notes').forEach((n) => n.remove());
-  info.append(notes.get(section));
-  tocBtn.textContent = multi ? `☰ ${section.dataset.title}  ${current + 1}/${sections.length} ▾` : section.dataset.title;
-  links.forEach((a, x) => a.setAttribute('aria-current', String(x === section)));
-  if (updateHash && location.hash !== `#${section.id}`) history.replaceState(null, '', `#${section.id}`);
-  const d = diagrams.find((x) => x.section === section);
-  if (d && d.ok) requestAnimationFrame(() => (d.fit ? fitScreen(d) : showLevel(d)));
+popovers.forEach((p) => p.set(false));
+clearSelection();
+if (!sections.length) return;
+current = (k + sections.length) % sections.length;
+const section = sections[current];
+sections.forEach((x) => x.classList.toggle('active', x === section));
+info.querySelectorAll('.notes').forEach((n) => n.remove());
+info.append(notes.get(section), hint, credit, expandInfo);
+tocBtn.replaceChildren(el('span', { class: 't' }, section.dataset.title));
+if (multi) {
+tocBtn.prepend(el('span', { 'aria-hidden': 'true' }, '☰'));
+tocBtn.setAttribute('aria-label', `${T.toc}: ${section.dataset.title} ${current + 1}/${sections.length}`);
+}
+if (multi) tocBtn.append(el('span', {}, `${current + 1}/${sections.length} ▾`));
+links.forEach((a, x) => a.setAttribute('aria-current', String(x === section)));
+if (updateHash && location.hash !== `#${section.id}`) history.replaceState(null, '', `#${section.id}`);
+const d = diagrams.find((x) => x.section === section);
+if (d && d.ok) requestAnimationFrame(() => {
+if (d.annPending) placeAnnotations(d);
+if (d.fit) fitScreen(d);
+else applyView(d);
+});
 }
 const fromHash = () => {
-  let hash = location.hash;
-  try { hash = decodeURIComponent(hash); } catch {}
-  return Math.max(0, sections.findIndex((x) => `#${x.id}` === hash));
+let hash = location.hash;
+try { hash = decodeURIComponent(hash); } catch {}
+return Math.max(0, sections.findIndex((x) => `#${x.id}` === hash));
 };
 addEventListener('hashchange', () => show(fromHash(), false));
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !nativePopover) {
-    popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
-    return;
-  }
-  if (!multi || e.altKey || e.ctrlKey || e.metaKey) return;
-  // 只在焦點不在可捲動或可操作的元素上時切換，避免搶走畫布、原始碼與工具列的方向鍵。
-  const t = e.target;
-  const fitted = t.classList?.contains('canvas') && diagrams.some((d) => d.canvas === t && d.fit);
-  if (!(t === document.body || t === document.documentElement || fitted || t.closest('#nav'))) return;
-  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(current - 1); }
-  if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(current + 1); }
+const keepsPageZoom = (t) => Boolean(t.closest?.('.canvas, #info:not(.card), .pop'));
+const zoomTarget = (t) => {
+if (keepsPageZoom(t)) return null;
+const d = diagrams.find((x) => x.section === sections[current]);
+return d && d.ok ? d : null;
+};
+document.addEventListener('wheel', (e) => {
+const d = (e.ctrlKey || e.metaKey) && zoomTarget(e.target);
+if (!d) return;
+e.preventDefault();
+wheelZoomOrPan(d, e);
+}, { passive: false });
+if (!navigator.maxTouchPoints) {
+let base = null;
+document.addEventListener('gesturestart', (e) => {
+const d = zoomTarget(e.target);
+base = d ? { d, scale: currentScale(d) } : null;
+if (d) e.preventDefault();
 });
-// 列印時把各圖的說明放回原位，逐張印出。
-addEventListener('beforeprint', () => notes.forEach((n, section) => section.append(n)));
-addEventListener('afterprint', () => show(current, false));
-// 依浮動列的實際高度與寬度保留畫布空間（手機上工具列可能換行）。
+document.addEventListener('gesturechange', (e) => {
+if (!base) return;
+e.preventDefault();
+setZoom(base.d, base.scale * e.scale, { x: e.clientX, y: e.clientY });
+});
+document.addEventListener('gestureend', () => { base = null; });
+}
+document.addEventListener('keydown', (e) => {
+const popOpen = popovers.some((p) => p.isOpen());
+if (e.key === 'Escape' && !nativePopover && popOpen) {
+popovers.forEach((p) => { if (p.isOpen()) { p.set(false); p.btn.focus(); } });
+return;
+}
+if (e.key === 'Escape' && penOn && !popOpen) { setPen(false); return; }
+if (e.key === 'Escape' && stylusBar && !popOpen && !selected) { hideStylusBar(); return; }
+const typing = e.target.closest?.('pre, input, textarea, select, .pop');
+if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !typing) {
+const d = curDiagram();
+if (d && inkOf(d).history.length) { e.preventDefault(); undoInk(d); return; }
+}
+if (e.key === ' ' && penOn && !typing) {
+spaceDown = true;
+document.documentElement.classList.add('pen-pan');
+if (!e.target.closest?.('button')) { e.preventDefault(); return; }
+}
+if ((e.key === 'p' || e.key === 'P') && !e.altKey && !e.ctrlKey && !e.metaKey && !typing) {
+const d = curDiagram();
+if (d && d.ok) { e.preventDefault(); setPen(!penOn); return; }
+}
+if (e.key === 'Escape' && selected && !popOpen) {
+const n = selected.node;
+clearSelection();
+if (selbar.contains(e.target)) n.el.focus({ preventScroll: true });
+return;
+}
+if (e.altKey || e.ctrlKey || e.metaKey) return;
+if (e.key === '?' && !e.target.closest?.('pre, input, textarea, select, .pop')) {
+e.preventDefault();
+showInfo(true, false);
+hint.scrollIntoView({ block: 'nearest' });
+hint.classList.remove('flash');
+void hint.offsetWidth;
+hint.classList.add('flash');
+return;
+}
+const t = e.target;
+const page = t === document.body || t === document.documentElement;
+const inNav = Boolean(t.closest?.('#nav'));
+const paging = e.key === 'PageUp' || e.key === 'PageDown';
+if (multi && (paging ? page || inNav || Boolean(t.closest?.('.canvas')) : inNav && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) {
+e.preventDefault();
+show(current + (e.key === 'ArrowLeft' || e.key === 'PageUp' ? -1 : 1));
+return;
+}
+if (page) viewKey(diagrams.find((x) => x.section === sections[current]), e);
+});
+addEventListener('beforeprint', () => {
+notes.forEach((n, section) => section.append(n));
+diagrams.forEach((d) => {
+const svg = d.canvas.querySelector('svg');
+const ib = svg && inkBounds(d);
+if (!ib) return;
+const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+g.setAttribute('class', 'ink-print');
+inkOf(d).strokes.forEach((s) => g.append(strokeEl(s)));
+svg.append(g);
+const c = contentBox(d);
+const vb = svg.viewBox.baseVal;
+d.printViewBox = svg.getAttribute('viewBox');
+d.printSvg = svg;
+svg.setAttribute('viewBox', `${vb.x + c.ox} ${vb.y + c.oy} ${c.w} ${c.h}`);
+});
+});
+addEventListener('afterprint', () => {
+diagrams.forEach((d) => {
+const svg = d.canvas.querySelector('svg');
+svg?.querySelector(':scope > g.ink-print')?.remove();
+if (d.printViewBox && svg === d.printSvg) svg.setAttribute('viewBox', d.printViewBox);
+d.printViewBox = d.printSvg = null;
+});
+show(current, false);
+});
 const root = document.documentElement;
 const measure = () => {
-  const toolbars = diagrams.map((d) => d.toolbar).concat([...document.querySelectorAll('section.active .toolbar')]);
-  root.style.setProperty('--top-h', `${Math.ceil(Math.max(nav.offsetHeight, actions.offsetHeight))}px`);
-  root.style.setProperty('--actions-w', `${Math.ceil(actions.offsetWidth)}px`);
-  root.style.setProperty('--bottom-h', `${Math.ceil(Math.max(0, ...toolbars.map((x) => x.offsetHeight)))}px`);
-  diagrams.forEach((d) => { if (d.ok && d.fit) fitScreen(d); });
+const toolbars = diagrams.map((d) => d.toolbar).concat([...document.querySelectorAll('section.active .toolbar')]);
+root.style.setProperty('--top-h', `${Math.ceil(Math.max(nav.offsetHeight, actions.offsetHeight))}px`);
+root.style.setProperty('--actions-w', `${Math.ceil(actions.offsetWidth)}px`);
+const narrowPen = penOn && innerWidth < 600;
+root.style.setProperty('--bottom-h', `${Math.ceil(Math.max(0, ...toolbars.map((x) => x.offsetHeight), narrowPen ? penbar.offsetHeight : 0))}px`);
+diagrams.forEach((d) => { if (d.ok && d.fit) fitScreen(d, true); });
 };
 const bars = new ResizeObserver(() => requestAnimationFrame(measure));
-[nav, actions, ...document.querySelectorAll('.toolbar')].forEach((x) => bars.observe(x));
+[nav, actions, info, penbar, ...document.querySelectorAll('.toolbar')].forEach((x) => bars.observe(x));
 show(fromHash());
-
 systemDark.addEventListener('change', async () => {
-  if (mode === 'auto' && theme === 'auto') await renderAll();
+if (mode === 'auto' && theme === 'auto') await renderAll();
 });
 landscape.addEventListener('change', async () => {
-  const auto = (d) => dirOf(d) === 'auto';
-  diagrams.forEach((d) => { if (auto(d)) d.fit = true; });
-  await renderAll(auto);
+const auto = (d) => dirOf(d) === 'auto';
+diagrams.forEach((d) => { if (auto(d)) d.fit = true; });
+await renderAll(auto);
 });
 let resizeFrame = 0;
 addEventListener('resize', () => {
-  cancelAnimationFrame(resizeFrame);
-  resizeFrame = requestAnimationFrame(() => diagrams.forEach((d) => {
-    if (d.fit) fitScreen(d);
-    else showLevel(d);
-  }));
+if (penOn || stylusBar) syncPenSpace();
+cancelAnimationFrame(resizeFrame);
+resizeFrame = requestAnimationFrame(() => diagrams.forEach((d) => {
+if (d.fit) fitScreen(d);
+else applyView(d);
+}));
 });
-
 await renderAll();
 badCount += diagrams.filter((d) => !d.ok).length;
-
+elkOk = await serial(() => elkIsActive(mermaid));
 if (badCount) {
-  setStatus('error', T.some(diagrams.filter((d) => d.ok).length, badCount));
-} else if (!(await elkIsActive(mermaid))) {
-  setStatus('warn', T.noElk);
+setStatus('error', T.some(diagrams.filter((d) => d.ok).length, badCount), reportButton(null));
+} else if (!elkOk) {
+setStatus('warn', T.noElk, reportButton(null));
+}
+const missing = diagrams.filter((d) => d.graph).flatMap((d) => d.anns.filter((a) => a.node !== null && !d.graph.bySrc.has(a.node) && !d.graph.nodes.has(a.node)).map((a) => `${d.section.dataset.title} #${a.n}（${a.node}）`));
+const broken = !getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || /\{\{/.test(document.title);
+const extra = [broken && T.broken, missing.length && T.annMissing(missing.join('、'))].filter(Boolean);
+if (extra.length) {
+const prev = statusEl.classList.contains('show') ? statusText : '';
+setStatus(broken || statusEl.classList.contains('error') ? 'error' : 'warn', [prev, ...extra].filter(Boolean).join(' '), reportButton(null));
 }
 </script>
 </body>
